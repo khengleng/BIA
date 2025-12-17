@@ -1,0 +1,377 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import {
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Users,
+  Building2,
+  Briefcase,
+  Download,
+  Calendar,
+  ChevronDown,
+  ArrowUpRight,
+  ArrowDownRight,
+  BarChart3,
+  Handshake,
+  LogOut,
+  Bell,
+  FileText,
+  Settings
+} from 'lucide-react'
+
+interface User {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  role: 'SME' | 'INVESTOR' | 'ADVISOR' | 'ADMIN'
+  tenantId: string
+}
+
+export default function ReportsPage() {
+  const [user, setUser] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    // Get user data from localStorage
+    const fetchUser = async () => {
+      try {
+        const token = localStorage.getItem('token')
+        const userData = localStorage.getItem('user')
+
+        if (!token || !userData) {
+          window.location.href = '/auth/login'
+          return
+        }
+
+        // Parse user data from localStorage
+        const user = JSON.parse(userData)
+        setUser(user)
+      } catch (error) {
+        console.error('Error fetching user:', error)
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        window.location.href = '/auth/login'
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchUser()
+  }, [])
+
+  const handleLogout = () => {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    window.location.href = '/'
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleDownloadReport = async (report: any) => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        window.location.href = '/auth/login'
+        return
+      }
+
+      // In a real implementation, this would download the actual report file
+      console.log(`Downloading report: ${report.title}`)
+
+      // Simulate download
+      const blob = new Blob([`Mock content for ${report.title}`], { type: 'application/pdf' })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${report.title}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (error) {
+      console.error('Error downloading report:', error)
+    }
+  }
+
+  const handleGenerateReport = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        window.location.href = '/auth/login'
+        return
+      }
+
+      // In a real implementation, this would generate a new report
+      console.log('Generating new report...')
+
+      // Simulate report generation
+      setTimeout(() => {
+        console.log('Report generated successfully!')
+        // In a real implementation, you would refresh the reports list
+      }, 2000)
+    } catch (error) {
+      console.error('Error generating report:', error)
+    }
+  }
+
+  // Mock report data
+  const reports = [
+    {
+      id: 1,
+      title: 'Monthly Investment Report',
+      type: 'Investment',
+      date: '2024-01-15',
+      status: 'Generated',
+      size: '2.3 MB',
+      description: 'Comprehensive monthly report on investment activities and performance'
+    },
+    {
+      id: 2,
+      title: 'SME Performance Analysis',
+      type: 'Analytics',
+      date: '2024-01-10',
+      status: 'Generated',
+      size: '1.8 MB',
+      description: 'Detailed analysis of SME performance metrics and growth trends'
+    },
+    {
+      id: 3,
+      title: 'Deal Pipeline Report',
+      type: 'Pipeline',
+      date: '2024-01-05',
+      status: 'Pending',
+      size: 'N/A',
+      description: 'Current deal pipeline status and upcoming opportunities'
+    }
+  ]
+
+  const stats = [
+    {
+      title: 'Total Deals',
+      value: '89',
+      change: '+12%',
+      trend: 'up',
+      icon: Handshake
+    },
+    {
+      title: 'Active SMEs',
+      value: '156',
+      change: '+8%',
+      trend: 'up',
+      icon: Building2
+    },
+    {
+      title: 'Total Investment',
+      value: '$12.5M',
+      change: '+23%',
+      trend: 'up',
+      icon: DollarSign
+    },
+    {
+      title: 'Success Rate',
+      value: '92%',
+      change: '-2%',
+      trend: 'down',
+      icon: TrendingUp
+    }
+  ]
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-900">
+      {/* Header */}
+      <header className="bg-gray-800 border-b border-gray-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center space-x-4">
+              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                <Building2 className="w-6 h-6 text-white" />
+              </div>
+              <h1 className="text-2xl font-bold text-white">Boutique Advisory</h1>
+            </div>
+
+            <div className="flex items-center space-x-4">
+              <button className="relative p-2 text-gray-400 hover:text-white">
+                <Bell className="w-6 h-6" />
+                <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-400"></span>
+              </button>
+
+              <div className="flex items-center space-x-3">
+                <div className="text-right">
+                  <p className="text-sm font-medium text-white">
+                    {user?.firstName} {user?.lastName}
+                  </p>
+                  <p className="text-xs text-gray-400 capitalize">
+                    {user?.role.toLowerCase()}
+                  </p>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="p-2 text-gray-400 hover:text-white"
+                >
+                  <LogOut className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="flex">
+        {/* Sidebar */}
+        <aside className="w-64 bg-gray-800 min-h-screen flex flex-col">
+          <nav className="mt-8 flex-1">
+            <div className="px-4 space-y-2">
+              <Link
+                href="/dashboard"
+                className="flex items-center px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg"
+              >
+                <BarChart3 className="w-5 h-5 mr-3" />
+                Dashboard
+              </Link>
+
+              <Link
+                href="/smes"
+                className="flex items-center px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg"
+              >
+                <Building2 className="w-5 h-5 mr-3" />
+                SMEs
+              </Link>
+
+              <Link
+                href="/investors"
+                className="flex items-center px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg"
+              >
+                <Users className="w-5 h-5 mr-3" />
+                Investors
+              </Link>
+
+              <Link
+                href="/deals"
+                className="flex items-center px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg"
+              >
+                <Handshake className="w-5 h-5 mr-3" />
+                Deals
+              </Link>
+
+              <Link
+                href="/reports"
+                className="flex items-center px-4 py-2 text-white bg-blue-600 rounded-lg"
+              >
+                <FileText className="w-5 h-5 mr-3" />
+                Reports
+              </Link>
+
+              <Link
+                href="/settings"
+                className="flex items-center px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg"
+              >
+                <Settings className="w-5 h-5 mr-3" />
+                Settings
+              </Link>
+            </div>
+          </nav>
+
+          {/* Logout Button at Bottom of Sidebar */}
+          <div className="px-4 pb-8">
+            <button
+              onClick={handleLogout}
+              className="flex items-center w-full px-4 py-2 text-red-400 hover:text-white hover:bg-red-600 rounded-lg transition-colors"
+            >
+              <LogOut className="w-5 h-5 mr-3" />
+              Logout
+            </button>
+          </div>
+        </aside>
+
+        {/* Main Content */}
+        <main className="flex-1 p-8">
+          <div className="flex justify-between items-center mb-8">
+            <h1 className="text-3xl font-bold text-white">Reports</h1>
+            <button
+              onClick={() => handleGenerateReport()}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center"
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              Generate Report
+            </button>
+          </div>
+
+          {/* Stats Overview */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {stats.map((stat, index) => (
+              <div key={index} className="bg-gray-800 rounded-lg p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-400">{stat.title}</p>
+                    <p className="text-2xl font-bold text-white">{stat.value}</p>
+                  </div>
+                  <div className={`p-2 rounded-lg ${stat.trend === 'up' ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
+                    <stat.icon className={`w-6 h-6 ${stat.trend === 'up' ? 'text-green-400' : 'text-red-400'}`} />
+                  </div>
+                </div>
+                <div className="mt-2 flex items-center">
+                  {stat.trend === 'up' ? (
+                    <TrendingUp className="w-4 h-4 text-green-400 mr-1" />
+                  ) : (
+                    <TrendingDown className="w-4 h-4 text-red-400 mr-1" />
+                  )}
+                  <span className={`text-sm ${stat.trend === 'up' ? 'text-green-400' : 'text-red-400'}`}>
+                    {stat.change} from last month
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Reports List */}
+          <div className="bg-gray-800 rounded-lg p-6">
+            <h2 className="text-xl font-semibold text-white mb-6">Recent Reports</h2>
+            <div className="space-y-4">
+              {reports.map((report) => (
+                <div key={report.id} className="flex items-center justify-between p-4 bg-gray-700 rounded-lg">
+                  <div className="flex items-center space-x-4">
+                    <div className="p-2 bg-blue-500/20 rounded-lg">
+                      <FileText className="w-6 h-6 text-blue-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-white font-medium">{report.title}</h3>
+                      <p className="text-gray-400 text-sm">{report.description}</p>
+                      <div className="flex items-center space-x-4 mt-1">
+                        <span className="text-gray-500 text-xs">{report.type}</span>
+                        <span className="text-gray-500 text-xs">{report.size}</span>
+                        <span className="text-gray-500 text-xs">{report.date}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${report.status === 'Generated' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
+                      }`}>
+                      {report.status}
+                    </span>
+                    <button
+                      onClick={() => handleDownloadReport(report)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg"
+                    >
+                      <Download className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  )
+}
