@@ -103,8 +103,8 @@ export default function InvestorsPage() {
     const filtered = investors.filter(inv =>
       inv.name.toLowerCase().includes(lowerQuery) ||
       inv.type.toLowerCase().includes(lowerQuery) ||
-      inv.preferences.location?.toLowerCase().includes(lowerQuery) ||
-      inv.preferences.description?.toLowerCase().includes(lowerQuery)
+      inv.preferences?.location?.toLowerCase().includes(lowerQuery) ||
+      inv.preferences?.description?.toLowerCase().includes(lowerQuery)
     )
     setFilteredInvestors(filtered)
   }, [searchQuery, investors])
@@ -114,12 +114,12 @@ export default function InvestorsPage() {
     setEditForm({
       name: investor.name,
       type: investor.type,
-      portfolioValue: investor.preferences.portfolioValue || '',
-      activeInvestments: investor.preferences.activeInvestments || '',
-      totalReturns: investor.preferences.totalReturns || '',
-      location: investor.preferences.location || '',
-      status: investor.preferences.status || 'Active',
-      description: investor.preferences.description || ''
+      portfolioValue: investor.preferences?.portfolioValue || '',
+      activeInvestments: investor.preferences?.activeInvestments || '',
+      totalReturns: investor.preferences?.totalReturns || '',
+      location: investor.preferences?.location || '',
+      status: investor.preferences?.status || 'Active',
+      description: investor.preferences?.description || ''
     })
     setShowEditModal(true)
   }
@@ -259,32 +259,32 @@ export default function InvestorsPage() {
                   <h3 className="text-xl font-semibold text-white truncate">{investor.name}</h3>
                   <p className="text-gray-400 text-sm">{investor.type}</p>
                 </div>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${investor.preferences.status === 'Active' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${investor.preferences?.status === 'Active' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
                   }`}>
-                  {investor.preferences.status || 'Active'}
+                  {investor.preferences?.status || 'Active'}
                 </span>
               </div>
 
               <div className="space-y-2 mb-4">
                 <div className="flex justify-between">
                   <span className="text-gray-400">Portfolio Value:</span>
-                  <span className="text-white">{investor.preferences.portfolioValue || '-'}</span>
+                  <span className="text-white">{investor.preferences?.portfolioValue || '-'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Active Investments:</span>
-                  <span className="text-white">{investor.preferences.activeInvestments || '-'}</span>
+                  <span className="text-white">{investor.preferences?.activeInvestments || '-'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Total Returns:</span>
-                  <span className="text-green-400">{investor.preferences.totalReturns || '-'}</span>
+                  <span className="text-green-400">{investor.preferences?.totalReturns || '-'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Location:</span>
-                  <span className="text-white">{investor.preferences.location || '-'}</span>
+                  <span className="text-white">{investor.preferences?.location || '-'}</span>
                 </div>
               </div>
 
-              <p className="text-gray-300 text-sm mb-4 line-clamp-2 h-10">{investor.preferences.description || 'No description available'}</p>
+              <p className="text-gray-300 text-sm mb-4 line-clamp-2 h-10">{investor.preferences?.description || 'No description available'}</p>
 
               <div className="flex space-x-2">
                 <Link href={`/investors/${investor.id}`} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm flex items-center justify-center transition-colors">
