@@ -762,13 +762,16 @@ export default function InvestorProfilePage() {
                 <p className="text-gray-400 mt-2">{investor.title} • {investor.investorType} • {investor.city}, {investor.country}</p>
               </div>
               <div className="flex space-x-3">
-                <button
-                  onClick={handleEdit}
-                  className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center"
-                >
-                  <Edit className="w-4 h-4 mr-2" />
-                  Edit
-                </button>
+                {/* Only show Edit button if user is ADMIN, ADVISOR, or owns this investor profile */}
+                {(user?.role === 'ADMIN' || user?.role === 'ADVISOR' || user?.role === 'INVESTOR') && (
+                  <button
+                    onClick={handleEdit}
+                    className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center"
+                  >
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit
+                  </button>
+                )}
                 <button
                   onClick={() => router.push('/deals/create')}
                   className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center"
