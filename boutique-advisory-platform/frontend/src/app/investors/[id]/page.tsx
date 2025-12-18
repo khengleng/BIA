@@ -41,6 +41,48 @@ interface User {
   tenantId: string
 }
 
+interface Investor {
+  id: string
+  userId?: string
+  name: string
+  title: string
+  email: string
+  phone: string
+  address: string
+  city: string
+  province: string
+  country: string
+  investorType: string
+  investmentExperience: string
+  preferredSectors: string[]
+  investmentRange: string
+  netWorth: string
+  annualIncome: string
+  liquidAssets: string
+  investmentPortfolio: string
+  occupation: string
+  company: string
+  experience: string
+  riskTolerance: string
+  investmentGoals: string
+  status: string
+  rating: number
+  reviews: number
+  completedInvestments: number
+  activeInvestments: number
+  totalReturns: string
+  documents: Array<{ name: string; type: string; size: string; uploaded: string }>
+  investments: Array<{ id: number; company: string; amount: string; status: string; returns: string; date: string }>
+  metrics: {
+    totalInvested: string
+    averageReturn: string
+    successRate: string
+    portfolioGrowth: string
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  timelineEvents: any[]
+}
+
 export default function InvestorProfilePage() {
   const params = useParams()
   const router = useRouter()
@@ -159,40 +201,90 @@ export default function InvestorProfilePage() {
     setShowEditModal(true)
   }
 
-  const handleSaveEdit = () => {
-    // Here you would typically make an API call to update the investor
-    alert(`Investor "${editForm.name}" updated successfully!`)
+  const handleSaveEdit = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        router.push('/auth/login')
+        return
+      }
 
-    // Update the local investor data to reflect changes
-    Object.assign(investor, editForm)
+      // Make API call to update the investor
+      const response = await fetch(`${API_URL}/api/investors/${params.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: editForm.name,
+          type: editForm.investorType,
+          preferences: {
+            title: editForm.title,
+            email: editForm.email,
+            phone: editForm.phone,
+            address: editForm.address,
+            city: editForm.city,
+            province: editForm.province,
+            country: editForm.country,
+            investmentExperience: editForm.investmentExperience,
+            preferredSectors: editForm.preferredSectors,
+            investmentRange: editForm.investmentRange,
+            netWorth: editForm.netWorth,
+            annualIncome: editForm.annualIncome,
+            liquidAssets: editForm.liquidAssets,
+            investmentPortfolio: editForm.investmentPortfolio,
+            occupation: editForm.occupation,
+            company: editForm.company,
+            experience: editForm.experience,
+            riskTolerance: editForm.riskTolerance,
+            investmentGoals: editForm.investmentGoals,
+            status: editForm.status
+          }
+        })
+      })
 
-    setShowEditModal(false)
+      if (response.ok) {
+        alert(`Investor "${editForm.name}" updated successfully!`)
 
-    // Reset form
-    setEditForm({
-      name: '',
-      title: '',
-      email: '',
-      phone: '',
-      address: '',
-      city: '',
-      province: '',
-      country: '',
-      investorType: '',
-      investmentExperience: '',
-      investmentRange: '',
-      netWorth: '',
-      annualIncome: '',
-      liquidAssets: '',
-      investmentPortfolio: '',
-      occupation: '',
-      company: '',
-      experience: '',
-      riskTolerance: '',
-      investmentGoals: '',
-      status: '',
-      preferredSectors: []
-    })
+        // Update the local investor data to reflect changes
+        Object.assign(investor, editForm)
+
+        setShowEditModal(false)
+
+        // Reset form
+        setEditForm({
+          name: '',
+          title: '',
+          email: '',
+          phone: '',
+          address: '',
+          city: '',
+          province: '',
+          country: '',
+          investorType: '',
+          investmentExperience: '',
+          investmentRange: '',
+          netWorth: '',
+          annualIncome: '',
+          liquidAssets: '',
+          investmentPortfolio: '',
+          occupation: '',
+          company: '',
+          experience: '',
+          riskTolerance: '',
+          investmentGoals: '',
+          status: '',
+          preferredSectors: []
+        })
+      } else {
+        const errorData = await response.json()
+        alert(`Failed to update investor: ${errorData.error || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('Error updating investor:', error)
+      alert('Error updating investor. Please try again.')
+    }
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -339,6 +431,7 @@ export default function InvestorProfilePage() {
     const investors = {
       '1': {
         id: '1',
+        userId: 'investor_1',
         name: 'John Smith',
         title: 'Angel Investor',
         email: 'john.smith@email.com',
@@ -432,6 +525,7 @@ export default function InvestorProfilePage() {
       },
       '2': {
         id: '2',
+        userId: 'investor_2',
         name: 'Sarah Johnson',
         title: 'Venture Capital Partner',
         email: 'sarah.johnson@vc.com',
@@ -525,6 +619,7 @@ export default function InvestorProfilePage() {
       },
       '3': {
         id: '3',
+        userId: 'investor_3',
         name: 'Michael Chen',
         title: 'Private Equity Investor',
         email: 'michael.chen@pe.com',
@@ -762,19 +857,29 @@ export default function InvestorProfilePage() {
                 <p className="text-gray-400 mt-2">{investor.title} • {investor.investorType} • {investor.city}, {investor.country}</p>
               </div>
               <div className="flex space-x-3">
-                {/* Show Edit button but disable if user doesn't have permission */}
-                <button
-                  onClick={handleEdit}
-                  disabled={!(user?.role === 'ADMIN' || user?.role === 'ADVISOR' || user?.role === 'INVESTOR')}
-                  className={`px-4 py-2 rounded-lg flex items-center ${(user?.role === 'ADMIN' || user?.role === 'ADVISOR' || user?.role === 'INVESTOR')
-                      ? 'bg-gray-700 hover:bg-gray-600 text-white cursor-pointer'
-                      : 'bg-gray-800 text-gray-500 cursor-not-allowed opacity-50'
-                    }`}
-                  title={!(user?.role === 'ADMIN' || user?.role === 'ADVISOR' || user?.role === 'INVESTOR') ? 'You do not have permission to edit this investor' : 'Edit investor details'}
-                >
-                  <Edit className="w-4 h-4 mr-2" />
-                  Edit
-                </button>
+                {/* Check if user can edit this specific investor */}
+                {(() => {
+                  // RBAC: ADMIN and ADVISOR can edit all investors
+                  // INVESTOR can only edit their own profile (if investor.userId matches user.id)
+                  const canEdit = user?.role === 'ADMIN' ||
+                    user?.role === 'ADVISOR' ||
+                    (user?.role === 'INVESTOR' && investor.userId === user.id);
+
+                  return (
+                    <button
+                      onClick={handleEdit}
+                      disabled={!canEdit}
+                      className={`px-4 py-2 rounded-lg flex items-center ${canEdit
+                        ? 'bg-gray-700 hover:bg-gray-600 text-white cursor-pointer'
+                        : 'bg-gray-800 text-gray-500 cursor-not-allowed opacity-50'
+                        }`}
+                      title={!canEdit ? 'You do not have permission to edit this investor' : 'Edit investor details'}
+                    >
+                      <Edit className="w-4 h-4 mr-2" />
+                      Edit
+                    </button>
+                  );
+                })()}
                 <button
                   onClick={() => router.push('/deals/create')}
                   className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center"

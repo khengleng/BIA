@@ -1,7 +1,7 @@
 'use client'
 import { API_URL } from '@/lib/api'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
@@ -24,6 +24,7 @@ import {
 export default function AddSMEPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const [user, setUser] = useState<{ id: string; role: string } | null>(null)
   const [formData, setFormData] = useState({
     // Basic Information
     companyName: '',
@@ -103,6 +104,24 @@ export default function AddSMEPage() {
     '251-500',
     '500+'
   ]
+
+  // Check if user has permission to create SMEs (only ADMIN and ADVISOR)
+  useEffect(() => {
+    const userData = localStorage.getItem('user')
+    if (!userData) {
+      router.push('/auth/login')
+      return
+    }
+
+    const parsedUser = JSON.parse(userData)
+    setUser(parsedUser)
+
+    // Only ADMIN and ADVISOR can create SMEs
+    if (parsedUser.role !== 'ADMIN' && parsedUser.role !== 'ADVISOR' && parsedUser.role !== 'SUPER_ADMIN') {
+      alert('You do not have permission to create SMEs. Only ADMIN and ADVISOR roles can create SMEs.')
+      router.push('/smes')
+    }
+  }, [router])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
