@@ -885,7 +885,7 @@ app.post('/api/auth/reset-password', passwordResetLimiter, async (req, res) => {
 });
 
 // SME endpoints
-app.get('/api/smes', authenticateToken, authorizeRoles('ADMIN', 'ADVISOR', 'INVESTOR'), async (req, res) => {
+app.get('/api/smes', authenticateToken, authorizeRoles('ADMIN', 'ADVISOR', 'INVESTOR', 'SME'), async (req, res) => {
   try {
     const smesWithUsers = smes.map(sme => ({
       ...sme,
@@ -1058,7 +1058,7 @@ app.delete('/api/smes/:id', authenticateToken, authorizeRoles('ADMIN', 'ADVISOR'
 });
 
 // Investor endpoints
-app.get('/api/investors', authenticateToken, authorizeRoles('ADMIN', 'ADVISOR', 'SME'), async (req, res) => {
+app.get('/api/investors', authenticateToken, authorizeRoles('ADMIN', 'ADVISOR', 'SME', 'INVESTOR'), async (req, res) => {
   try {
     const investorsWithUsers = investors.map(investor => ({
       ...investor,
@@ -1092,7 +1092,7 @@ app.get('/api/investors/:id', authenticateToken, async (req, res) => {
   }
 });
 
-app.post('/api/investors', authenticateToken, async (req, res) => {
+app.post('/api/investors', authenticateToken, authorizeRoles('ADMIN', 'ADVISOR'), async (req, res) => {
   try {
     const { name, type, preferences } = req.body;
 
@@ -1120,7 +1120,7 @@ app.post('/api/investors', authenticateToken, async (req, res) => {
   }
 });
 
-app.put('/api/investors/:id', authenticateToken, async (req, res) => {
+app.put('/api/investors/:id', authenticateToken, authorizeRoles('ADMIN', 'ADVISOR'), async (req, res) => {
   try {
     const { name, type, preferences } = req.body;
 
@@ -1149,7 +1149,7 @@ app.put('/api/investors/:id', authenticateToken, async (req, res) => {
   }
 });
 
-app.delete('/api/investors/:id', authenticateToken, async (req, res) => {
+app.delete('/api/investors/:id', authenticateToken, authorizeRoles('ADMIN', 'ADVISOR'), async (req, res) => {
   try {
     const investorIndex = investors.findIndex(i => i.id === req.params.id);
     if (investorIndex === -1) {
