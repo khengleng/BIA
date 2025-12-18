@@ -51,26 +51,44 @@ export default function InvestorsPage() {
   useEffect(() => {
     const fetchUserAndData = async () => {
       try {
+        // Check for user and token FIRST
         const userData = localStorage.getItem('user')
-        if (!userData) {
+        const token = localStorage.getItem('token')
+
+        if (!userData || !token) {
+          setIsLoading(false)
           router.push('/auth/login')
           return
         }
+
         const parsedUser = JSON.parse(userData)
         setUser(parsedUser)
 
+        // Only fetch if we have valid auth
         const response = await authorizedRequest('/api/investors')
         if (response.ok) {
           const data = await response.json()
           setInvestors(data)
           setFilteredInvestors(data)
+        } else if (response.status === 401) {
+          // Unauthorized - clear auth and redirect
+          localStorage.removeItem('token')
+          localStorage.removeItem('user')
+          router.push('/auth/login')
         } else {
           console.error('Failed to fetch investors')
           addToast('error', 'Failed to fetch investors')
         }
       } catch (error) {
         console.error('Error fetching data:', error)
-        addToast('error', 'Error loading data')
+        // Check if it's a JSON parse error from trying to parse HTML
+        if (error instanceof SyntaxError) {
+          localStorage.removeItem('token')
+          localStorage.removeItem('user')
+          router.push('/auth/login')
+        } else {
+          addToast('error', 'Error loading data')
+        }
       } finally {
         setIsLoading(false)
       }
