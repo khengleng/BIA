@@ -1007,13 +1007,23 @@ app.post('/api/smes', authenticateToken, authorizeRoles('ADMIN', 'ADVISOR'), asy
   }
 });
 
-app.put('/api/smes/:id', authenticateToken, authorizeRoles('ADMIN', 'ADVISOR'), async (req, res) => {
+app.put('/api/smes/:id', authenticateToken, async (req, res) => {
   try {
     const { name, sector, stage, fundingRequired, description, website, location } = req.body;
 
     const smeIndex = smes.findIndex(s => s.id === req.params.id);
     if (smeIndex === -1) {
       res.status(404).json({ error: 'SME not found' });
+      return;
+    }
+
+    // Check permissions: ADMIN/ADVISOR can edit all, or user must own the SME profile
+    const sme = smes[smeIndex];
+    const isOwner = sme.userId === req.user!.userId;
+    const isAdminOrAdvisor = req.user!.role === 'ADMIN' || req.user!.role === 'ADVISOR';
+
+    if (!isOwner && !isAdminOrAdvisor) {
+      res.status(403).json({ error: 'Permission denied. You can only edit your own SME profile.' });
       return;
     }
 
@@ -1120,13 +1130,23 @@ app.post('/api/investors', authenticateToken, authorizeRoles('ADMIN', 'ADVISOR')
   }
 });
 
-app.put('/api/investors/:id', authenticateToken, authorizeRoles('ADMIN', 'ADVISOR'), async (req, res) => {
+app.put('/api/investors/:id', authenticateToken, async (req, res) => {
   try {
     const { name, type, preferences } = req.body;
 
     const investorIndex = investors.findIndex(i => i.id === req.params.id);
     if (investorIndex === -1) {
       res.status(404).json({ error: 'Investor not found' });
+      return;
+    }
+
+    // Check permissions: ADMIN/ADVISOR can edit all, or user must own the investor profile
+    const investor = investors[investorIndex];
+    const isOwner = investor.userId === req.user!.userId;
+    const isAdminOrAdvisor = req.user!.role === 'ADMIN' || req.user!.role === 'ADVISOR';
+
+    if (!isOwner && !isAdminOrAdvisor) {
+      res.status(403).json({ error: 'Permission denied. You can only edit your own investor profile.' });
       return;
     }
 
