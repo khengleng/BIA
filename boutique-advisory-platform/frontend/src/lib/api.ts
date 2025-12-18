@@ -1,5 +1,5 @@
 // API Configuration
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:1000';
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://backend-production-c9de.up.railway.app';
 
 // Helper function to make API calls
 export async function apiRequest(
