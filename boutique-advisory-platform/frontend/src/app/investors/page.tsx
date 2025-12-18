@@ -144,6 +144,8 @@ export default function InvestorsPage() {
         description: editForm.description
       }
 
+      console.log('Updating investor:', editingInvestor.id, { name: editForm.name, type: editForm.type, preferences })
+
       const response = await authorizedRequest(`/api/investors/${editingInvestor.id}`, {
         method: 'PUT',
         body: JSON.stringify({
@@ -153,19 +155,31 @@ export default function InvestorsPage() {
         })
       })
 
+      console.log('Update response status:', response.status)
+
       if (response.ok) {
         const updatedInvestor = await response.json()
         setInvestors(prev => prev.map(i => i.id === updatedInvestor.id ? updatedInvestor : i))
         addToast('success', 'Investor updated successfully')
         setShowEditModal(false)
         setEditingInvestor(null)
+      } else if (response.status === 403) {
+        console.error('Permission denied - 403 Forbidden')
+        addToast('error', 'Permission denied. You do not have access to edit investors.')
+      } else if (response.status === 401) {
+        console.error('Unauthorized - 401')
+        addToast('error', 'Session expired. Please login again.')
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        router.push('/auth/login')
       } else {
-        const errorData = await response.json()
-        addToast('error', errorData.error || 'Failed to update investor')
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        console.error('Update failed:', response.status, errorData)
+        addToast('error', errorData.error || `Failed to update investor (${response.status})`)
       }
     } catch (error) {
       console.error('Error updating investor:', error)
-      addToast('error', 'An error occurred while updating')
+      addToast('error', `An error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setIsSaving(false)
     }
