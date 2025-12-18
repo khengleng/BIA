@@ -1,0 +1,99 @@
+version: '3.8'
+
+services:
+  # Boutique Advisory Platform Services
+  
+  boutique-advisory-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: bia-boutique-advisory-backend:latest
+    container_name: bia-boutique-advisory-backend
+    ports:
+      - "1000:4000"
+    environment:
+      - NODE_ENV=development
+      - PORT=4000
+      - DATABASE_URL=postgresql://postgres:password@boutique-advisory-postgres:5432/boutique_advisory
+      - REDIS_URL=redis://boutique-advisory-redis:6379
+      - DID_API_GATEWAY_URL=http://localhost:8080
+      - CM_PORTAL_URL=http://localhost:3000
+      - RWA_API_URL=http://localhost:9000
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+    depends_on:
+      - boutique-advisory-postgres
+      - boutique-advisory-redis
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - boutique-advisory-network
+
+  boutique-advisory-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: bia-boutique-advisory-frontend:latest
+    container_name: bia-boutique-advisory-frontend
+    ports:
+      - "1001:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:1000
+      - NEXT_PUBLIC_DID_GATEWAY_URL=http://localhost:8080
+      - NEXT_PUBLIC_CM_PORTAL_URL=http://localhost:3000
+      - NEXT_PUBLIC_RWA_API_URL=http://localhost:9000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - boutique-advisory-backend
+    networks:
+      - boutique-advisory-network
+
+  # Database for Boutique Advisory Platform
+  boutique-advisory-postgres:
+    image: postgres:16-alpine
+    container_name: bia-boutique-advisory-postgres
+    environment:
+      - POSTGRES_DB=boutique_advisory
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    ports:
+      - "1002:5432"
+    volumes:
+      - boutique_advisory_postgres_data:/var/lib/postgresql/data
+    networks:
+      - boutique-advisory-network
+
+  # Redis for Boutique Advisory Platform
+  boutique-advisory-redis:
+    image: redis:7-alpine
+    container_name: bia-boutique-advisory-redis
+    ports:
+      - "1003:6379"
+    volumes:
+      - boutique_advisory_redis_data:/data
+    networks:
+      - boutique-advisory-network
+
+  # PgAdmin for database management
+  boutique-advisory-pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: bia-boutique-advisory-pgadmin
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@boutique-advisory.com
+      - PGADMIN_DEFAULT_PASSWORD=admin123
+    ports:
+      - "1004:80"
+    depends_on:
+      - boutique-advisory-postgres
+    networks:
+      - boutique-advisory-network
+
+volumes:
+  boutique_advisory_postgres_data:
+  boutique_advisory_redis_data:
+
+networks:
+  boutique-advisory-network:
+    driver: bridge

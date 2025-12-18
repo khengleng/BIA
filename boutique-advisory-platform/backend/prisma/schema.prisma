@@ -1,0 +1,340 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-arm64-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Multi-tenant support
+model Tenant {
+  id          String   @id @default(cuid())
+  name        String
+  domain      String?  @unique
+  settings    Json     @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  users       User[]
+  smes        SME[]
+  investors   Investor[]
+  advisors    Advisor[]
+  deals       Deal[]
+  workflows   Workflow[]
+  documents   Document[]
+
+  @@map("tenants")
+}
+
+// User management with multi-tenancy
+model User {
+  id          String   @id @default(cuid())
+  tenantId    String
+  email       String
+  password    String
+  firstName   String
+  lastName    String
+  role        UserRole
+  status      UserStatus @default(ACTIVE)
+  language    Language  @default(EN)
+  did         String?   // DID from existing infrastructure
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sme         SME?     @relation("SMEUser")
+  investor    Investor? @relation("InvestorUser")
+  advisor     Advisor? @relation("AdvisorUser")
+
+  @@unique([tenantId, email])
+  @@map("users")
+}
+
+// SME Module
+model SME {
+  id                String   @id @default(cuid())
+  tenantId          String
+  userId            String   @unique
+  name              String
+  sector            String
+  stage             SMEStage
+  fundingRequired   Float
+  description       String?
+  website           String?
+  location          String?
+  score             Float?   @default(0)
+  certified         Boolean  @default(false)
+  certificationDate DateTime?
+  status            SMEStatus @default(DRAFT)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user              User     @relation("SMEUser", fields: [userId], references: [id], onDelete: Cascade)
+  documents         Document[]
+  deals             Deal[]
+  certifications    Certification[]
+  workflows         Workflow[]
+
+  @@map("smes")
+}
+
+// Investor Module
+model Investor {
+  id              String   @id @default(cuid())
+  tenantId        String
+  userId          String   @unique
+  name            String
+  type            InvestorType
+  kycStatus       KYCStatus @default(PENDING)
+  preferences     Json     @default("{}")
+  portfolio       Json     @default("[]")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user            User     @relation("InvestorUser", fields: [userId], references: [id], onDelete: Cascade)
+  dealInvestments DealInvestor[]
+  workflows       Workflow[]
+
+  @@map("investors")
+}
+
+// Advisor Module
+model Advisor {
+  id              String   @id @default(cuid())
+  tenantId        String
+  userId          String   @unique
+  name            String
+  specialization  String[]
+  certificationList String[]
+  status          AdvisorStatus @default(ACTIVE)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user            User     @relation("AdvisorUser", fields: [userId], references: [id], onDelete: Cascade)
+  certifications  Certification[]
+  workflows       Workflow[]
+
+  @@map("advisors")
+}
+
+// Deal Room / Matchmaking
+model Deal {
+  id              String   @id @default(cuid())
+  tenantId        String
+  smeId           String
+  title           String
+  description     String?
+  amount          Float
+  equity          Float?
+  status          DealStatus @default(DRAFT)
+  successFee      Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sme             SME      @relation(fields: [smeId], references: [id], onDelete: Cascade)
+  investors       DealInvestor[]
+  documents       Document[]
+  workflows       Workflow[]
+
+  @@map("deals")
+}
+
+// Many-to-many relationship between Deal and Investor
+model DealInvestor {
+  id          String   @id @default(cuid())
+  dealId      String
+  investorId  String
+  amount      Float
+  status      InvestmentStatus @default(PENDING)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  deal        Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  investor    Investor @relation(fields: [investorId], references: [id], onDelete: Cascade)
+
+  @@unique([dealId, investorId])
+  @@map("deal_investors")
+}
+
+// Document Management
+model Document {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  type        DocumentType
+  url         String
+  size        Int
+  mimeType    String
+  smeId       String?
+  dealId      String?
+  uploadedBy  String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sme         SME?     @relation(fields: [smeId], references: [id], onDelete: Cascade)
+  deal        Deal?    @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@map("documents")
+}
+
+// Certification Workflow
+model Certification {
+  id          String   @id @default(cuid())
+  smeId       String
+  advisorId   String
+  status      CertificationStatus @default(PENDING)
+  score       Float?
+  comments    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  sme         SME      @relation(fields: [smeId], references: [id], onDelete: Cascade)
+  advisor     Advisor  @relation(fields: [advisorId], references: [id], onDelete: Cascade)
+
+  @@map("certifications")
+}
+
+// Workflow Management (integrated with DID workflow engine)
+model Workflow {
+  id          String   @id @default(cuid())
+  tenantId    String
+  type        WorkflowType
+  status      WorkflowStatus @default(PENDING)
+  data        Json     @default("{}")
+  smeId       String?
+  investorId  String?
+  advisorId   String?
+  dealId      String?
+  didWorkflowId String? // Reference to DID workflow engine
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sme         SME?     @relation(fields: [smeId], references: [id], onDelete: Cascade)
+  investor    Investor? @relation(fields: [investorId], references: [id], onDelete: Cascade)
+  advisor     Advisor? @relation(fields: [advisorId], references: [id], onDelete: Cascade)
+  deal        Deal?    @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@map("workflows")
+}
+
+// Enums
+enum UserRole {
+  SME
+  INVESTOR
+  ADVISOR
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum Language {
+  EN
+  KM
+  ZH
+}
+
+enum SMEStage {
+  SEED
+  GROWTH
+  EXPANSION
+  MATURE
+}
+
+enum SMEStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  CERTIFIED
+  REJECTED
+}
+
+enum InvestorType {
+  ANGEL
+  VENTURE_CAPITAL
+  PRIVATE_EQUITY
+  CORPORATE
+  INSTITUTIONAL
+}
+
+enum KYCStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum AdvisorStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum DealStatus {
+  DRAFT
+  PUBLISHED
+  NEGOTIATION
+  FUNDED
+  CLOSED
+  CANCELLED
+}
+
+enum InvestmentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+
+enum DocumentType {
+  PITCH_DECK
+  FINANCIAL_STATEMENT
+  BUSINESS_PLAN
+  LEGAL_DOCUMENT
+  OTHER
+}
+
+enum CertificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum WorkflowType {
+  SME_ONBOARDING
+  SME_CERTIFICATION
+  INVESTOR_ONBOARDING
+  DEAL_APPROVAL
+  KYC_VERIFICATION
+}
+
+enum WorkflowStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  CANCELLED
+}
