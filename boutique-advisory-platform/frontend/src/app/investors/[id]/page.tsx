@@ -762,16 +762,19 @@ export default function InvestorProfilePage() {
                 <p className="text-gray-400 mt-2">{investor.title} • {investor.investorType} • {investor.city}, {investor.country}</p>
               </div>
               <div className="flex space-x-3">
-                {/* Only show Edit button if user is ADMIN, ADVISOR, or owns this investor profile */}
-                {(user?.role === 'ADMIN' || user?.role === 'ADVISOR' || user?.role === 'INVESTOR') && (
-                  <button
-                    onClick={handleEdit}
-                    className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center"
-                  >
-                    <Edit className="w-4 h-4 mr-2" />
-                    Edit
-                  </button>
-                )}
+                {/* Show Edit button but disable if user doesn't have permission */}
+                <button
+                  onClick={handleEdit}
+                  disabled={!(user?.role === 'ADMIN' || user?.role === 'ADVISOR' || user?.role === 'INVESTOR')}
+                  className={`px-4 py-2 rounded-lg flex items-center ${(user?.role === 'ADMIN' || user?.role === 'ADVISOR' || user?.role === 'INVESTOR')
+                      ? 'bg-gray-700 hover:bg-gray-600 text-white cursor-pointer'
+                      : 'bg-gray-800 text-gray-500 cursor-not-allowed opacity-50'
+                    }`}
+                  title={!(user?.role === 'ADMIN' || user?.role === 'ADVISOR' || user?.role === 'INVESTOR') ? 'You do not have permission to edit this investor' : 'Edit investor details'}
+                >
+                  <Edit className="w-4 h-4 mr-2" />
+                  Edit
+                </button>
                 <button
                   onClick={() => router.push('/deals/create')}
                   className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center"
