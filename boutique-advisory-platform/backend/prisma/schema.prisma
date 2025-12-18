@@ -244,6 +244,8 @@ enum UserRole {
   INVESTOR
   ADVISOR
   ADMIN
+  SUPER_ADMIN  // System operator with full system access
+  SUPPORT      // Helpdesk support with read-only access
 }
 
 enum UserStatus {
