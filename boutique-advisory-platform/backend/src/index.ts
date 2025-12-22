@@ -156,7 +156,7 @@ const smes: any[] = [
   }
 ];
 
-// Test Investors data
+// Test Investors data with preferences for matching
 const investors: any[] = [
   {
     id: 'investor_1',
@@ -165,6 +165,67 @@ const investors: any[] = [
     name: 'John Smith',
     type: 'ANGEL',
     kycStatus: 'APPROVED',
+    preferences: {
+      sectors: ['Technology', 'Fintech', 'E-commerce'],
+      stages: ['Seed', 'Series A', 'Growth'],
+      minInvestment: 50000,
+      maxInvestment: 500000,
+      expectedROI: 20,
+      investmentTimeline: '3-5 years',
+      riskTolerance: 'Medium',
+      geographicFocus: ['Cambodia', 'Southeast Asia']
+    },
+    createdAt: new Date()
+  },
+  {
+    id: 'investor_2',
+    userId: 'admin_1',
+    tenantId: 'default',
+    name: 'Sarah Chen',
+    type: 'VENTURE_CAPITAL',
+    kycStatus: 'APPROVED',
+    preferences: {
+      sectors: ['Technology', 'Healthcare', 'Green Energy'],
+      stages: ['Series A', 'Series B', 'Expansion'],
+      minInvestment: 500000,
+      maxInvestment: 5000000,
+      expectedROI: 30,
+      investmentTimeline: '5-7 years',
+      riskTolerance: 'High',
+      geographicFocus: ['Cambodia', 'Vietnam', 'Thailand']
+    },
+    createdAt: new Date()
+  },
+  {
+    id: 'investor_3',
+    userId: 'advisor_1',
+    tenantId: 'default',
+    name: 'Michael Wong',
+    type: 'PRIVATE_EQUITY',
+    kycStatus: 'APPROVED',
+    preferences: {
+      sectors: ['Manufacturing', 'Agriculture', 'Real Estate'],
+      stages: ['Expansion', 'Mature'],
+      minInvestment: 1000000,
+      maxInvestment: 10000000,
+      expectedROI: 15,
+      investmentTimeline: '7-10 years',
+      riskTolerance: 'Low',
+      geographicFocus: ['Cambodia']
+    },
+    createdAt: new Date()
+  }
+];
+
+// Interests data for expressing interest between investors and SMEs
+const interests: any[] = [
+  {
+    id: 'interest_1',
+    investorId: 'investor_1',
+    smeId: 'sme_1',
+    type: 'INVESTOR_TO_SME',
+    status: 'PENDING',
+    message: 'Interested in discussing potential investment opportunity.',
     createdAt: new Date()
   }
 ];
@@ -181,6 +242,7 @@ const deals: any[] = [
     equity: 15,
     status: 'ACTIVE',
     stage: 'DUE_DILIGENCE',
+    createdBy: 'advisor_1', // Created by advisor for RBAC testing
     createdAt: new Date()
   }
 ];
@@ -248,6 +310,232 @@ const documents: any[] = [
     userId: 'user_1'
   }
 ];
+
+// ============================================
+// MESSAGING SYSTEM DATA
+// ============================================
+const conversations: any[] = [
+  {
+    id: 'conv_1',
+    participants: ['investor_1', 'sme_1'],
+    participantDetails: [
+      { id: 'investor_1', type: 'INVESTOR', name: 'John Smith' },
+      { id: 'sme_1', type: 'SME', name: 'Tech Startup A' }
+    ],
+    dealId: 'deal_1',
+    lastMessage: 'Looking forward to our meeting next week!',
+    lastMessageAt: new Date(),
+    unreadCount: { investor_1: 0, sme_1: 1 },
+    createdAt: new Date()
+  }
+];
+
+const messages: any[] = [
+  {
+    id: 'msg_1',
+    conversationId: 'conv_1',
+    senderId: 'investor_1',
+    senderName: 'John Smith',
+    senderType: 'INVESTOR',
+    content: 'Hello! I am interested in learning more about your fintech platform.',
+    read: true,
+    createdAt: new Date(Date.now() - 86400000 * 2) // 2 days ago
+  },
+  {
+    id: 'msg_2',
+    conversationId: 'conv_1',
+    senderId: 'sme_1',
+    senderName: 'Tech Startup A',
+    senderType: 'SME',
+    content: 'Thank you for your interest! We would be happy to schedule a call to discuss our platform in detail.',
+    read: true,
+    createdAt: new Date(Date.now() - 86400000) // 1 day ago
+  },
+  {
+    id: 'msg_3',
+    conversationId: 'conv_1',
+    senderId: 'investor_1',
+    senderName: 'John Smith',
+    senderType: 'INVESTOR',
+    content: 'Looking forward to our meeting next week!',
+    read: false,
+    createdAt: new Date()
+  }
+];
+
+// ============================================
+// VIRTUAL DATA ROOM DATA
+// ============================================
+const dataRooms: any[] = [
+  {
+    id: 'dr_1',
+    dealId: 'deal_1',
+    name: 'Tech Startup A - Series A Due Diligence',
+    status: 'ACTIVE',
+    createdBy: 'advisor_1',
+    accessList: ['investor_1', 'advisor_1', 'admin_1'],
+    documents: [
+      {
+        id: 'drd_1',
+        name: 'Executive Summary',
+        category: 'Overview',
+        size: '2.1 MB',
+        uploadedBy: 'advisor_1',
+        uploadedAt: new Date(Date.now() - 86400000 * 5),
+        accessCount: 12,
+        lastAccessedBy: 'investor_1',
+        lastAccessedAt: new Date()
+      },
+      {
+        id: 'drd_2',
+        name: 'Financial Statements 2023',
+        category: 'Financials',
+        size: '4.5 MB',
+        uploadedBy: 'advisor_1',
+        uploadedAt: new Date(Date.now() - 86400000 * 4),
+        accessCount: 8,
+        lastAccessedBy: 'investor_1',
+        lastAccessedAt: new Date(Date.now() - 3600000)
+      },
+      {
+        id: 'drd_3',
+        name: 'Business Plan',
+        category: 'Strategy',
+        size: '3.2 MB',
+        uploadedBy: 'advisor_1',
+        uploadedAt: new Date(Date.now() - 86400000 * 3),
+        accessCount: 15,
+        lastAccessedBy: 'investor_1',
+        lastAccessedAt: new Date(Date.now() - 7200000)
+      },
+      {
+        id: 'drd_4',
+        name: 'Cap Table',
+        category: 'Legal',
+        size: '0.8 MB',
+        uploadedBy: 'advisor_1',
+        uploadedAt: new Date(Date.now() - 86400000 * 2),
+        accessCount: 6,
+        lastAccessedBy: 'investor_1',
+        lastAccessedAt: new Date(Date.now() - 86400000)
+      },
+      {
+        id: 'drd_5',
+        name: 'Term Sheet Draft',
+        category: 'Legal',
+        size: '1.1 MB',
+        uploadedBy: 'advisor_1',
+        uploadedAt: new Date(Date.now() - 86400000),
+        accessCount: 4,
+        lastAccessedBy: 'investor_1',
+        lastAccessedAt: new Date(Date.now() - 3600000 * 2)
+      }
+    ],
+    activityLog: [
+      { action: 'VIEWED', documentId: 'drd_1', userId: 'investor_1', timestamp: new Date() },
+      { action: 'DOWNLOADED', documentId: 'drd_2', userId: 'investor_1', timestamp: new Date(Date.now() - 3600000) }
+    ],
+    createdAt: new Date(Date.now() - 86400000 * 7)
+  }
+];
+
+// ============================================
+// DEAL PIPELINE STAGES
+// ============================================
+const pipelineStages = [
+  { id: 'stage_1', name: 'Initial Contact', order: 1, color: '#6366f1' },
+  { id: 'stage_2', name: 'Term Sheet', order: 2, color: '#8b5cf6' },
+  { id: 'stage_3', name: 'Due Diligence', order: 3, color: '#a855f7' },
+  { id: 'stage_4', name: 'Legal Review', order: 4, color: '#d946ef' },
+  { id: 'stage_5', name: 'Negotiation', order: 5, color: '#ec4899' },
+  { id: 'stage_6', name: 'Closing', order: 6, color: '#f43f5e' },
+  { id: 'stage_7', name: 'Completed', order: 7, color: '#22c55e' }
+];
+
+// Enhanced deals with pipeline info
+const pipelineDeals: any[] = [
+  {
+    id: 'deal_1',
+    title: 'Tech Startup A - Series A',
+    smeId: 'sme_1',
+    smeName: 'Tech Startup A',
+    investorId: 'investor_1',
+    investorName: 'John Smith',
+    amount: 500000,
+    stage: 'Due Diligence',
+    stageOrder: 3,
+    priority: 'HIGH',
+    daysInStage: 5,
+    expectedClose: new Date(Date.now() + 86400000 * 30),
+    progress: 45,
+    lastActivity: new Date()
+  },
+  {
+    id: 'deal_2',
+    title: 'Green Energy Co - Seed Round',
+    smeId: 'sme_2',
+    smeName: 'Green Energy Solutions',
+    investorId: 'investor_2',
+    investorName: 'Sarah Chen',
+    amount: 250000,
+    stage: 'Term Sheet',
+    stageOrder: 2,
+    priority: 'MEDIUM',
+    daysInStage: 3,
+    expectedClose: new Date(Date.now() + 86400000 * 45),
+    progress: 25,
+    lastActivity: new Date(Date.now() - 86400000)
+  },
+  {
+    id: 'deal_3',
+    title: 'HealthTech Inc - Series B',
+    smeId: 'sme_3',
+    smeName: 'HealthTech Inc',
+    investorId: 'investor_3',
+    investorName: 'Michael Wong',
+    amount: 2000000,
+    stage: 'Legal Review',
+    stageOrder: 4,
+    priority: 'HIGH',
+    daysInStage: 7,
+    expectedClose: new Date(Date.now() + 86400000 * 14),
+    progress: 70,
+    lastActivity: new Date(Date.now() - 3600000 * 2)
+  },
+  {
+    id: 'deal_4',
+    title: 'AgriTech Startup - Seed',
+    smeId: 'sme_4',
+    smeName: 'AgriTech Solutions',
+    investorId: 'investor_1',
+    investorName: 'John Smith',
+    amount: 150000,
+    stage: 'Initial Contact',
+    stageOrder: 1,
+    priority: 'LOW',
+    daysInStage: 2,
+    expectedClose: new Date(Date.now() + 86400000 * 60),
+    progress: 10,
+    lastActivity: new Date(Date.now() - 86400000 * 2)
+  },
+  {
+    id: 'deal_5',
+    title: 'EduTech Platform - Series A',
+    smeId: 'sme_5',
+    smeName: 'EduLearn Platform',
+    investorId: 'investor_2',
+    investorName: 'Sarah Chen',
+    amount: 750000,
+    stage: 'Closing',
+    stageOrder: 6,
+    priority: 'HIGH',
+    daysInStage: 1,
+    expectedClose: new Date(Date.now() + 86400000 * 7),
+    progress: 90,
+    lastActivity: new Date()
+  }
+];
+
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -1223,7 +1511,7 @@ app.get('/api/deals/:id', authenticateToken, async (req, res) => {
   }
 });
 
-app.post('/api/deals', authenticateToken, async (req, res) => {
+app.post('/api/deals', authenticateToken, authorizeRoles('ADMIN', 'ADVISOR', 'INVESTOR'), async (req, res) => {
   try {
     const { smeId, title, description, amount, equity, successFee, stage } = req.body;
 
@@ -1238,6 +1526,7 @@ app.post('/api/deals', authenticateToken, async (req, res) => {
       successFee: successFee ? parseFloat(successFee) : null,
       status: 'DRAFT',
       stage: stage || 'Initial Contact',
+      createdBy: req.user!.userId,
       createdAt: new Date()
     };
 
@@ -1265,6 +1554,19 @@ app.put('/api/deals/:id', authenticateToken, async (req, res) => {
       return;
     }
 
+    // Check permissions: ADMIN/ADVISOR can edit all deals
+    // INVESTOR can only edit deals they created
+    // SME cannot edit deals
+    const deal = deals[dealIndex];
+    const isAdminOrAdvisor = req.user!.role === 'ADMIN' || req.user!.role === 'ADVISOR';
+    const isInvestorOwner = req.user!.role === 'INVESTOR' && deal.createdBy === req.user!.userId;
+
+    if (!isAdminOrAdvisor && !isInvestorOwner) {
+      res.status(403).json({ error: 'Permission denied. Only ADMIN, ADVISOR, or the deal creator can edit this deal.' });
+      return;
+    }
+
+
     deals[dealIndex] = {
       ...deals[dealIndex],
       title,
@@ -1288,7 +1590,7 @@ app.put('/api/deals/:id', authenticateToken, async (req, res) => {
   }
 });
 
-app.delete('/api/deals/:id', authenticateToken, async (req, res) => {
+app.delete('/api/deals/:id', authenticateToken, authorizeRoles('ADMIN', 'ADVISOR'), async (req, res) => {
   try {
     const dealIndex = deals.findIndex(d => d.id === req.params.id);
     if (dealIndex === -1) {
@@ -1478,6 +1780,1233 @@ app.post('/api/advisory/book', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating booking:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
+// MATCHMAKING ENGINE APIs
+// ============================================
+
+// Calculate match score between an investor and an SME
+function calculateMatchScore(investor: any, sme: any): { score: number; factors: any } {
+  let score = 0;
+  const factors: any = {};
+
+  // 1. Sector Match (max 30 points)
+  const investorSectors = investor.preferences?.sectors || [];
+  const smeSector = sme.sector || '';
+  if (investorSectors.some((s: string) => smeSector.toLowerCase().includes(s.toLowerCase()) || s.toLowerCase().includes(smeSector.toLowerCase()))) {
+    score += 30;
+    factors.sector = { score: 30, match: true, details: `${smeSector} matches investor preferences` };
+  } else {
+    factors.sector = { score: 0, match: false, details: `${smeSector} not in preferred sectors` };
+  }
+
+  // 2. Stage Match (max 25 points)
+  const investorStages = investor.preferences?.stages || [];
+  const smeStage = sme.stage || '';
+  const stageMatch = investorStages.some((s: string) =>
+    smeStage.toLowerCase().includes(s.toLowerCase()) || s.toLowerCase().includes(smeStage.toLowerCase())
+  );
+  if (stageMatch) {
+    score += 25;
+    factors.stage = { score: 25, match: true, details: `${smeStage} matches investor stage preferences` };
+  } else {
+    factors.stage = { score: 0, match: false, details: `${smeStage} not in preferred stages` };
+  }
+
+  // 3. Investment Amount Match (max 25 points)
+  const minInvestment = investor.preferences?.minInvestment || 0;
+  const maxInvestment = investor.preferences?.maxInvestment || Infinity;
+  const fundingRequired = sme.fundingRequired || 0;
+
+  if (fundingRequired >= minInvestment && fundingRequired <= maxInvestment) {
+    score += 25;
+    factors.amount = { score: 25, match: true, details: `$${fundingRequired.toLocaleString()} is within investment range` };
+  } else if (fundingRequired > 0) {
+    // Partial score if close
+    const midPoint = (minInvestment + maxInvestment) / 2;
+    const distance = Math.abs(fundingRequired - midPoint);
+    const partialScore = Math.max(0, 15 - Math.floor(distance / midPoint * 15));
+    score += partialScore;
+    factors.amount = { score: partialScore, match: false, details: `$${fundingRequired.toLocaleString()} outside preferred range ($${minInvestment.toLocaleString()} - $${maxInvestment.toLocaleString()})` };
+  } else {
+    factors.amount = { score: 0, match: false, details: 'Funding amount not specified' };
+  }
+
+  // 4. Geographic Match (max 10 points)
+  const investorGeo = investor.preferences?.geographicFocus || [];
+  const smeLocation = sme.location || '';
+  const geoMatch = investorGeo.some((g: string) =>
+    smeLocation.toLowerCase().includes(g.toLowerCase())
+  );
+  if (geoMatch) {
+    score += 10;
+    factors.geography = { score: 10, match: true, details: `Location matches investor focus` };
+  } else {
+    factors.geography = { score: 0, match: false, details: `Location not in preferred regions` };
+  }
+
+  // 5. SME Certification Bonus (max 10 points)
+  if (sme.certified || sme.status === 'CERTIFIED') {
+    score += 10;
+    factors.certification = { score: 10, match: true, details: 'SME is certified' };
+  } else {
+    factors.certification = { score: 0, match: false, details: 'SME not yet certified' };
+  }
+
+  return { score: Math.min(score, 100), factors };
+}
+
+// Get matches for investor (shows matching SMEs)
+app.get('/api/matches/investor/:investorId', authenticateToken, async (req, res) => {
+  try {
+    const { investorId } = req.params;
+    const investor = investors.find(i => i.id === investorId);
+
+    if (!investor) {
+      res.status(404).json({ error: 'Investor not found' });
+      return;
+    }
+
+    // Calculate match scores for all SMEs
+    const matches = smes.map(sme => {
+      const { score, factors } = calculateMatchScore(investor, sme);
+
+      // Check if there's mutual interest
+      const hasInvestorInterest = interests.some(i => i.investorId === investorId && i.smeId === sme.id);
+      const hasSMEInterest = interests.some(i => i.smeId === sme.id && i.investorId === investorId && i.type === 'SME_TO_INVESTOR');
+      const mutualInterest = hasInvestorInterest && hasSMEInterest;
+
+      return {
+        sme: {
+          id: sme.id,
+          name: sme.name,
+          sector: sme.sector,
+          stage: sme.stage,
+          fundingRequired: sme.fundingRequired,
+          description: sme.description,
+          location: sme.location,
+          certified: sme.certified || sme.status === 'CERTIFIED'
+        },
+        matchScore: score,
+        matchFactors: factors,
+        interestStatus: {
+          investorExpressedInterest: hasInvestorInterest,
+          smeExpressedInterest: hasSMEInterest,
+          mutualInterest
+        }
+      };
+    });
+
+    // Sort by match score (highest first)
+    matches.sort((a, b) => b.matchScore - a.matchScore);
+
+    res.json({
+      investor: { id: investor.id, name: investor.name },
+      matches,
+      totalMatches: matches.length,
+      highMatches: matches.filter(m => m.matchScore >= 70).length,
+      mutualInterests: matches.filter(m => m.interestStatus.mutualInterest).length
+    });
+  } catch (error) {
+    console.error('Error getting investor matches:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get matches for SME (shows matching investors)
+app.get('/api/matches/sme/:smeId', authenticateToken, async (req, res) => {
+  try {
+    const { smeId } = req.params;
+    const sme = smes.find(s => s.id === smeId);
+
+    if (!sme) {
+      res.status(404).json({ error: 'SME not found' });
+      return;
+    }
+
+    // Calculate match scores for all investors
+    const matches = investors.map(investor => {
+      const { score, factors } = calculateMatchScore(investor, sme);
+
+      // Check interest status
+      const hasInvestorInterest = interests.some(i => i.investorId === investor.id && i.smeId === smeId);
+      const hasSMEInterest = interests.some(i => i.smeId === smeId && i.investorId === investor.id && i.type === 'SME_TO_INVESTOR');
+      const mutualInterest = hasInvestorInterest && hasSMEInterest;
+
+      return {
+        investor: {
+          id: investor.id,
+          name: investor.name,
+          type: investor.type,
+          preferences: investor.preferences
+        },
+        matchScore: score,
+        matchFactors: factors,
+        interestStatus: {
+          investorExpressedInterest: hasInvestorInterest,
+          smeExpressedInterest: hasSMEInterest,
+          mutualInterest
+        }
+      };
+    });
+
+    // Sort by match score (highest first)
+    matches.sort((a, b) => b.matchScore - a.matchScore);
+
+    res.json({
+      sme: { id: sme.id, name: sme.name, sector: sme.sector },
+      matches,
+      totalMatches: matches.length,
+      highMatches: matches.filter(m => m.matchScore >= 70).length,
+      mutualInterests: matches.filter(m => m.interestStatus.mutualInterest).length
+    });
+  } catch (error) {
+    console.error('Error getting SME matches:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get all matches (matchmaking dashboard)
+app.get('/api/matches', authenticateToken, async (req, res) => {
+  try {
+    const allMatches: any[] = [];
+
+    // Calculate all possible matches
+    for (const investor of investors) {
+      for (const sme of smes) {
+        const { score, factors } = calculateMatchScore(investor, sme);
+
+        const hasInvestorInterest = interests.some(i => i.investorId === investor.id && i.smeId === sme.id);
+        const hasSMEInterest = interests.some(i => i.smeId === sme.id && i.investorId === investor.id && i.type === 'SME_TO_INVESTOR');
+
+        allMatches.push({
+          investor: { id: investor.id, name: investor.name, type: investor.type },
+          sme: { id: sme.id, name: sme.name, sector: sme.sector, stage: sme.stage },
+          matchScore: score,
+          factors,
+          interestStatus: {
+            investorExpressedInterest: hasInvestorInterest,
+            smeExpressedInterest: hasSMEInterest,
+            mutualInterest: hasInvestorInterest && hasSMEInterest
+          }
+        });
+      }
+    }
+
+    // Sort by match score
+    allMatches.sort((a, b) => b.matchScore - a.matchScore);
+
+    res.json({
+      matches: allMatches,
+      stats: {
+        totalPossibleMatches: allMatches.length,
+        highScoreMatches: allMatches.filter(m => m.matchScore >= 70).length,
+        mediumScoreMatches: allMatches.filter(m => m.matchScore >= 40 && m.matchScore < 70).length,
+        lowScoreMatches: allMatches.filter(m => m.matchScore < 40).length,
+        mutualInterests: allMatches.filter(m => m.interestStatus.mutualInterest).length,
+        pendingInterests: interests.filter(i => i.status === 'PENDING').length
+      }
+    });
+  } catch (error) {
+    console.error('Error getting all matches:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
+// INTEREST EXPRESSION APIs
+// ============================================
+
+// Get all interests
+app.get('/api/interests', authenticateToken, async (req, res) => {
+  try {
+    const enrichedInterests = interests.map(interest => ({
+      ...interest,
+      investor: investors.find(i => i.id === interest.investorId),
+      sme: smes.find(s => s.id === interest.smeId)
+    }));
+
+    res.json(enrichedInterests);
+  } catch (error) {
+    console.error('Error getting interests:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get interests for current user
+app.get('/api/interests/my', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user!.userId;
+
+    // Find if user is an investor or SME
+    const userInvestor = investors.find(i => i.userId === userId);
+    const userSME = smes.find(s => s.userId === userId);
+
+    let myInterests: any[] = [];
+    let receivedInterests: any[] = [];
+
+    if (userInvestor) {
+      myInterests = interests.filter(i => i.investorId === userInvestor.id);
+      receivedInterests = interests.filter(i => i.type === 'SME_TO_INVESTOR' && i.investorId === userInvestor.id);
+    }
+
+    if (userSME) {
+      myInterests = interests.filter(i => i.smeId === userSME.id && i.type === 'SME_TO_INVESTOR');
+      receivedInterests = interests.filter(i => i.smeId === userSME.id && i.type === 'INVESTOR_TO_SME');
+    }
+
+    res.json({
+      sent: myInterests.map(i => ({
+        ...i,
+        investor: investors.find(inv => inv.id === i.investorId),
+        sme: smes.find(s => s.id === i.smeId)
+      })),
+      received: receivedInterests.map(i => ({
+        ...i,
+        investor: investors.find(inv => inv.id === i.investorId),
+        sme: smes.find(s => s.id === i.smeId)
+      }))
+    });
+  } catch (error) {
+    console.error('Error getting user interests:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Express interest (investor -> SME or SME -> investor)
+app.post('/api/interests', authenticateToken, async (req, res) => {
+  try {
+    const { investorId, smeId, type, message } = req.body;
+
+    if (!investorId || !smeId || !type) {
+      res.status(400).json({ error: 'investorId, smeId, and type are required' });
+      return;
+    }
+
+    // Validate investor and SME exist
+    const investor = investors.find(i => i.id === investorId);
+    const sme = smes.find(s => s.id === smeId);
+
+    if (!investor) {
+      res.status(404).json({ error: 'Investor not found' });
+      return;
+    }
+
+    if (!sme) {
+      res.status(404).json({ error: 'SME not found' });
+      return;
+    }
+
+    // Check if interest already exists
+    const existingInterest = interests.find(
+      i => i.investorId === investorId && i.smeId === smeId && i.type === type
+    );
+
+    if (existingInterest) {
+      res.status(409).json({ error: 'Interest already expressed', interest: existingInterest });
+      return;
+    }
+
+    // Check for mutual interest
+    const oppositeType = type === 'INVESTOR_TO_SME' ? 'SME_TO_INVESTOR' : 'INVESTOR_TO_SME';
+    const mutualInterestExists = interests.some(
+      i => i.investorId === investorId && i.smeId === smeId && i.type === oppositeType
+    );
+
+    const newInterest = {
+      id: `interest_${Date.now()}`,
+      investorId,
+      smeId,
+      type,
+      status: mutualInterestExists ? 'MUTUAL' : 'PENDING',
+      message: message || '',
+      createdAt: new Date()
+    };
+
+    interests.push(newInterest);
+
+    // If mutual interest, update the other interest status too
+    if (mutualInterestExists) {
+      const otherInterest = interests.find(
+        i => i.investorId === investorId && i.smeId === smeId && i.type === oppositeType
+      );
+      if (otherInterest) {
+        otherInterest.status = 'MUTUAL';
+      }
+    }
+
+    res.status(201).json({
+      message: mutualInterestExists ? 'Mutual interest! Both parties are interested.' : 'Interest expressed successfully',
+      interest: newInterest,
+      mutualInterest: mutualInterestExists,
+      investor: { id: investor.id, name: investor.name },
+      sme: { id: sme.id, name: sme.name }
+    });
+  } catch (error) {
+    console.error('Error expressing interest:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Update interest status (accept, reject, etc.)
+app.put('/api/interests/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, message } = req.body;
+
+    const interestIndex = interests.findIndex(i => i.id === id);
+    if (interestIndex === -1) {
+      res.status(404).json({ error: 'Interest not found' });
+      return;
+    }
+
+    interests[interestIndex] = {
+      ...interests[interestIndex],
+      status: status || interests[interestIndex].status,
+      message: message || interests[interestIndex].message,
+      updatedAt: new Date()
+    };
+
+    res.json({
+      message: 'Interest updated successfully',
+      interest: interests[interestIndex]
+    });
+  } catch (error) {
+    console.error('Error updating interest:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Delete interest
+app.delete('/api/interests/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const interestIndex = interests.findIndex(i => i.id === id);
+    if (interestIndex === -1) {
+      res.status(404).json({ error: 'Interest not found' });
+      return;
+    }
+
+    interests.splice(interestIndex, 1);
+
+    res.json({ message: 'Interest removed successfully' });
+  } catch (error) {
+    console.error('Error deleting interest:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
+// INVESTOR PREFERENCES APIs
+// ============================================
+
+// Update investor preferences
+app.put('/api/investors/:id/preferences', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { preferences } = req.body;
+
+    const investorIndex = investors.findIndex(i => i.id === id);
+    if (investorIndex === -1) {
+      res.status(404).json({ error: 'Investor not found' });
+      return;
+    }
+
+    // Only allow investor to update their own preferences, or ADMIN/ADVISOR
+    const investor = investors[investorIndex];
+    const isOwner = investor.userId === req.user!.userId;
+    const isAdminOrAdvisor = req.user!.role === 'ADMIN' || req.user!.role === 'ADVISOR';
+
+    if (!isOwner && !isAdminOrAdvisor) {
+      res.status(403).json({ error: 'Permission denied' });
+      return;
+    }
+
+    investors[investorIndex] = {
+      ...investors[investorIndex],
+      preferences: {
+        ...investors[investorIndex].preferences,
+        ...preferences
+      },
+      updatedAt: new Date()
+    };
+
+    res.json({
+      message: 'Preferences updated successfully',
+      investor: investors[investorIndex]
+    });
+  } catch (error) {
+    console.error('Error updating preferences:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get investor preferences
+app.get('/api/investors/:id/preferences', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const investor = investors.find(i => i.id === id);
+    if (!investor) {
+      res.status(404).json({ error: 'Investor not found' });
+      return;
+    }
+
+    res.json({
+      investorId: investor.id,
+      name: investor.name,
+      preferences: investor.preferences || {}
+    });
+  } catch (error) {
+    console.error('Error getting preferences:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Reports API endpoints
+app.get('/api/reports/stats', authenticateToken, async (req, res) => {
+  try {
+    // Calculate real statistics from data
+    const totalDeals = deals.length;
+    const activeSMEs = smes.length;
+    const totalInvestors = investors.length;
+
+    // Calculate total investment amount
+    const totalInvestment = deals.reduce((sum, deal) => sum + (deal.amount || 0), 0);
+
+    // Calculate deals by status
+    const activeDeals = deals.filter(d => d.status === 'ACTIVE' || d.status === 'Active').length;
+    const closedDeals = deals.filter(d => d.status === 'CLOSED' || d.status === 'Closed').length;
+    const pendingDeals = deals.filter(d => d.status === 'DRAFT' || d.status === 'PENDING').length;
+
+    // Calculate success rate (closed deals / total deals * 100)
+    const successRate = totalDeals > 0 ? Math.round((closedDeals / totalDeals) * 100) : 0;
+
+    res.json({
+      stats: [
+        {
+          title: 'Total Deals',
+          value: totalDeals.toString(),
+          change: '+12%',
+          trend: 'up'
+        },
+        {
+          title: 'Active SMEs',
+          value: activeSMEs.toString(),
+          change: '+8%',
+          trend: 'up'
+        },
+        {
+          title: 'Total Investment',
+          value: `$${(totalInvestment / 1000000).toFixed(1)}M`,
+          change: '+23%',
+          trend: 'up'
+        },
+        {
+          title: 'Success Rate',
+          value: `${successRate}%`,
+          change: successRate >= 50 ? '+5%' : '-2%',
+          trend: successRate >= 50 ? 'up' : 'down'
+        }
+      ],
+      summary: {
+        totalDeals,
+        activeDeals,
+        closedDeals,
+        pendingDeals,
+        activeSMEs,
+        totalInvestors,
+        totalInvestment
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching report stats:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.get('/api/reports', authenticateToken, async (req, res) => {
+  try {
+    // Generate report list based on available data
+    const now = new Date();
+    const reports = [
+      {
+        id: 1,
+        title: 'Monthly Investment Report',
+        type: 'Investment',
+        date: now.toISOString().split('T')[0],
+        status: 'Generated',
+        size: '2.3 MB',
+        description: `Investment summary: ${deals.length} deals, $${(deals.reduce((sum, d) => sum + (d.amount || 0), 0) / 1000000).toFixed(1)}M total`
+      },
+      {
+        id: 2,
+        title: 'SME Performance Analysis',
+        type: 'Analytics',
+        date: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        status: 'Generated',
+        size: '1.8 MB',
+        description: `Active SMEs: ${smes.length}, Sectors covered: ${[...new Set(smes.map(s => s.sector))].length}`
+      },
+      {
+        id: 3,
+        title: 'Deal Pipeline Report',
+        type: 'Pipeline',
+        date: new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        status: 'Generated',
+        size: '1.2 MB',
+        description: `Pipeline status: ${deals.filter(d => d.status === 'ACTIVE').length} active, ${deals.filter(d => d.status === 'DRAFT').length} pending`
+      },
+      {
+        id: 4,
+        title: 'Investor Portfolio Summary',
+        type: 'Portfolio',
+        date: new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        status: 'Generated',
+        size: '0.9 MB',
+        description: `Total investors: ${investors.length}, Active investments tracked`
+      }
+    ];
+
+    res.json(reports);
+  } catch (error) {
+    console.error('Error fetching reports:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.post('/api/reports/generate', authenticateToken, authorizeRoles('ADMIN', 'ADVISOR'), async (req, res) => {
+  try {
+    const { reportType } = req.body;
+
+    // Generate a new report based on type
+    const now = new Date();
+    const report = {
+      id: Date.now(),
+      title: `${reportType || 'Custom'} Report - ${now.toLocaleDateString()}`,
+      type: reportType || 'Custom',
+      date: now.toISOString().split('T')[0],
+      status: 'Generated',
+      size: '1.5 MB',
+      description: `Generated report with ${deals.length} deals, ${smes.length} SMEs, ${investors.length} investors`,
+      generatedBy: req.user!.userId,
+      generatedAt: now.toISOString()
+    };
+
+    res.status(201).json({
+      message: 'Report generated successfully',
+      report
+    });
+  } catch (error) {
+    console.error('Error generating report:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
+// MESSAGING SYSTEM APIs
+// ============================================
+
+// Get all conversations for user
+app.get('/api/messages/conversations', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user!.userId;
+
+    // Filter conversations where user is a participant
+    const userConversations = conversations.filter(conv =>
+      conv.participants.includes(userId) ||
+      conv.participantDetails.some((p: any) => p.id === userId)
+    );
+
+    res.json(userConversations);
+  } catch (error) {
+    console.error('Error fetching conversations:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get messages for a conversation
+app.get('/api/messages/conversations/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const conversation = conversations.find(c => c.id === id);
+    if (!conversation) {
+      res.status(404).json({ error: 'Conversation not found' });
+      return;
+    }
+
+    const conversationMessages = messages.filter(m => m.conversationId === id);
+
+    res.json({
+      conversation,
+      messages: conversationMessages.sort((a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      )
+    });
+  } catch (error) {
+    console.error('Error fetching messages:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Send a message
+app.post('/api/messages', authenticateToken, async (req, res) => {
+  try {
+    const { conversationId, content } = req.body;
+    const userId = req.user!.userId;
+
+    if (!conversationId || !content) {
+      res.status(400).json({ error: 'conversationId and content are required' });
+      return;
+    }
+
+    const conversation = conversations.find(c => c.id === conversationId);
+    if (!conversation) {
+      res.status(404).json({ error: 'Conversation not found' });
+      return;
+    }
+
+    // Get sender info
+    const sender = users.find(u => u.id === userId) ||
+      investors.find(i => i.userId === userId) ||
+      smes.find(s => s.userId === userId);
+
+    const newMessage = {
+      id: `msg_${Date.now()}`,
+      conversationId,
+      senderId: userId,
+      senderName: sender?.name || sender?.firstName || 'User',
+      senderType: req.user!.role,
+      content,
+      read: false,
+      createdAt: new Date()
+    };
+
+    messages.push(newMessage);
+
+    // Update conversation
+    conversation.lastMessage = content;
+    conversation.lastMessageAt = new Date();
+
+    res.status(201).json(newMessage);
+  } catch (error) {
+    console.error('Error sending message:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Create new conversation
+app.post('/api/messages/conversations', authenticateToken, async (req, res) => {
+  try {
+    const { participantIds, dealId } = req.body;
+
+    if (!participantIds || participantIds.length < 2) {
+      res.status(400).json({ error: 'At least 2 participants required' });
+      return;
+    }
+
+    // Build participant details
+    const participantDetails = participantIds.map((id: string) => {
+      const investor = investors.find(i => i.id === id || i.userId === id);
+      const sme = smes.find(s => s.id === id || s.userId === id);
+      if (investor) return { id: investor.id, type: 'INVESTOR', name: investor.name };
+      if (sme) return { id: sme.id, type: 'SME', name: sme.name };
+      return { id, type: 'USER', name: 'User' };
+    });
+
+    const newConversation = {
+      id: `conv_${Date.now()}`,
+      participants: participantIds,
+      participantDetails,
+      dealId: dealId || null,
+      lastMessage: null,
+      lastMessageAt: new Date(),
+      unreadCount: {},
+      createdAt: new Date()
+    };
+
+    conversations.push(newConversation);
+
+    res.status(201).json(newConversation);
+  } catch (error) {
+    console.error('Error creating conversation:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
+// VIRTUAL DATA ROOM APIs
+// ============================================
+
+// Get data room for a deal
+app.get('/api/dataroom/:dealId', authenticateToken, async (req, res) => {
+  try {
+    const { dealId } = req.params;
+
+    let dataRoom = dataRooms.find(dr => dr.dealId === dealId);
+
+    if (!dataRoom) {
+      // Create a new data room for this deal
+      dataRoom = {
+        id: `dr_${Date.now()}`,
+        dealId,
+        name: `Deal ${dealId} Data Room`,
+        status: 'ACTIVE',
+        createdBy: req.user!.userId,
+        accessList: [req.user!.userId],
+        documents: [],
+        activityLog: [],
+        createdAt: new Date()
+      };
+      dataRooms.push(dataRoom);
+    }
+
+    res.json(dataRoom);
+  } catch (error) {
+    console.error('Error fetching data room:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get all data rooms
+app.get('/api/dataroom', authenticateToken, async (req, res) => {
+  try {
+    res.json(dataRooms);
+  } catch (error) {
+    console.error('Error fetching data rooms:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Upload document to data room
+app.post('/api/dataroom/:dealId/documents', authenticateToken, async (req, res) => {
+  try {
+    const { dealId } = req.params;
+    const { name, category, size } = req.body;
+
+    const dataRoom = dataRooms.find(dr => dr.dealId === dealId);
+    if (!dataRoom) {
+      res.status(404).json({ error: 'Data room not found' });
+      return;
+    }
+
+    const newDocument = {
+      id: `drd_${Date.now()}`,
+      name,
+      category: category || 'General',
+      size: size || '0 KB',
+      uploadedBy: req.user!.userId,
+      uploadedAt: new Date(),
+      accessCount: 0,
+      lastAccessedBy: null,
+      lastAccessedAt: null
+    };
+
+    dataRoom.documents.push(newDocument);
+    dataRoom.activityLog.push({
+      action: 'UPLOADED',
+      documentId: newDocument.id,
+      userId: req.user!.userId,
+      timestamp: new Date()
+    });
+
+    res.status(201).json(newDocument);
+  } catch (error) {
+    console.error('Error uploading document:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Log document access
+app.post('/api/dataroom/:dealId/documents/:docId/access', authenticateToken, async (req, res) => {
+  try {
+    const { dealId, docId } = req.params;
+    const { action } = req.body; // VIEWED or DOWNLOADED
+
+    const dataRoom = dataRooms.find(dr => dr.dealId === dealId);
+    if (!dataRoom) {
+      res.status(404).json({ error: 'Data room not found' });
+      return;
+    }
+
+    const document = dataRoom.documents.find((d: any) => d.id === docId);
+    if (!document) {
+      res.status(404).json({ error: 'Document not found' });
+      return;
+    }
+
+    document.accessCount++;
+    document.lastAccessedBy = req.user!.userId;
+    document.lastAccessedAt = new Date();
+
+    dataRoom.activityLog.push({
+      action: action || 'VIEWED',
+      documentId: docId,
+      userId: req.user!.userId,
+      timestamp: new Date()
+    });
+
+    res.json({ message: 'Access logged', document });
+  } catch (error) {
+    console.error('Error logging access:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
+// DEAL PIPELINE APIs
+// ============================================
+
+// Get pipeline stages
+app.get('/api/pipeline/stages', authenticateToken, async (req, res) => {
+  try {
+    res.json(pipelineStages);
+  } catch (error) {
+    console.error('Error fetching stages:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get deals in pipeline format (kanban view)
+app.get('/api/pipeline/deals', authenticateToken, async (req, res) => {
+  try {
+    // Group deals by stage
+    const pipeline: { [key: string]: any[] } = {};
+    pipelineStages.forEach(stage => {
+      pipeline[stage.name] = pipelineDeals.filter(d => d.stage === stage.name);
+    });
+
+    res.json({
+      stages: pipelineStages,
+      pipeline,
+      summary: {
+        totalDeals: pipelineDeals.length,
+        totalValue: pipelineDeals.reduce((sum, d) => sum + d.amount, 0),
+        highPriority: pipelineDeals.filter(d => d.priority === 'HIGH').length,
+        avgProgress: Math.round(pipelineDeals.reduce((sum, d) => sum + d.progress, 0) / pipelineDeals.length)
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching pipeline:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Move deal to different stage
+app.put('/api/pipeline/deals/:dealId/stage', authenticateToken, async (req, res) => {
+  try {
+    const { dealId } = req.params;
+    const { newStage } = req.body;
+
+    const deal = pipelineDeals.find(d => d.id === dealId);
+    if (!deal) {
+      res.status(404).json({ error: 'Deal not found' });
+      return;
+    }
+
+    const stage = pipelineStages.find(s => s.name === newStage);
+    if (!stage) {
+      res.status(400).json({ error: 'Invalid stage' });
+      return;
+    }
+
+    deal.stage = newStage;
+    deal.stageOrder = stage.order;
+    deal.daysInStage = 0;
+    deal.lastActivity = new Date();
+
+    res.json({
+      message: 'Deal moved successfully',
+      deal
+    });
+  } catch (error) {
+    console.error('Error moving deal:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
+// SME READINESS SCORE APIs
+// ============================================
+
+// Calculate SME investment readiness score
+function calculateReadinessScore(sme: any): { score: number; breakdown: any; recommendations: string[] } {
+  let score = 0;
+  const breakdown: any = {};
+  const recommendations: string[] = [];
+
+  // 1. Financial Health (30 points max)
+  const revenue = parseFloat(String(sme.annualRevenue || '0').replace(/[^0-9.]/g, '')) || 0;
+  const hasFinancials = sme.currentAssets || sme.totalRevenue || sme.netProfit;
+  if (revenue > 500000) {
+    score += 30;
+    breakdown.financials = { score: 30, status: 'Excellent' };
+  } else if (revenue > 100000) {
+    score += 20;
+    breakdown.financials = { score: 20, status: 'Good' };
+    recommendations.push('Increase revenue above $500K for better investor attraction');
+  } else if (hasFinancials) {
+    score += 10;
+    breakdown.financials = { score: 10, status: 'Developing' };
+    recommendations.push('Focus on revenue growth and financial sustainability');
+  } else {
+    breakdown.financials = { score: 0, status: 'Missing' };
+    recommendations.push('Add financial information (revenue, assets, profit margins)');
+  }
+
+  // 2. Documentation Completeness (25 points max)
+  let docScore = 0;
+  if (sme.businessDescription) docScore += 5;
+  if (sme.valueProposition) docScore += 5;
+  if (sme.targetMarket) docScore += 5;
+  if (sme.competitiveAdvantage) docScore += 5;
+  if (sme.fundingRequired) docScore += 5;
+
+  score += docScore;
+  if (docScore >= 20) {
+    breakdown.documentation = { score: docScore, status: 'Complete' };
+  } else if (docScore >= 10) {
+    breakdown.documentation = { score: docScore, status: 'Partial' };
+    recommendations.push('Complete business documentation (value proposition, target market)');
+  } else {
+    breakdown.documentation = { score: docScore, status: 'Incomplete' };
+    recommendations.push('Add comprehensive business description and market analysis');
+  }
+
+  // 3. Governance & Structure (20 points max)
+  let govScore = 0;
+  if (sme.registrationNumber) govScore += 5;
+  if (sme.taxId) govScore += 5;
+  if (sme.employeeCount && parseInt(sme.employeeCount) > 5) govScore += 5;
+  if (sme.certified || sme.status === 'CERTIFIED') govScore += 5;
+
+  score += govScore;
+  if (govScore >= 15) {
+    breakdown.governance = { score: govScore, status: 'Strong' };
+  } else if (govScore >= 10) {
+    breakdown.governance = { score: govScore, status: 'Adequate' };
+    recommendations.push('Consider getting business certification');
+  } else {
+    breakdown.governance = { score: govScore, status: 'Weak' };
+    recommendations.push('Ensure proper business registration and governance structure');
+  }
+
+  // 4. Market Potential (15 points max)
+  let marketScore = 0;
+  const sector = (sme.sector || '').toLowerCase();
+  const highGrowthSectors = ['technology', 'fintech', 'healthcare', 'green energy', 'e-commerce'];
+  if (highGrowthSectors.some(s => sector.includes(s))) {
+    marketScore += 10;
+  }
+  if (sme.metrics?.monthlyGrowth) {
+    const growth = parseFloat(sme.metrics.monthlyGrowth.replace('%', '')) || 0;
+    if (growth > 10) marketScore += 5;
+  }
+
+  score += marketScore;
+  if (marketScore >= 10) {
+    breakdown.marketPotential = { score: marketScore, status: 'High' };
+  } else {
+    breakdown.marketPotential = { score: marketScore, status: 'Medium' };
+    recommendations.push('Demonstrate growth metrics and market traction');
+  }
+
+  // 5. Team Experience (10 points max)
+  let teamScore = 0;
+  if (sme.employees?.length > 0 || parseInt(sme.employeeCount) > 10) {
+    teamScore += 5;
+  }
+  if (sme.metrics?.employeeSatisfaction) {
+    const satisfaction = parseFloat(sme.metrics.employeeSatisfaction.split('/')[0]) || 0;
+    if (satisfaction >= 4) teamScore += 5;
+  }
+
+  score += teamScore;
+  breakdown.team = { score: teamScore, status: teamScore >= 7 ? 'Strong' : teamScore >= 4 ? 'Adequate' : 'Developing' };
+
+  if (teamScore < 5) {
+    recommendations.push('Highlight team expertise and leadership experience');
+  }
+
+  return { score: Math.min(score, 100), breakdown, recommendations };
+}
+
+// Get SME readiness score
+app.get('/api/smes/:id/readiness', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const sme = smes.find(s => s.id === id);
+    if (!sme) {
+      res.status(404).json({ error: 'SME not found' });
+      return;
+    }
+
+    const { score, breakdown, recommendations } = calculateReadinessScore(sme);
+
+    let grade = 'F';
+    if (score >= 80) grade = 'A';
+    else if (score >= 70) grade = 'B';
+    else if (score >= 60) grade = 'C';
+    else if (score >= 50) grade = 'D';
+
+    res.json({
+      smeId: sme.id,
+      smeName: sme.name,
+      readinessScore: score,
+      grade,
+      breakdown,
+      recommendations,
+      investorReady: score >= 70,
+      lastUpdated: new Date()
+    });
+  } catch (error) {
+    console.error('Error calculating readiness:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get all SME readiness scores (for comparison)
+app.get('/api/smes/readiness/all', authenticateToken, async (req, res) => {
+  try {
+    const scores = smes.map(sme => {
+      const { score, breakdown } = calculateReadinessScore(sme);
+      let grade = 'F';
+      if (score >= 80) grade = 'A';
+      else if (score >= 70) grade = 'B';
+      else if (score >= 60) grade = 'C';
+      else if (score >= 50) grade = 'D';
+
+      return {
+        id: sme.id,
+        name: sme.name,
+        sector: sme.sector,
+        readinessScore: score,
+        grade,
+        breakdown,
+        investorReady: score >= 70
+      };
+    });
+
+    // Sort by score descending
+    scores.sort((a, b) => b.readinessScore - a.readinessScore);
+
+    res.json({
+      scores,
+      summary: {
+        total: scores.length,
+        investorReady: scores.filter(s => s.investorReady).length,
+        averageScore: Math.round(scores.reduce((sum, s) => sum + s.readinessScore, 0) / scores.length),
+        gradeDistribution: {
+          A: scores.filter(s => s.grade === 'A').length,
+          B: scores.filter(s => s.grade === 'B').length,
+          C: scores.filter(s => s.grade === 'C').length,
+          D: scores.filter(s => s.grade === 'D').length,
+          F: scores.filter(s => s.grade === 'F').length,
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching all readiness scores:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
+// DASHBOARD ANALYTICS APIs
+// ============================================
+
+// Get dashboard analytics data
+app.get('/api/dashboard/analytics', authenticateToken, async (req, res) => {
+  try {
+    // Monthly deal statistics (mock data for charts)
+    const monthlyDeals = [
+      { month: 'Jul', deals: 8, value: 1200000 },
+      { month: 'Aug', deals: 12, value: 1800000 },
+      { month: 'Sep', deals: 10, value: 1500000 },
+      { month: 'Oct', deals: 15, value: 2200000 },
+      { month: 'Nov', deals: 18, value: 2800000 },
+      { month: 'Dec', deals: 14, value: 2100000 }
+    ];
+
+    // Sector distribution
+    const sectorDistribution = smes.reduce((acc: any, sme) => {
+      const sector = sme.sector || 'Other';
+      acc[sector] = (acc[sector] || 0) + 1;
+      return acc;
+    }, {});
+
+    // Investment stages
+    const stageDistribution = pipelineDeals.reduce((acc: any, deal) => {
+      acc[deal.stage] = (acc[deal.stage] || 0) + 1;
+      return acc;
+    }, {});
+
+    // KPIs
+    const kpis = {
+      totalDeals: deals.length + pipelineDeals.length,
+      activeDeals: pipelineDeals.filter(d => d.stage !== 'Completed').length,
+      totalInvestment: pipelineDeals.reduce((sum, d) => sum + d.amount, 0),
+      avgDealSize: Math.round(pipelineDeals.reduce((sum, d) => sum + d.amount, 0) / pipelineDeals.length),
+      successRate: 85, // percentage
+      activeSMEs: smes.length,
+      activeInvestors: investors.length,
+      pendingMatches: interests.filter(i => i.status === 'PENDING').length
+    };
+
+    // Recent activity
+    const recentActivity = [
+      { type: 'DEAL_CREATED', description: 'New deal created: EduTech Platform - Series A', timestamp: new Date(Date.now() - 3600000) },
+      { type: 'INTEREST_EXPRESSED', description: 'Investor expressed interest in Tech Startup A', timestamp: new Date(Date.now() - 7200000) },
+      { type: 'STAGE_CHANGED', description: 'HealthTech Inc moved to Legal Review', timestamp: new Date(Date.now() - 14400000) },
+      { type: 'DOCUMENT_UPLOADED', description: 'Term Sheet uploaded to data room', timestamp: new Date(Date.now() - 21600000) },
+      { type: 'MESSAGE_SENT', description: 'New message in Tech Startup A conversation', timestamp: new Date(Date.now() - 28800000) }
+    ];
+
+    res.json({
+      monthlyDeals,
+      sectorDistribution,
+      stageDistribution,
+      kpis,
+      recentActivity,
+      lastUpdated: new Date()
+    });
+  } catch (error) {
+    console.error('Error fetching analytics:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get deal funnel metrics
+app.get('/api/dashboard/funnel', authenticateToken, async (req, res) => {
+  try {
+    const funnel = pipelineStages.map(stage => ({
+      stage: stage.name,
+      color: stage.color,
+      count: pipelineDeals.filter(d => d.stage === stage.name).length,
+      value: pipelineDeals.filter(d => d.stage === stage.name).reduce((sum, d) => sum + d.amount, 0)
+    }));
+
+    const conversionRates = funnel.map((stage, index) => {
+      if (index === 0) return { stage: stage.stage, rate: 100 };
+      const previousCount = funnel[index - 1].count;
+      if (previousCount === 0) return { stage: stage.stage, rate: 0 };
+      return { stage: stage.stage, rate: Math.round((stage.count / previousCount) * 100) };
+    });
+
+    res.json({
+      funnel,
+      conversionRates,
+      totalDeals: pipelineDeals.length,
+      totalValue: pipelineDeals.reduce((sum, d) => sum + d.amount, 0)
+    });
+  } catch (error) {
+    console.error('Error fetching funnel:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

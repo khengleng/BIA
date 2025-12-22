@@ -14,7 +14,12 @@ import {
     Bell,
     Award,
     Menu,
-    X
+    X,
+    Sparkles,
+    MessageSquare,
+    KanbanSquare,
+    FolderLock,
+    TrendingUp
 } from 'lucide-react'
 import { User } from '../../types'
 
@@ -67,10 +72,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
     const navItems = [
         { href: '/dashboard', label: 'Dashboard', icon: BarChart3 },
+        { href: '/analytics', label: 'Analytics', icon: TrendingUp },
         { href: '/smes', label: 'SMEs', icon: Building2 },
         { href: '/investors', label: 'Investors', icon: Users },
         { href: '/deals', label: 'Deals', icon: Handshake },
-        { href: '/advisory', label: 'Advisory Services', icon: Award },
+        { href: '/pipeline', label: 'Pipeline', icon: KanbanSquare },
+        { href: '/matchmaking', label: 'Matchmaking', icon: Sparkles },
+        { href: '/messages', label: 'Messages', icon: MessageSquare },
+        { href: '/dataroom', label: 'Data Room', icon: FolderLock },
+        { href: '/advisory', label: 'Advisory', icon: Award },
         { href: '/reports', label: 'Reports', icon: FileText },
         { href: '/settings', label: 'Settings', icon: Settings },
     ]

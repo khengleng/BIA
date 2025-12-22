@@ -24,7 +24,9 @@ import {
   Users,
   LogOut,
   Bell,
-  FileText
+  FileText,
+  Heart,
+  Sparkles
 } from 'lucide-react'
 
 interface User {
@@ -317,6 +319,14 @@ export default function SMEPage() {
               </Link>
 
               <Link
+                href="/matchmaking"
+                className="flex items-center px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg"
+              >
+                <Sparkles className="w-5 h-5 mr-3" />
+                Matchmaking
+              </Link>
+
+              <Link
                 href="/settings"
                 className="flex items-center px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg"
               >
@@ -359,6 +369,50 @@ export default function SMEPage() {
                   <Handshake className="w-4 h-4 mr-2" />
                   Create Deal
                 </button>
+                {/* Express Interest button for investors */}
+                {(user?.role === 'INVESTOR' || user?.role === 'ADMIN' || user?.role === 'ADVISOR') && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        const token = localStorage.getItem('token')
+                        if (!token) return
+
+                        // For demo, use first investor. In real app, use current user's investor profile
+                        const response = await fetch(`${API_URL}/api/interests`, {
+                          method: 'POST',
+                          headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                          },
+                          body: JSON.stringify({
+                            investorId: 'investor_1',
+                            smeId: params.id,
+                            type: 'INVESTOR_TO_SME',
+                            message: 'Interested in learning more about this SME.'
+                          })
+                        })
+
+                        if (response.ok) {
+                          const data = await response.json()
+                          if (data.mutualInterest) {
+                            alert('🎉 Mutual Interest! Both parties are interested!')
+                          } else {
+                            alert('✅ Interest expressed successfully!')
+                          }
+                        } else {
+                          const errorData = await response.json()
+                          alert(errorData.error || 'Failed to express interest')
+                        }
+                      } catch (error) {
+                        console.error('Error expressing interest:', error)
+                      }
+                    }}
+                    className="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-lg flex items-center"
+                  >
+                    <Heart className="w-4 h-4 mr-2" />
+                    Express Interest
+                  </button>
+                )}
               </div>
             </div>
           </div>

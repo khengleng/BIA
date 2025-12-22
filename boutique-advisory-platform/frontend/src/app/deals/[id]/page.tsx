@@ -554,20 +554,25 @@ export default function DealDetailPage() {
                 <p className="text-gray-400 mt-2">{deal.sme.name} ↔ {deal.investor.name} • {deal.location}</p>
               </div>
               <div className="flex space-x-3">
-                <button
-                  onClick={handleEdit}
-                  className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center"
-                >
-                  <Edit className="w-4 h-4 mr-2" />
-                  Edit
-                </button>
-                <button
-                  onClick={handleUpdateStatus}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center"
-                >
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Update Status
-                </button>
+                {/* Edit and Update Status buttons - only for ADMIN and ADVISOR */}
+                {(user?.role === 'ADMIN' || user?.role === 'ADVISOR') && (
+                  <>
+                    <button
+                      onClick={handleEdit}
+                      className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center"
+                    >
+                      <Edit className="w-4 h-4 mr-2" />
+                      Edit
+                    </button>
+                    <button
+                      onClick={handleUpdateStatus}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center"
+                    >
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Update Status
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>

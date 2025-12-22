@@ -21,6 +21,7 @@ import {
   FileText,
   Settings
 } from 'lucide-react'
+import { API_URL } from '@/lib/api'
 
 interface User {
   id: string
@@ -31,13 +32,33 @@ interface User {
   tenantId: string
 }
 
+interface Report {
+  id: number
+  title: string
+  type: string
+  date: string
+  status: string
+  size: string
+  description: string
+}
+
+interface Stat {
+  title: string
+  value: string
+  change: string
+  trend: 'up' | 'down'
+  icon: typeof Handshake
+}
+
 export default function ReportsPage() {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [reports, setReports] = useState<Report[]>([])
+  const [stats, setStats] = useState<Stat[]>([])
+  const [isGenerating, setIsGenerating] = useState(false)
 
   useEffect(() => {
-    // Get user data from localStorage
-    const fetchUser = async () => {
+    const fetchData = async () => {
       try {
         const token = localStorage.getItem('token')
         const userData = localStorage.getItem('user')
@@ -47,11 +68,55 @@ export default function ReportsPage() {
           return
         }
 
-        // Parse user data from localStorage
-        const user = JSON.parse(userData)
-        setUser(user)
+        const parsedUser = JSON.parse(userData)
+        setUser(parsedUser)
+
+        // Fetch reports from API
+        const reportsResponse = await fetch(`${API_URL}/api/reports`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+
+        if (reportsResponse.ok) {
+          const reportsData = await reportsResponse.json()
+          setReports(reportsData)
+        }
+
+        // Fetch stats from API
+        const statsResponse = await fetch(`${API_URL}/api/reports/stats`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+
+        if (statsResponse.ok) {
+          const statsData = await statsResponse.json()
+          // Map API stats to include icons
+          const iconMap: { [key: string]: typeof Handshake } = {
+            'Total Deals': Handshake,
+            'Active SMEs': Building2,
+            'Total Investment': DollarSign,
+            'Success Rate': TrendingUp
+          }
+          const mappedStats = statsData.stats.map((stat: { title: string; value: string; change: string; trend: string }) => ({
+            ...stat,
+            icon: iconMap[stat.title] || Handshake
+          }))
+          setStats(mappedStats)
+        } else {
+          // Fallback to default stats if API fails
+          setStats([
+            { title: 'Total Deals', value: '0', change: '+0%', trend: 'up', icon: Handshake },
+            { title: 'Active SMEs', value: '0', change: '+0%', trend: 'up', icon: Building2 },
+            { title: 'Total Investment', value: '$0M', change: '+0%', trend: 'up', icon: DollarSign },
+            { title: 'Success Rate', value: '0%', change: '0%', trend: 'up', icon: TrendingUp }
+          ])
+        }
       } catch (error) {
-        console.error('Error fetching user:', error)
+        console.error('Error fetching data:', error)
         localStorage.removeItem('token')
         localStorage.removeItem('user')
         window.location.href = '/auth/login'
@@ -60,7 +125,7 @@ export default function ReportsPage() {
       }
     }
 
-    fetchUser()
+    fetchData()
   }, [])
 
   const handleLogout = () => {
@@ -78,15 +143,13 @@ export default function ReportsPage() {
         return
       }
 
-      // In a real implementation, this would download the actual report file
+      // Download report as PDF
       console.log(`Downloading report: ${report.title}`)
-
-      // Simulate download
-      const blob = new Blob([`Mock content for ${report.title}`], { type: 'application/pdf' })
+      const blob = new Blob([`${report.title}\n\n${report.description}\n\nGenerated: ${report.date}`], { type: 'application/pdf' })
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `${report.title}.pdf`
+      a.download = `${report.title.replace(/\s+/g, '_')}.pdf`
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
@@ -104,80 +167,33 @@ export default function ReportsPage() {
         return
       }
 
-      // In a real implementation, this would generate a new report
-      console.log('Generating new report...')
+      setIsGenerating(true)
 
-      // Simulate report generation
-      setTimeout(() => {
+      const response = await fetch(`${API_URL}/api/reports/generate`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ reportType: 'Monthly Summary' })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        // Add the new report to the list
+        setReports(prev => [data.report, ...prev])
         console.log('Report generated successfully!')
-        // In a real implementation, you would refresh the reports list
-      }, 2000)
+      } else {
+        const errorData = await response.json()
+        console.error('Error generating report:', errorData.error)
+        alert(errorData.error || 'Failed to generate report')
+      }
     } catch (error) {
       console.error('Error generating report:', error)
+    } finally {
+      setIsGenerating(false)
     }
   }
-
-  // Mock report data
-  const reports = [
-    {
-      id: 1,
-      title: 'Monthly Investment Report',
-      type: 'Investment',
-      date: '2024-01-15',
-      status: 'Generated',
-      size: '2.3 MB',
-      description: 'Comprehensive monthly report on investment activities and performance'
-    },
-    {
-      id: 2,
-      title: 'SME Performance Analysis',
-      type: 'Analytics',
-      date: '2024-01-10',
-      status: 'Generated',
-      size: '1.8 MB',
-      description: 'Detailed analysis of SME performance metrics and growth trends'
-    },
-    {
-      id: 3,
-      title: 'Deal Pipeline Report',
-      type: 'Pipeline',
-      date: '2024-01-05',
-      status: 'Pending',
-      size: 'N/A',
-      description: 'Current deal pipeline status and upcoming opportunities'
-    }
-  ]
-
-  const stats = [
-    {
-      title: 'Total Deals',
-      value: '89',
-      change: '+12%',
-      trend: 'up',
-      icon: Handshake
-    },
-    {
-      title: 'Active SMEs',
-      value: '156',
-      change: '+8%',
-      trend: 'up',
-      icon: Building2
-    },
-    {
-      title: 'Total Investment',
-      value: '$12.5M',
-      change: '+23%',
-      trend: 'up',
-      icon: DollarSign
-    },
-    {
-      title: 'Success Rate',
-      value: '92%',
-      change: '-2%',
-      trend: 'down',
-      icon: TrendingUp
-    }
-  ]
 
   if (isLoading) {
     return (
@@ -298,13 +314,26 @@ export default function ReportsPage() {
         <main className="flex-1 p-8">
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-3xl font-bold text-white">Reports</h1>
-            <button
-              onClick={() => handleGenerateReport()}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center"
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              Generate Report
-            </button>
+            {/* Only ADMIN and ADVISOR can generate reports */}
+            {(user?.role === 'ADMIN' || user?.role === 'ADVISOR') && (
+              <button
+                onClick={() => handleGenerateReport()}
+                disabled={isGenerating}
+                className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg flex items-center transition-colors"
+              >
+                {isGenerating ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <FileText className="w-4 h-4 mr-2" />
+                    Generate Report
+                  </>
+                )}
+              </button>
+            )}
           </div>
 
           {/* Stats Overview */}
