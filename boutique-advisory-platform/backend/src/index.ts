@@ -536,8 +536,157 @@ const pipelineDeals: any[] = [
   }
 ];
 
+// ============================================
+// NOTIFICATIONS SYSTEM DATA
+// ============================================
+const notifications: any[] = [
+  {
+    id: 'notif_1',
+    userId: 'admin_1',
+    type: 'MATCH_FOUND',
+    title: 'New High-Score Match!',
+    message: 'Tech Startup A has a 85% compatibility score with Investor John Smith.',
+    read: false,
+    actionUrl: '/matchmaking',
+    createdAt: new Date(Date.now() - 3600000)
+  },
+  {
+    id: 'notif_2',
+    userId: 'admin_1',
+    type: 'INTEREST_RECEIVED',
+    title: 'Interest Expressed',
+    message: 'Investor Sarah Chen expressed interest in Green Energy Solutions.',
+    read: false,
+    actionUrl: '/matchmaking',
+    createdAt: new Date(Date.now() - 7200000)
+  },
+  {
+    id: 'notif_3',
+    userId: 'admin_1',
+    type: 'DEAL_UPDATE',
+    title: 'Deal Stage Changed',
+    message: 'HealthTech Inc deal moved to Legal Review stage.',
+    read: true,
+    actionUrl: '/pipeline',
+    createdAt: new Date(Date.now() - 14400000)
+  },
+  {
+    id: 'notif_4',
+    userId: 'admin_1',
+    type: 'DOCUMENT_UPLOADED',
+    title: 'New Document',
+    message: 'Term Sheet uploaded to Tech Startup A data room.',
+    read: true,
+    actionUrl: '/dataroom',
+    createdAt: new Date(Date.now() - 21600000)
+  },
+  {
+    id: 'notif_5',
+    userId: 'admin_1',
+    type: 'MESSAGE_RECEIVED',
+    title: 'New Message',
+    message: 'You have a new message from John Smith.',
+    read: false,
+    actionUrl: '/messages',
+    createdAt: new Date(Date.now() - 1800000)
+  },
+  {
+    id: 'notif_6',
+    userId: 'admin_1',
+    type: 'MEETING_REMINDER',
+    title: 'Upcoming Meeting',
+    message: 'Pitch session with Tech Startup A in 1 hour.',
+    read: false,
+    actionUrl: '/calendar',
+    createdAt: new Date(Date.now() - 900000)
+  }
+];
 
-// Configure multer for file uploads
+// ============================================
+// CALENDAR & SCHEDULING DATA
+// ============================================
+const calendarEvents: any[] = [
+  {
+    id: 'event_1',
+    title: 'Pitch Session: Tech Startup A',
+    description: 'Initial pitch presentation and Q&A session',
+    type: 'PITCH_SESSION',
+    startTime: new Date(Date.now() + 3600000), // 1 hour from now
+    endTime: new Date(Date.now() + 7200000), // 2 hours from now
+    location: 'Virtual - Zoom',
+    meetingLink: 'https://zoom.us/j/123456789',
+    attendees: [
+      { id: 'admin_1', name: 'Admin User', role: 'ADVISOR', status: 'ACCEPTED' },
+      { id: 'investor_1', name: 'John Smith', role: 'INVESTOR', status: 'ACCEPTED' },
+      { id: 'sme_1', name: 'Tech Startup A', role: 'SME', status: 'ACCEPTED' }
+    ],
+    dealId: 'deal_1',
+    createdBy: 'admin_1',
+    status: 'CONFIRMED',
+    color: '#6366f1',
+    createdAt: new Date(Date.now() - 86400000 * 2)
+  },
+  {
+    id: 'event_2',
+    title: 'Due Diligence Review: HealthTech Inc',
+    description: 'Review of financial documents and legal compliance',
+    type: 'DUE_DILIGENCE',
+    startTime: new Date(Date.now() + 86400000), // Tomorrow
+    endTime: new Date(Date.now() + 86400000 + 3600000),
+    location: 'Conference Room A',
+    meetingLink: null,
+    attendees: [
+      { id: 'admin_1', name: 'Admin User', role: 'ADVISOR', status: 'ACCEPTED' },
+      { id: 'investor_3', name: 'Michael Wong', role: 'INVESTOR', status: 'PENDING' }
+    ],
+    dealId: 'deal_3',
+    createdBy: 'admin_1',
+    status: 'PENDING',
+    color: '#a855f7',
+    createdAt: new Date(Date.now() - 86400000)
+  },
+  {
+    id: 'event_3',
+    title: 'Term Sheet Negotiation: Green Energy',
+    description: 'Final term sheet discussion with investor',
+    type: 'NEGOTIATION',
+    startTime: new Date(Date.now() + 86400000 * 2), // Day after tomorrow
+    endTime: new Date(Date.now() + 86400000 * 2 + 5400000),
+    location: 'Virtual - Google Meet',
+    meetingLink: 'https://meet.google.com/abc-defg-hij',
+    attendees: [
+      { id: 'admin_1', name: 'Admin User', role: 'ADVISOR', status: 'ACCEPTED' },
+      { id: 'investor_2', name: 'Sarah Chen', role: 'INVESTOR', status: 'ACCEPTED' },
+      { id: 'sme_2', name: 'Green Energy Solutions', role: 'SME', status: 'PENDING' }
+    ],
+    dealId: 'deal_2',
+    createdBy: 'admin_1',
+    status: 'CONFIRMED',
+    color: '#ec4899',
+    createdAt: new Date()
+  },
+  {
+    id: 'event_4',
+    title: 'Closing Meeting: EduTech Platform',
+    description: 'Final signing and closing ceremony',
+    type: 'CLOSING',
+    startTime: new Date(Date.now() + 86400000 * 5), // 5 days from now
+    endTime: new Date(Date.now() + 86400000 * 5 + 7200000),
+    location: 'Phnom Penh Office',
+    meetingLink: null,
+    attendees: [
+      { id: 'admin_1', name: 'Admin User', role: 'ADVISOR', status: 'ACCEPTED' },
+      { id: 'investor_2', name: 'Sarah Chen', role: 'INVESTOR', status: 'ACCEPTED' },
+      { id: 'sme_5', name: 'EduLearn Platform', role: 'SME', status: 'ACCEPTED' }
+    ],
+    dealId: 'deal_5',
+    createdBy: 'admin_1',
+    status: 'CONFIRMED',
+    color: '#22c55e',
+    createdAt: new Date(Date.now() - 172800000)
+  }
+];
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, 'uploads/');
@@ -3007,6 +3156,333 @@ app.get('/api/dashboard/funnel', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching funnel:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
+// NOTIFICATIONS APIs
+// ============================================
+
+// Get user notifications
+app.get('/api/notifications', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user!.userId;
+
+    // Get notifications for the user (or all for admin)
+    let userNotifications = notifications;
+    if (req.user!.role !== 'ADMIN' && req.user!.role !== 'ADVISOR') {
+      userNotifications = notifications.filter(n => n.userId === userId);
+    }
+
+    // Sort by creation date descending
+    userNotifications.sort((a, b) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+    const unreadCount = userNotifications.filter(n => !n.read).length;
+
+    res.json({
+      notifications: userNotifications,
+      unreadCount,
+      total: userNotifications.length
+    });
+  } catch (error) {
+    console.error('Error fetching notifications:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Mark notification as read
+app.put('/api/notifications/:id/read', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const notification = notifications.find(n => n.id === id);
+    if (!notification) {
+      res.status(404).json({ error: 'Notification not found' });
+      return;
+    }
+
+    notification.read = true;
+
+    res.json({ message: 'Notification marked as read', notification });
+  } catch (error) {
+    console.error('Error updating notification:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Mark all notifications as read
+app.put('/api/notifications/read-all', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user!.userId;
+
+    let count = 0;
+    notifications.forEach(n => {
+      if (!n.read && (req.user!.role === 'ADMIN' || req.user!.role === 'ADVISOR' || n.userId === userId)) {
+        n.read = true;
+        count++;
+      }
+    });
+
+    res.json({ message: `${count} notifications marked as read` });
+  } catch (error) {
+    console.error('Error updating notifications:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Create notification (for system use)
+app.post('/api/notifications', authenticateToken, authorizeRoles('ADMIN', 'ADVISOR'), async (req, res) => {
+  try {
+    const { userId, type, title, message, actionUrl } = req.body;
+
+    const newNotification = {
+      id: `notif_${Date.now()}`,
+      userId,
+      type: type || 'GENERAL',
+      title,
+      message,
+      read: false,
+      actionUrl: actionUrl || null,
+      createdAt: new Date()
+    };
+
+    notifications.push(newNotification);
+
+    res.status(201).json(newNotification);
+  } catch (error) {
+    console.error('Error creating notification:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
+// CALENDAR & SCHEDULING APIs
+// ============================================
+
+// Get calendar events
+app.get('/api/calendar', authenticateToken, async (req, res) => {
+  try {
+    const { startDate, endDate, type } = req.query;
+
+    let filtered = [...calendarEvents];
+
+    // Filter by date range if provided
+    if (startDate) {
+      filtered = filtered.filter(e => new Date(e.startTime) >= new Date(startDate as string));
+    }
+    if (endDate) {
+      filtered = filtered.filter(e => new Date(e.startTime) <= new Date(endDate as string));
+    }
+
+    // Filter by type if provided
+    if (type && type !== 'all') {
+      filtered = filtered.filter(e => e.type === type);
+    }
+
+    // Sort by start time
+    filtered.sort((a, b) =>
+      new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+    );
+
+    res.json({
+      events: filtered,
+      total: filtered.length,
+      upcoming: filtered.filter(e => new Date(e.startTime) > new Date()).length
+    });
+  } catch (error) {
+    console.error('Error fetching calendar:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get single calendar event
+app.get('/api/calendar/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const event = calendarEvents.find(e => e.id === id);
+    if (!event) {
+      res.status(404).json({ error: 'Event not found' });
+      return;
+    }
+
+    res.json(event);
+  } catch (error) {
+    console.error('Error fetching event:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Create calendar event
+app.post('/api/calendar', authenticateToken, async (req, res) => {
+  try {
+    const { title, description, type, startTime, endTime, location, meetingLink, attendees, dealId } = req.body;
+
+    if (!title || !startTime || !endTime) {
+      res.status(400).json({ error: 'Title, startTime, and endTime are required' });
+      return;
+    }
+
+    const eventColors: { [key: string]: string } = {
+      PITCH_SESSION: '#6366f1',
+      DUE_DILIGENCE: '#a855f7',
+      NEGOTIATION: '#ec4899',
+      CLOSING: '#22c55e',
+      GENERAL: '#3b82f6'
+    };
+
+    const newEvent = {
+      id: `event_${Date.now()}`,
+      title,
+      description: description || '',
+      type: type || 'GENERAL',
+      startTime: new Date(startTime),
+      endTime: new Date(endTime),
+      location: location || 'Virtual',
+      meetingLink: meetingLink || null,
+      attendees: attendees || [],
+      dealId: dealId || null,
+      createdBy: req.user!.userId,
+      status: 'PENDING',
+      color: eventColors[type] || '#3b82f6',
+      createdAt: new Date()
+    };
+
+    calendarEvents.push(newEvent);
+
+    // Create notification for attendees
+    (attendees || []).forEach((attendee: any) => {
+      if (attendee.id !== req.user!.userId) {
+        notifications.push({
+          id: `notif_${Date.now()}_${attendee.id}`,
+          userId: attendee.id,
+          type: 'MEETING_INVITE',
+          title: 'New Meeting Invitation',
+          message: `You have been invited to: ${title}`,
+          read: false,
+          actionUrl: '/calendar',
+          createdAt: new Date()
+        });
+      }
+    });
+
+    res.status(201).json(newEvent);
+  } catch (error) {
+    console.error('Error creating event:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Update calendar event
+app.put('/api/calendar/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    const eventIndex = calendarEvents.findIndex(e => e.id === id);
+    if (eventIndex === -1) {
+      res.status(404).json({ error: 'Event not found' });
+      return;
+    }
+
+    calendarEvents[eventIndex] = {
+      ...calendarEvents[eventIndex],
+      ...updates,
+      updatedAt: new Date()
+    };
+
+    res.json(calendarEvents[eventIndex]);
+  } catch (error) {
+    console.error('Error updating event:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Delete calendar event
+app.delete('/api/calendar/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const eventIndex = calendarEvents.findIndex(e => e.id === id);
+    if (eventIndex === -1) {
+      res.status(404).json({ error: 'Event not found' });
+      return;
+    }
+
+    calendarEvents.splice(eventIndex, 1);
+
+    res.json({ message: 'Event deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting event:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Schedule a pitch session (quick helper)
+app.post('/api/calendar/schedule-pitch', authenticateToken, async (req, res) => {
+  try {
+    const { dealId, smeId, investorId, startTime, duration, meetingLink, location } = req.body;
+
+    if (!dealId || !smeId || !investorId || !startTime) {
+      res.status(400).json({ error: 'dealId, smeId, investorId, and startTime are required' });
+      return;
+    }
+
+    // Get SME and investor names
+    const sme = smes.find(s => s.id === smeId);
+    const investor = investors.find(i => i.id === investorId);
+
+    if (!sme || !investor) {
+      res.status(404).json({ error: 'SME or Investor not found' });
+      return;
+    }
+
+    const durationMs = (duration || 60) * 60000; // default 60 minutes
+
+    const newEvent = {
+      id: `event_${Date.now()}`,
+      title: `Pitch Session: ${sme.name}`,
+      description: `Pitch presentation with ${investor.name}`,
+      type: 'PITCH_SESSION',
+      startTime: new Date(startTime),
+      endTime: new Date(new Date(startTime).getTime() + durationMs),
+      location: location || 'Virtual',
+      meetingLink: meetingLink || null,
+      attendees: [
+        { id: req.user!.userId, name: 'Advisor', role: 'ADVISOR', status: 'ACCEPTED' },
+        { id: investorId, name: investor.name, role: 'INVESTOR', status: 'PENDING' },
+        { id: smeId, name: sme.name, role: 'SME', status: 'PENDING' }
+      ],
+      dealId,
+      createdBy: req.user!.userId,
+      status: 'PENDING',
+      color: '#6366f1',
+      createdAt: new Date()
+    };
+
+    calendarEvents.push(newEvent);
+
+    // Create notifications
+    notifications.push({
+      id: `notif_${Date.now()}_inv`,
+      userId: investorId,
+      type: 'PITCH_SCHEDULED',
+      title: 'Pitch Session Scheduled',
+      message: `A pitch session has been scheduled with ${sme.name}`,
+      read: false,
+      actionUrl: '/calendar',
+      createdAt: new Date()
+    });
+
+    res.status(201).json({
+      message: 'Pitch session scheduled successfully',
+      event: newEvent
+    });
+  } catch (error) {
+    console.error('Error scheduling pitch:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

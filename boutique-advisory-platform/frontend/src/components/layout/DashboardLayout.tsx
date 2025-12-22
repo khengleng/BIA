@@ -11,7 +11,6 @@ import {
     FileText,
     Settings,
     LogOut,
-    Bell,
     Award,
     Menu,
     X,
@@ -19,9 +18,11 @@ import {
     MessageSquare,
     KanbanSquare,
     FolderLock,
-    TrendingUp
+    TrendingUp,
+    Calendar
 } from 'lucide-react'
 import { User } from '../../types'
+import NotificationCenter from '../NotificationCenter'
 
 interface DashboardLayoutProps {
     children: React.ReactNode
@@ -79,6 +80,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         { href: '/pipeline', label: 'Pipeline', icon: KanbanSquare },
         { href: '/matchmaking', label: 'Matchmaking', icon: Sparkles },
         { href: '/messages', label: 'Messages', icon: MessageSquare },
+        { href: '/calendar', label: 'Calendar', icon: Calendar },
         { href: '/dataroom', label: 'Data Room', icon: FolderLock },
         { href: '/advisory', label: 'Advisory', icon: Award },
         { href: '/reports', label: 'Reports', icon: FileText },
@@ -152,10 +154,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                                 {user?.role.toLowerCase()}
                             </p>
                         </div>
-                        <button className="relative p-2 text-gray-400 hover:text-white ml-2">
-                            <Bell className="w-5 h-5" />
-                            <span className="absolute top-1 right-1 block h-2 w-2 rounded-full bg-red-400"></span>
-                        </button>
+                        <NotificationCenter />
                     </div>
                     <button
                         onClick={handleLogout}
