@@ -18,6 +18,12 @@ import {
   shouldUseDatabase
 } from './migration-manager';
 
+// New Feature Routes
+import syndicateRoutes from './routes/syndicates';
+import dueDiligenceRoutes from './routes/duediligence';
+import communityRoutes from './routes/community';
+import secondaryTradingRoutes from './routes/secondary-trading';
+
 // Load environment variables
 dotenv.config();
 
@@ -3542,6 +3548,14 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
     message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
   });
 });
+
+// ============================================
+// NEW FEATURE ROUTES
+// ============================================
+app.use('/api/syndicates', syndicateRoutes);
+app.use('/api/due-diligence', dueDiligenceRoutes);
+app.use('/api/community', communityRoutes);
+app.use('/api/secondary-trading', secondaryTradingRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

@@ -83,6 +83,7 @@ model SME {
   deals             Deal[]
   certifications    Certification[]
   workflows         Workflow[]
+  dueDiligences     DueDiligence[]  // New: Due diligence assessments
 
   @@map("smes")
 }
@@ -105,6 +106,8 @@ model Investor {
   user            User     @relation("InvestorUser", fields: [userId], references: [id], onDelete: Cascade)
   dealInvestments DealInvestor[]
   workflows       Workflow[]
+  leadSyndicates  Syndicate[]       @relation("LeadInvestor")  // New: Syndicates led
+  syndicateMemberships SyndicateMember[]  // New: Syndicate memberships
 
   @@map("investors")
 }
@@ -126,6 +129,7 @@ model Advisor {
   user            User     @relation("AdvisorUser", fields: [userId], references: [id], onDelete: Cascade)
   certifications  Certification[]
   workflows       Workflow[]
+  dueDiligences   DueDiligence[]  // New: Due diligence conducted
 
   @@map("advisors")
 }
@@ -150,6 +154,7 @@ model Deal {
   investors       DealInvestor[]
   documents       Document[]
   workflows       Workflow[]
+  syndicates      Syndicate[]  // New: Syndicates for this deal
 
   @@map("deals")
 }
@@ -236,6 +241,184 @@ model Workflow {
   deal        Deal?    @relation(fields: [dealId], references: [id], onDelete: Cascade)
 
   @@map("workflows")
+}
+
+// ==================== NEW FEATURES ====================
+
+// Investor Syndicate (like AngelList)
+model Syndicate {
+  id              String   @id @default(cuid())
+  tenantId        String
+  name            String
+  description     String?
+  leadInvestorId  String
+  targetAmount    Float
+  minInvestment   Float    @default(1000)
+  maxInvestment   Float?
+  managementFee   Float    @default(2.0)  // Percentage
+  carryFee        Float    @default(20.0) // Percentage of profits
+  status          SyndicateStatus @default(FORMING)
+  dealId          String?
+  closingDate     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  leadInvestor    Investor @relation("LeadInvestor", fields: [leadInvestorId], references: [id])
+  deal            Deal?    @relation(fields: [dealId], references: [id])
+  members         SyndicateMember[]
+
+  @@map("syndicates")
+}
+
+model SyndicateMember {
+  id            String   @id @default(cuid())
+  syndicateId   String
+  investorId    String
+  amount        Float
+  status        SyndicateMemberStatus @default(PENDING)
+  joinedAt      DateTime @default(now())
+  
+  // Relations
+  syndicate     Syndicate @relation(fields: [syndicateId], references: [id], onDelete: Cascade)
+  investor      Investor  @relation(fields: [investorId], references: [id], onDelete: Cascade)
+
+  @@unique([syndicateId, investorId])
+  @@map("syndicate_members")
+}
+
+// Due Diligence Scoring (like OurCrowd)
+model DueDiligence {
+  id              String   @id @default(cuid())
+  smeId           String
+  advisorId       String?
+  
+  // Scoring Categories (0-100)
+  financialScore      Float    @default(0)
+  teamScore           Float    @default(0)
+  marketScore         Float    @default(0)
+  productScore        Float    @default(0)
+  legalScore          Float    @default(0)
+  operationalScore    Float    @default(0)
+  
+  // Overall calculated score
+  overallScore        Float    @default(0)
+  riskLevel           RiskLevel @default(MEDIUM)
+  
+  // Detailed assessments
+  strengths           String[]
+  weaknesses          String[]
+  recommendations     String[]
+  redFlags            String[]
+  
+  status              DueDiligenceStatus @default(PENDING)
+  completedAt         DateTime?
+  expiresAt           DateTime?
+  
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  // Relations
+  sme                 SME      @relation(fields: [smeId], references: [id], onDelete: Cascade)
+  advisor             Advisor? @relation(fields: [advisorId], references: [id])
+
+  @@map("due_diligences")
+}
+
+// Community Features (like Wefunder)
+model CommunityPost {
+  id              String   @id @default(cuid())
+  tenantId        String
+  authorId        String
+  title           String
+  content         String
+  category        PostCategory @default(GENERAL)
+  
+  // Related entities (optional)
+  smeId           String?
+  dealId          String?
+  syndicateId     String?
+  
+  // Engagement
+  likes           Int      @default(0)
+  views           Int      @default(0)
+  isPinned        Boolean  @default(false)
+  isAnnouncement  Boolean  @default(false)
+  
+  status          PostStatus @default(PUBLISHED)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  comments        Comment[]
+
+  @@map("community_posts")
+}
+
+model Comment {
+  id              String   @id @default(cuid())
+  postId          String
+  authorId        String
+  content         String
+  parentId        String?  // For nested comments
+  likes           Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  post            CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parent          Comment?      @relation("CommentReplies", fields: [parentId], references: [id])
+  replies         Comment[]     @relation("CommentReplies")
+
+  @@map("comments")
+}
+
+// Secondary Trading (like StartEngine)
+model SecondaryListing {
+  id              String   @id @default(cuid())
+  tenantId        String
+  sellerId        String
+  dealInvestorId  String   // Original investment
+  
+  // Listing details
+  sharesAvailable Float
+  pricePerShare   Float
+  minPurchase     Float    @default(1)
+  
+  status          ListingStatus @default(ACTIVE)
+  listedAt        DateTime @default(now())
+  expiresAt       DateTime?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  trades          SecondaryTrade[]
+
+  @@map("secondary_listings")
+}
+
+model SecondaryTrade {
+  id              String   @id @default(cuid())
+  listingId       String
+  buyerId         String
+  sellerId        String
+  
+  shares          Float
+  pricePerShare   Float
+  totalAmount     Float
+  fee             Float    @default(0) // Platform fee
+  
+  status          TradeStatus @default(PENDING)
+  executedAt      DateTime?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  listing         SecondaryListing @relation(fields: [listingId], references: [id])
+
+  @@map("secondary_trades")
 }
 
 // Enums
@@ -339,4 +522,67 @@ enum WorkflowStatus {
   COMPLETED
   FAILED
   CANCELLED
+}
+
+// ==================== NEW FEATURE ENUMS ====================
+
+enum SyndicateStatus {
+  FORMING
+  OPEN
+  CLOSED
+  FUNDED
+  DISSOLVED
+}
+
+enum SyndicateMemberStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+enum DueDiligenceStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  EXPIRED
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  VERY_HIGH
+}
+
+enum PostCategory {
+  GENERAL
+  ANNOUNCEMENT
+  DEAL_UPDATE
+  INVESTOR_INSIGHT
+  SME_NEWS
+  QUESTION
+  SUCCESS_STORY
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  HIDDEN
+  DELETED
+}
+
+enum ListingStatus {
+  ACTIVE
+  SOLD
+  CANCELLED
+  EXPIRED
+}
+
+enum TradeStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  CANCELLED
+  FAILED
 }
