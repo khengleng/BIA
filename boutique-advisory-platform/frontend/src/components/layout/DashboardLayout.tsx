@@ -19,7 +19,12 @@ import {
     KanbanSquare,
     FolderLock,
     TrendingUp,
-    Calendar
+    Calendar,
+    // New feature icons
+    UsersRound,
+    Shield,
+    MessagesSquare,
+    ArrowLeftRight
 } from 'lucide-react'
 import { User } from '../../types'
 import NotificationCenter from '../NotificationCenter'
@@ -84,6 +89,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         { href: '/dataroom', label: 'Data Room', icon: FolderLock },
         { href: '/advisory', label: 'Advisory', icon: Award },
         { href: '/reports', label: 'Reports', icon: FileText },
+        // New Features Section
+        { href: '', label: '― New Features ―', icon: null, divider: true },
+        { href: '/syndicates', label: 'Syndicates', icon: UsersRound, isNew: true },
+        { href: '/due-diligence', label: 'Due Diligence', icon: Shield, isNew: true },
+        { href: '/community', label: 'Community', icon: MessagesSquare, isNew: true },
+        { href: '/secondary-trading', label: 'Trading', icon: ArrowLeftRight, isNew: true },
+        // Settings at the end
         { href: '/settings', label: 'Settings', icon: Settings },
     ]
 
@@ -128,20 +140,40 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 </div>
 
                 <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-                    {navItems.map((item) => (
-                        <Link
-                            key={item.href}
-                            href={item.href}
-                            className={`flex items-center px-4 py-2 rounded-lg transition-colors ${isActive(item.href)
-                                ? 'bg-blue-600 text-white'
-                                : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                                }`}
-                            onClick={() => setIsMobileMenuOpen(false)}
-                        >
-                            <item.icon className="w-5 h-5 mr-3" />
-                            {item.label}
-                        </Link>
-                    ))}
+                    {navItems.map((item, index) => {
+                        // Handle divider items
+                        if ((item as any).divider) {
+                            return (
+                                <div
+                                    key={`divider-${index}`}
+                                    className="text-xs text-gray-500 px-4 py-2 mt-4 font-medium"
+                                >
+                                    {item.label}
+                                </div>
+                            )
+                        }
+
+                        const Icon = item.icon
+                        return (
+                            <Link
+                                key={item.href}
+                                href={item.href}
+                                className={`flex items-center px-4 py-2 rounded-lg transition-colors ${isActive(item.href)
+                                    ? 'bg-blue-600 text-white'
+                                    : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                                    }`}
+                                onClick={() => setIsMobileMenuOpen(false)}
+                            >
+                                {Icon && <Icon className="w-5 h-5 mr-3" />}
+                                <span className="flex-1">{item.label}</span>
+                                {(item as any).isNew && (
+                                    <span className="px-1.5 py-0.5 text-[10px] font-bold bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded">
+                                        NEW
+                                    </span>
+                                )}
+                            </Link>
+                        )
+                    })}
                 </nav>
 
                 <div className="p-4 border-t border-gray-700">
