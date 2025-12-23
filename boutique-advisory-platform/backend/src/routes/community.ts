@@ -139,6 +139,181 @@ Any advice would be greatly appreciated! 🙏`,
         commentCount: 6,
         createdAt: '2024-02-10T09:15:00Z',
         updatedAt: '2024-02-10T09:15:00Z'
+    },
+    {
+        id: 'post_5',
+        tenantId: 'default',
+        authorId: 'user_2',
+        author: {
+            id: 'user_2',
+            name: 'Admin Team',
+            role: 'ADMIN',
+            avatar: null
+        },
+        title: '🆕 New Features Released: Syndicates, Due Diligence Scores, Secondary Trading',
+        content: `We're excited to announce several major new features on the BIA Platform!
+
+**1. Investor Syndicates**
+Pool your investments with other investors. Join syndicates led by experienced investors and access deals with lower minimums.
+
+**2. Due Diligence Scores**
+Comprehensive SME scoring system with detailed breakdowns across Financial, Team, Market, Product, Legal, and Operations categories.
+
+**3. Community Forum**
+You're already here! Connect with fellow investors, SMEs, and advisors.
+
+**4. Secondary Trading**
+Trade your investment shares on our secondary marketplace. Improve liquidity and discover new opportunities.
+
+Check out the sidebar navigation to explore these new features!`,
+        category: 'ANNOUNCEMENT',
+        smeId: null,
+        dealId: null,
+        syndicateId: null,
+        likes: 89,
+        views: 456,
+        isPinned: true,
+        isAnnouncement: true,
+        status: 'PUBLISHED',
+        commentCount: 18,
+        createdAt: '2024-12-20T08:00:00Z',
+        updatedAt: '2024-12-20T08:00:00Z'
+    },
+    {
+        id: 'post_6',
+        tenantId: 'default',
+        authorId: 'user_10',
+        author: {
+            id: 'user_10',
+            name: 'David Tan',
+            role: 'INVESTOR',
+            avatar: null
+        },
+        title: 'My 2024 Cambodia Investment Portfolio Strategy',
+        content: `After 3 years of investing in Cambodian startups, here's my portfolio allocation strategy for 2024:
+
+**Sector Allocation:**
+- Fintech: 40%
+- Agriculture Tech: 25%
+- E-commerce/Logistics: 20%
+- Clean Energy: 15%
+
+**Investment Size:**
+- Seed rounds: $10K-25K per company
+- Series A: $50K-100K per company
+- Follow-on reserves: 30% of initial investment
+
+**Key Learnings:**
+1. Focus on companies with strong unit economics
+2. Team quality is the #1 predictor of success
+3. Regulatory relationships matter more in Cambodia
+4. Patience is key - exits take longer here
+
+Would love to hear other investors' strategies!`,
+        category: 'INVESTOR_INSIGHT',
+        smeId: null,
+        dealId: null,
+        syndicateId: null,
+        likes: 56,
+        views: 312,
+        isPinned: false,
+        isAnnouncement: false,
+        status: 'PUBLISHED',
+        commentCount: 14,
+        createdAt: '2024-12-18T10:00:00Z',
+        updatedAt: '2024-12-18T10:00:00Z'
+    },
+    {
+        id: 'post_7',
+        tenantId: 'default',
+        authorId: 'user_11',
+        author: {
+            id: 'user_11',
+            name: 'AgriSmart Solutions',
+            role: 'SME',
+            avatar: null
+        },
+        title: '[SME Update] AgriSmart Expands to 3 New Provinces',
+        content: `Exciting news from the AgriSmart team!
+
+We've officially launched operations in Battambang, Kampong Cham, and Siem Reap provinces. This expansion brings our total coverage to 8 provinces across Cambodia.
+
+**Key Highlights:**
+- 500+ new farming families onboarded
+- 3 new distribution partnerships established
+- Local support teams trained and deployed
+- IoT sensors installed on 2,000+ hectares
+
+**Impact Metrics:**
+- Average yield increase: 23%
+- Water usage reduction: 18%
+- Farm income improvement: 31%
+
+Thank you to our investors for making this possible! 🌾
+
+*Investor update available in the Data Room*`,
+        category: 'SME_NEWS',
+        smeId: 'sme_2',
+        dealId: null,
+        syndicateId: null,
+        likes: 78,
+        views: 289,
+        isPinned: false,
+        isAnnouncement: false,
+        status: 'PUBLISHED',
+        commentCount: 11,
+        createdAt: '2024-12-15T14:00:00Z',
+        updatedAt: '2024-12-15T14:00:00Z'
+    },
+    {
+        id: 'post_8',
+        tenantId: 'default',
+        authorId: 'user_7',
+        author: {
+            id: 'user_7',
+            name: 'Expert Advisor',
+            role: 'ADVISOR',
+            avatar: null
+        },
+        title: 'Cambodia Startup Ecosystem Report 2024 - Key Insights',
+        content: `Just finished analyzing the Cambodia startup ecosystem data for 2024. Here are the key findings:
+
+**Funding Trends:**
+- Total VC funding: $45M (up 35% YoY)
+- Average deal size: $1.2M
+- Number of deals: 38
+
+**Top Sectors by Funding:**
+1. Fintech: $18M (40%)
+2. E-commerce: $9M (20%)
+3. AgriTech: $7M (16%)
+4. EdTech: $5M (11%)
+5. Others: $6M (13%)
+
+**Notable Trends:**
+- Increasing interest from regional VCs
+- More B2B focused startups emerging
+- Government launching tech park initiative
+- Banking regulations becoming more startup-friendly
+
+**Challenges:**
+- Talent shortage remains critical
+- Limited Series B+ opportunities
+- Exit cycle still unclear
+
+Happy to discuss any of these points in more detail!`,
+        category: 'INVESTOR_INSIGHT',
+        smeId: null,
+        dealId: null,
+        syndicateId: null,
+        likes: 134,
+        views: 567,
+        isPinned: false,
+        isAnnouncement: false,
+        status: 'PUBLISHED',
+        commentCount: 22,
+        createdAt: '2024-12-10T09:30:00Z',
+        updatedAt: '2024-12-10T09:30:00Z'
     }
 ];
 
@@ -180,6 +355,66 @@ Happy to discuss more!`,
         parentId: null,
         likes: 15,
         createdAt: '2024-02-10T10:00:00Z'
+    },
+    {
+        id: 'comment_4',
+        postId: 'post_3',
+        authorId: 'user_1',
+        author: { id: 'user_1', name: 'John Smith', role: 'INVESTOR' },
+        content: 'Congratulations TechCorp! This validates our investment thesis. Looking forward to your next milestones!',
+        parentId: null,
+        likes: 12,
+        createdAt: '2024-02-01T15:00:00Z'
+    },
+    {
+        id: 'comment_5',
+        postId: 'post_3',
+        authorId: 'user_8',
+        author: { id: 'user_8', name: 'Cambodia Tech News', role: 'SME' },
+        content: 'Amazing achievement! Would love to feature this on our platform. DM sent!',
+        parentId: null,
+        likes: 4,
+        createdAt: '2024-02-01T16:30:00Z'
+    },
+    {
+        id: 'comment_6',
+        postId: 'post_4',
+        authorId: 'user_5',
+        author: { id: 'user_5', name: 'Sarah Chen', role: 'INVESTOR' },
+        content: 'Great question! I also recommend joining syndicates as a way to learn. You can invest smaller amounts while learning from experienced lead investors.',
+        parentId: null,
+        likes: 7,
+        createdAt: '2024-02-10T11:30:00Z'
+    },
+    {
+        id: 'comment_7',
+        postId: 'post_5',
+        authorId: 'user_6',
+        author: { id: 'user_6', name: 'Mike Johnson', role: 'ADVISOR' },
+        content: 'The new features look promising! Secondary trading will be a game-changer for liquidity in this market.',
+        parentId: null,
+        likes: 9,
+        createdAt: '2024-12-20T09:00:00Z'
+    },
+    {
+        id: 'comment_8',
+        postId: 'post_6',
+        authorId: 'user_1',
+        author: { id: 'user_1', name: 'John Smith', role: 'INVESTOR' },
+        content: 'Very comprehensive strategy. How are you planning to handle forex risk given the heavy USD exposure?',
+        parentId: null,
+        likes: 6,
+        createdAt: '2024-12-18T11:00:00Z'
+    },
+    {
+        id: 'comment_9',
+        postId: 'post_6',
+        authorId: 'user_9',
+        author: { id: 'user_9', name: 'Dr. Anika Patel', role: 'INVESTOR' },
+        content: "Interesting allocation. Have you considered the healthcare sector? Cambodia's healthtech space is relatively underfunded but growing rapidly.",
+        parentId: 'comment_8',
+        likes: 3,
+        createdAt: '2024-12-18T14:00:00Z'
     }
 ];
 

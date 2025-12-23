@@ -63,6 +63,10 @@ let dueDiligences: any[] = [
             sector: 'Agriculture'
         },
         advisorId: 'adv_1',
+        advisor: {
+            id: 'adv_1',
+            name: 'Expert Advisor'
+        },
         financialScore: 72,
         teamScore: 80,
         marketScore: 85,
@@ -93,6 +97,221 @@ let dueDiligences: any[] = [
         completedAt: '2024-02-01',
         expiresAt: '2025-02-01',
         createdAt: '2024-01-25'
+    },
+    {
+        id: 'dd_3',
+        smeId: 'sme_3',
+        sme: {
+            id: 'sme_3',
+            name: 'PayEasy Cambodia',
+            sector: 'Fintech'
+        },
+        advisorId: 'adv_2',
+        advisor: {
+            id: 'adv_2',
+            name: 'Senior Financial Analyst'
+        },
+        financialScore: 92,
+        teamScore: 88,
+        marketScore: 95,
+        productScore: 90,
+        legalScore: 85,
+        operationalScore: 88,
+        overallScore: 90.35,
+        riskLevel: 'LOW',
+        strengths: [
+            'Market leader in mobile payments with 2M+ users',
+            'Strong executive team from major tech companies',
+            'NBC license and full regulatory compliance',
+            'Profitable for 3 consecutive years',
+            'Strategic partnerships with all major banks'
+        ],
+        weaknesses: [
+            'Increasing competition from international players',
+            'Heavy reliance on transaction fees'
+        ],
+        recommendations: [
+            'Expand into lending and wealth management',
+            'Strengthen cybersecurity infrastructure',
+            'Consider regional expansion'
+        ],
+        redFlags: [],
+        status: 'COMPLETED',
+        completedAt: '2024-06-15',
+        expiresAt: '2025-06-15',
+        createdAt: '2024-05-01'
+    },
+    {
+        id: 'dd_4',
+        smeId: 'sme_4',
+        sme: {
+            id: 'sme_4',
+            name: 'MediConnect Health',
+            sector: 'Healthcare'
+        },
+        advisorId: 'adv_1',
+        advisor: {
+            id: 'adv_1',
+            name: 'Expert Advisor'
+        },
+        financialScore: 55,
+        teamScore: 70,
+        marketScore: 80,
+        productScore: 65,
+        legalScore: 50,
+        operationalScore: 45,
+        overallScore: 61.25,
+        riskLevel: 'HIGH',
+        strengths: [
+            'First-mover advantage in telemedicine',
+            'Large potential market in rural areas',
+            'Partnership with Ministry of Health'
+        ],
+        weaknesses: [
+            'Pre-revenue stage with high burn rate',
+            'Incomplete regulatory approvals',
+            'Limited technical infrastructure',
+            'Inexperienced management team'
+        ],
+        recommendations: [
+            'Secure regulatory approvals before scaling',
+            'Hire experienced healthcare executives',
+            'Focus on unit economics',
+            'Consider strategic partnership or acquisition'
+        ],
+        redFlags: [
+            'Missing medical device certifications',
+            'High monthly cash burn ($50K+)',
+            'Key executive recently departed'
+        ],
+        status: 'COMPLETED',
+        completedAt: '2024-11-01',
+        expiresAt: '2025-11-01',
+        createdAt: '2024-10-15'
+    },
+    {
+        id: 'dd_5',
+        smeId: 'sme_5',
+        sme: {
+            id: 'sme_5',
+            name: 'QuickLoan Plus',
+            sector: 'Fintech'
+        },
+        advisorId: 'adv_3',
+        advisor: {
+            id: 'adv_3',
+            name: 'Risk Assessment Specialist'
+        },
+        financialScore: 40,
+        teamScore: 55,
+        marketScore: 65,
+        productScore: 50,
+        legalScore: 35,
+        operationalScore: 40,
+        overallScore: 47.5,
+        riskLevel: 'VERY_HIGH',
+        strengths: [
+            'Rapid user growth (500% YoY)',
+            'Strong technology platform'
+        ],
+        weaknesses: [
+            'Extremely high default rates (15%+)',
+            'No banking license',
+            'Aggressive lending practices',
+            'Poor financial controls',
+            'High staff turnover'
+        ],
+        recommendations: [
+            'Do not proceed with investment',
+            'If proceeding, require complete management overhaul',
+            'Mandate regulatory compliance audit',
+            'Implement strict lending criteria'
+        ],
+        redFlags: [
+            'NBC investigation pending',
+            'Multiple customer complaints filed',
+            'Previous CEO under fraud investigation',
+            'Unaudited financial statements'
+        ],
+        status: 'COMPLETED',
+        completedAt: '2024-08-20',
+        expiresAt: '2025-08-20',
+        createdAt: '2024-07-15'
+    },
+    {
+        id: 'dd_6',
+        smeId: 'sme_6',
+        sme: {
+            id: 'sme_6',
+            name: 'SolarKhmer Energy',
+            sector: 'Clean Energy'
+        },
+        advisorId: 'adv_2',
+        advisor: {
+            id: 'adv_2',
+            name: 'Senior Financial Analyst'
+        },
+        financialScore: 75,
+        teamScore: 82,
+        marketScore: 88,
+        productScore: 78,
+        legalScore: 80,
+        operationalScore: 72,
+        overallScore: 79.55,
+        riskLevel: 'MEDIUM',
+        strengths: [
+            'Growing demand for renewable energy',
+            'Experienced team from energy sector',
+            'Government incentives and support',
+            'Strong pipeline of projects'
+        ],
+        weaknesses: [
+            'High capital requirements',
+            'Long project timelines',
+            'Dependency on government policy'
+        ],
+        recommendations: [
+            'Secure long-term financing facilities',
+            'Diversify into energy storage',
+            'Build local manufacturing capabilities'
+        ],
+        redFlags: [
+            'Some permits pending approval'
+        ],
+        status: 'IN_PROGRESS',
+        completedAt: null,
+        expiresAt: null,
+        createdAt: '2024-11-20'
+    },
+    {
+        id: 'dd_7',
+        smeId: 'sme_7',
+        sme: {
+            id: 'sme_7',
+            name: 'EduLearn Platform',
+            sector: 'Education'
+        },
+        advisorId: 'adv_1',
+        advisor: {
+            id: 'adv_1',
+            name: 'Expert Advisor'
+        },
+        financialScore: 0,
+        teamScore: 0,
+        marketScore: 0,
+        productScore: 0,
+        legalScore: 0,
+        operationalScore: 0,
+        overallScore: 0,
+        riskLevel: 'MEDIUM',
+        strengths: [],
+        weaknesses: [],
+        recommendations: [],
+        redFlags: [],
+        status: 'PENDING',
+        completedAt: null,
+        expiresAt: null,
+        createdAt: '2024-12-15'
     }
 ];
 

@@ -29,16 +29,16 @@ let listings: any[] = [
         originalInvestment: 50000,
         sharesOwned: 5000,
         sharesAvailable: 2000,
-        pricePerShare: 12.50, // Current price
+        pricePerShare: 12.50,
         originalPricePerShare: 10.00,
         minPurchase: 100,
         totalValue: 25000,
         returnPercentage: 25.0,
         status: 'ACTIVE',
-        listedAt: '2024-01-20T10:00:00Z',
-        expiresAt: '2024-04-20T10:00:00Z',
-        createdAt: '2024-01-20T10:00:00Z',
-        updatedAt: '2024-01-20T10:00:00Z'
+        listedAt: '2024-12-01T10:00:00Z',
+        expiresAt: '2025-03-01T10:00:00Z',
+        createdAt: '2024-12-01T10:00:00Z',
+        updatedAt: '2024-12-01T10:00:00Z'
     },
     {
         id: 'listing_2',
@@ -64,10 +64,126 @@ let listings: any[] = [
         totalValue: 55000,
         returnPercentage: 10.0,
         status: 'ACTIVE',
-        listedAt: '2024-02-01T14:00:00Z',
-        expiresAt: '2024-05-01T14:00:00Z',
-        createdAt: '2024-02-01T14:00:00Z',
-        updatedAt: '2024-02-01T14:00:00Z'
+        listedAt: '2024-12-05T14:00:00Z',
+        expiresAt: '2025-03-05T14:00:00Z',
+        createdAt: '2024-12-05T14:00:00Z',
+        updatedAt: '2024-12-05T14:00:00Z'
+    },
+    {
+        id: 'listing_3',
+        tenantId: 'default',
+        sellerId: 'inv_6',
+        seller: {
+            id: 'inv_6',
+            name: 'David Tan',
+            type: 'FAMILY_OFFICE'
+        },
+        dealInvestorId: 'di_3',
+        deal: {
+            id: 'deal_3',
+            title: 'PayEasy Cambodia - Series B',
+            sme: { id: 'sme_3', name: 'PayEasy Cambodia' }
+        },
+        originalInvestment: 200000,
+        sharesOwned: 20000,
+        sharesAvailable: 8000,
+        pricePerShare: 15.00,
+        originalPricePerShare: 10.00,
+        minPurchase: 200,
+        totalValue: 120000,
+        returnPercentage: 50.0,
+        status: 'ACTIVE',
+        listedAt: '2024-12-10T09:00:00Z',
+        expiresAt: '2025-03-10T09:00:00Z',
+        createdAt: '2024-12-10T09:00:00Z',
+        updatedAt: '2024-12-10T09:00:00Z'
+    },
+    {
+        id: 'listing_4',
+        tenantId: 'default',
+        sellerId: 'inv_3',
+        seller: {
+            id: 'inv_3',
+            name: 'Mike Johnson',
+            type: 'ANGEL'
+        },
+        dealInvestorId: 'di_4',
+        deal: {
+            id: 'deal_1',
+            title: 'TechCorp Cambodia - Series A',
+            sme: { id: 'sme_1', name: 'TechCorp Cambodia' }
+        },
+        originalInvestment: 25000,
+        sharesOwned: 2500,
+        sharesAvailable: 1000,
+        pricePerShare: 13.00,
+        originalPricePerShare: 10.00,
+        minPurchase: 50,
+        totalValue: 13000,
+        returnPercentage: 30.0,
+        status: 'ACTIVE',
+        listedAt: '2024-12-15T11:00:00Z',
+        expiresAt: '2025-03-15T11:00:00Z',
+        createdAt: '2024-12-15T11:00:00Z',
+        updatedAt: '2024-12-15T11:00:00Z'
+    },
+    {
+        id: 'listing_5',
+        tenantId: 'default',
+        sellerId: 'inv_7',
+        seller: {
+            id: 'inv_7',
+            name: 'Dr. Anika Patel',
+            type: 'STRATEGIC'
+        },
+        dealInvestorId: 'di_5',
+        deal: {
+            id: 'deal_4',
+            title: 'MediConnect Health - Seed',
+            sme: { id: 'sme_4', name: 'MediConnect Health' }
+        },
+        originalInvestment: 30000,
+        sharesOwned: 3000,
+        sharesAvailable: 0,
+        pricePerShare: 8.50,
+        originalPricePerShare: 10.00,
+        minPurchase: 100,
+        totalValue: 0,
+        returnPercentage: -15.0,
+        status: 'SOLD',
+        listedAt: '2024-11-01T10:00:00Z',
+        expiresAt: '2025-02-01T10:00:00Z',
+        createdAt: '2024-11-01T10:00:00Z',
+        updatedAt: '2024-11-20T14:00:00Z'
+    },
+    {
+        id: 'listing_6',
+        tenantId: 'default',
+        sellerId: 'inv_5',
+        seller: {
+            id: 'inv_5',
+            name: 'Tom Brown',
+            type: 'ANGEL'
+        },
+        dealInvestorId: 'di_6',
+        deal: {
+            id: 'deal_5',
+            title: 'SolarKhmer - Series A',
+            sme: { id: 'sme_6', name: 'SolarKhmer Energy' }
+        },
+        originalInvestment: 15000,
+        sharesOwned: 1500,
+        sharesAvailable: 1500,
+        pricePerShare: 10.50,
+        originalPricePerShare: 10.00,
+        minPurchase: 100,
+        totalValue: 15750,
+        returnPercentage: 5.0,
+        status: 'ACTIVE',
+        listedAt: '2024-12-18T16:00:00Z',
+        expiresAt: '2025-03-18T16:00:00Z',
+        createdAt: '2024-12-18T16:00:00Z',
+        updatedAt: '2024-12-18T16:00:00Z'
     }
 ];
 
@@ -82,11 +198,11 @@ let trades: any[] = [
         shares: 500,
         pricePerShare: 12.50,
         totalAmount: 6250,
-        fee: 62.50, // 1% platform fee
+        fee: 62.50,
         netAmount: 6187.50,
         status: 'COMPLETED',
-        executedAt: '2024-01-25T11:30:00Z',
-        createdAt: '2024-01-25T11:00:00Z'
+        executedAt: '2024-12-02T11:30:00Z',
+        createdAt: '2024-12-02T11:00:00Z'
     },
     {
         id: 'trade_2',
@@ -101,8 +217,104 @@ let trades: any[] = [
         fee: 37.50,
         netAmount: 3712.50,
         status: 'COMPLETED',
-        executedAt: '2024-01-28T09:00:00Z',
-        createdAt: '2024-01-28T08:45:00Z'
+        executedAt: '2024-12-05T09:00:00Z',
+        createdAt: '2024-12-05T08:45:00Z'
+    },
+    {
+        id: 'trade_3',
+        listingId: 'listing_2',
+        buyerId: 'inv_10',
+        buyer: { id: 'inv_10', name: 'Emma Davis' },
+        sellerId: 'inv_2',
+        seller: { id: 'inv_2', name: 'Sarah Chen' },
+        shares: 1000,
+        pricePerShare: 11.00,
+        totalAmount: 11000,
+        fee: 110.00,
+        netAmount: 10890.00,
+        status: 'COMPLETED',
+        executedAt: '2024-12-08T14:30:00Z',
+        createdAt: '2024-12-08T14:00:00Z'
+    },
+    {
+        id: 'trade_4',
+        listingId: 'listing_3',
+        buyerId: 'inv_11',
+        buyer: { id: 'inv_11', name: 'Robert Kim' },
+        sellerId: 'inv_6',
+        seller: { id: 'inv_6', name: 'David Tan' },
+        shares: 2000,
+        pricePerShare: 15.00,
+        totalAmount: 30000,
+        fee: 300.00,
+        netAmount: 29700.00,
+        status: 'COMPLETED',
+        executedAt: '2024-12-12T10:00:00Z',
+        createdAt: '2024-12-12T09:30:00Z'
+    },
+    {
+        id: 'trade_5',
+        listingId: 'listing_5',
+        buyerId: 'inv_12',
+        buyer: { id: 'inv_12', name: 'Jennifer Lee' },
+        sellerId: 'inv_7',
+        seller: { id: 'inv_7', name: 'Dr. Anika Patel' },
+        shares: 3000,
+        pricePerShare: 8.50,
+        totalAmount: 25500,
+        fee: 255.00,
+        netAmount: 25245.00,
+        status: 'COMPLETED',
+        executedAt: '2024-11-20T14:00:00Z',
+        createdAt: '2024-11-20T13:30:00Z'
+    },
+    {
+        id: 'trade_6',
+        listingId: 'listing_3',
+        buyerId: 'inv_13',
+        buyer: { id: 'inv_13', name: 'William Zhang' },
+        sellerId: 'inv_6',
+        seller: { id: 'inv_6', name: 'David Tan' },
+        shares: 1500,
+        pricePerShare: 15.00,
+        totalAmount: 22500,
+        fee: 225.00,
+        netAmount: 22275.00,
+        status: 'COMPLETED',
+        executedAt: '2024-12-18T11:00:00Z',
+        createdAt: '2024-12-18T10:30:00Z'
+    },
+    {
+        id: 'trade_7',
+        listingId: 'listing_4',
+        buyerId: 'inv_14',
+        buyer: { id: 'inv_14', name: 'Sophia Nguyen' },
+        sellerId: 'inv_3',
+        seller: { id: 'inv_3', name: 'Mike Johnson' },
+        shares: 200,
+        pricePerShare: 13.00,
+        totalAmount: 2600,
+        fee: 26.00,
+        netAmount: 2574.00,
+        status: 'PENDING',
+        executedAt: null,
+        createdAt: '2024-12-22T09:00:00Z'
+    },
+    {
+        id: 'trade_8',
+        listingId: 'listing_6',
+        buyerId: 'inv_15',
+        buyer: { id: 'inv_15', name: 'James Wilson' },
+        sellerId: 'inv_5',
+        seller: { id: 'inv_5', name: 'Tom Brown' },
+        shares: 500,
+        pricePerShare: 10.50,
+        totalAmount: 5250,
+        fee: 52.50,
+        netAmount: 5197.50,
+        status: 'PENDING',
+        executedAt: null,
+        createdAt: '2024-12-23T08:00:00Z'
     }
 ];
 
