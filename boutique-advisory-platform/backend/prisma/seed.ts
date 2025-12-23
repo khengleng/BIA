@@ -105,6 +105,43 @@ async function main() {
     });
     console.log('✅ Created SME user:', smeUser.email);
 
+    // Create SME profile for the SME user (required for migration-manager to detect complete migration)
+    const sme = await prisma.sME.upsert({
+        where: { id: 'sme_techcorp' },
+        update: {},
+        create: {
+            id: 'sme_techcorp',
+            userId: smeUser.id,
+            tenantId: 'default',
+            name: 'TechCorp Cambodia',
+            sector: 'Technology',
+            stage: 'GROWTH',
+            fundingRequired: 500000,
+            description: 'Leading fintech company providing digital payment solutions across Cambodia',
+            website: 'https://techcorp.kh',
+            location: 'Phnom Penh, Cambodia',
+            status: 'CERTIFIED',
+        },
+    });
+    console.log('✅ Created SME:', sme.name);
+
+    // Create Investor profile
+    const investor = await prisma.investor.upsert({
+        where: { id: 'inv_john_smith' },
+        update: {},
+        create: {
+            id: 'inv_john_smith',
+            userId: investorUser.id,
+            tenantId: 'default',
+            name: 'John Smith',
+            type: 'ANGEL',
+            kycStatus: 'VERIFIED',
+            preferences: { sectors: ['Technology', 'Fintech'] },
+            portfolio: [],
+        },
+    });
+    console.log('✅ Created Investor:', investor.name);
+
     console.log('\n🎉 Database seeding completed successfully!');
     console.log('\n📋 Login credentials:');
     console.log('   Admin:    admin@boutique-advisory.com / admin123');
