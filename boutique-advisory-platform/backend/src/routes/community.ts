@@ -237,11 +237,12 @@ router.get('/posts', async (req: AuthenticatedRequest, res: Response) => {
 });
 
 // Get post by ID
-router.get('/posts/:id', async (req: AuthenticatedRequest, res: Response) => {
+router.get('/posts/:id', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         const postIndex = posts.findIndex(p => p.id === req.params.id);
         if (postIndex === -1) {
-            return res.status(404).json({ error: 'Post not found' });
+            res.status(404).json({ error: 'Post not found' });
+            return;
         }
 
         // Increment views
@@ -300,16 +301,18 @@ router.post('/posts', async (req: AuthenticatedRequest, res: Response) => {
 });
 
 // Update post
-router.put('/posts/:id', async (req: AuthenticatedRequest, res: Response) => {
+router.put('/posts/:id', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         const index = posts.findIndex(p => p.id === req.params.id);
         if (index === -1) {
-            return res.status(404).json({ error: 'Post not found' });
+            res.status(404).json({ error: 'Post not found' });
+            return;
         }
 
         // Check ownership (author or admin)
         if (posts[index].authorId !== req.user?.id && !['ADMIN', 'SUPER_ADMIN'].includes(req.user?.role || '')) {
-            return res.status(403).json({ error: 'Not authorized to edit this post' });
+            res.status(403).json({ error: 'Not authorized to edit this post' });
+            return;
         }
 
         const { title, content, category, isPinned, isAnnouncement, status } = req.body;
@@ -330,11 +333,12 @@ router.put('/posts/:id', async (req: AuthenticatedRequest, res: Response) => {
 });
 
 // Like a post
-router.post('/posts/:id/like', async (req: AuthenticatedRequest, res: Response) => {
+router.post('/posts/:id/like', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         const index = posts.findIndex(p => p.id === req.params.id);
         if (index === -1) {
-            return res.status(404).json({ error: 'Post not found' });
+            res.status(404).json({ error: 'Post not found' });
+            return;
         }
 
         posts[index].likes += 1;
@@ -346,11 +350,12 @@ router.post('/posts/:id/like', async (req: AuthenticatedRequest, res: Response) 
 });
 
 // Create comment
-router.post('/posts/:id/comments', async (req: AuthenticatedRequest, res: Response) => {
+router.post('/posts/:id/comments', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         const post = posts.find(p => p.id === req.params.id);
         if (!post) {
-            return res.status(404).json({ error: 'Post not found' });
+            res.status(404).json({ error: 'Post not found' });
+            return;
         }
 
         const { content, parentId } = req.body;
@@ -403,11 +408,12 @@ router.get('/posts/:id/comments', async (req: AuthenticatedRequest, res: Respons
 });
 
 // Like a comment
-router.post('/comments/:id/like', async (req: AuthenticatedRequest, res: Response) => {
+router.post('/comments/:id/like', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         const index = comments.findIndex(c => c.id === req.params.id);
         if (index === -1) {
-            return res.status(404).json({ error: 'Comment not found' });
+            res.status(404).json({ error: 'Comment not found' });
+            return;
         }
 
         comments[index].likes += 1;

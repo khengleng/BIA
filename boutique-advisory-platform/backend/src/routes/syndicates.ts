@@ -102,11 +102,12 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
 });
 
 // Get syndicate by ID
-router.get('/:id', async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:id', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         const syndicate = syndicates.find(s => s.id === req.params.id);
         if (!syndicate) {
-            return res.status(404).json({ error: 'Syndicate not found' });
+            res.status(404).json({ error: 'Syndicate not found' });
+            return;
         }
 
         // Get members
@@ -171,25 +172,29 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
 });
 
 // Join syndicate
-router.post('/:id/join', async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:id/join', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         const syndicate = syndicates.find(s => s.id === req.params.id);
         if (!syndicate) {
-            return res.status(404).json({ error: 'Syndicate not found' });
+            res.status(404).json({ error: 'Syndicate not found' });
+            return;
         }
 
         if (syndicate.status !== 'OPEN') {
-            return res.status(400).json({ error: 'Syndicate is not open for new members' });
+            res.status(400).json({ error: 'Syndicate is not open for new members' });
+            return;
         }
 
         const { amount } = req.body;
 
         if (amount < syndicate.minInvestment) {
-            return res.status(400).json({ error: `Minimum investment is $${syndicate.minInvestment}` });
+            res.status(400).json({ error: `Minimum investment is $${syndicate.minInvestment}` });
+            return;
         }
 
         if (syndicate.maxInvestment && amount > syndicate.maxInvestment) {
-            return res.status(400).json({ error: `Maximum investment is $${syndicate.maxInvestment}` });
+            res.status(400).json({ error: `Maximum investment is $${syndicate.maxInvestment}` });
+            return;
         }
 
         // Check if already a member
@@ -197,7 +202,8 @@ router.post('/:id/join', async (req: AuthenticatedRequest, res: Response) => {
             m => m.syndicateId === req.params.id && m.investorId === req.user?.id
         );
         if (existingMember) {
-            return res.status(400).json({ error: 'Already a member of this syndicate' });
+            res.status(400).json({ error: 'Already a member of this syndicate' });
+            return;
         }
 
         const newMember = {
@@ -223,21 +229,24 @@ router.post('/:id/join', async (req: AuthenticatedRequest, res: Response) => {
 });
 
 // Approve/reject member (Lead Investor only)
-router.patch('/:id/members/:memberId', async (req: AuthenticatedRequest, res: Response) => {
+router.patch('/:id/members/:memberId', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         const syndicate = syndicates.find(s => s.id === req.params.id);
         if (!syndicate) {
-            return res.status(404).json({ error: 'Syndicate not found' });
+            res.status(404).json({ error: 'Syndicate not found' });
+            return;
         }
 
         // Check if user is lead investor
         if (syndicate.leadInvestorId !== req.user?.id && req.user?.role !== 'ADMIN') {
-            return res.status(403).json({ error: 'Only the lead investor can manage members' });
+            res.status(403).json({ error: 'Only the lead investor can manage members' });
+            return;
         }
 
         const memberIndex = syndicateMembers.findIndex(m => m.id === req.params.memberId);
         if (memberIndex === -1) {
-            return res.status(404).json({ error: 'Member not found' });
+            res.status(404).json({ error: 'Member not found' });
+            return;
         }
 
         const { status } = req.body;

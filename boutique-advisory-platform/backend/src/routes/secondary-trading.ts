@@ -146,11 +146,12 @@ router.get('/listings', async (req: AuthenticatedRequest, res: Response) => {
 });
 
 // Get listing by ID
-router.get('/listings/:id', async (req: AuthenticatedRequest, res: Response) => {
+router.get('/listings/:id', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         const listing = listings.find(l => l.id === req.params.id);
         if (!listing) {
-            return res.status(404).json({ error: 'Listing not found' });
+            res.status(404).json({ error: 'Listing not found' });
+            return;
         }
 
         // Get trade history for this listing
@@ -167,7 +168,7 @@ router.get('/listings/:id', async (req: AuthenticatedRequest, res: Response) => 
 });
 
 // Create new listing (Investor selling shares)
-router.post('/listings', async (req: AuthenticatedRequest, res: Response) => {
+router.post('/listings', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         const {
             dealInvestorId,
@@ -182,10 +183,12 @@ router.post('/listings', async (req: AuthenticatedRequest, res: Response) => {
 
         // Validation
         if (sharesAvailable > sharesOwned) {
-            return res.status(400).json({ error: 'Cannot list more shares than owned' });
+            res.status(400).json({ error: 'Cannot list more shares than owned' });
+            return;
         }
         if (pricePerShare <= 0) {
-            return res.status(400).json({ error: 'Price per share must be positive' });
+            res.status(400).json({ error: 'Price per share must be positive' });
+            return;
         }
 
         const newListing = {
@@ -225,16 +228,18 @@ router.post('/listings', async (req: AuthenticatedRequest, res: Response) => {
 });
 
 // Update listing
-router.put('/listings/:id', async (req: AuthenticatedRequest, res: Response) => {
+router.put('/listings/:id', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         const index = listings.findIndex(l => l.id === req.params.id);
         if (index === -1) {
-            return res.status(404).json({ error: 'Listing not found' });
+            res.status(404).json({ error: 'Listing not found' });
+            return;
         }
 
         // Check ownership
         if (listings[index].sellerId !== req.user?.id && !['ADMIN', 'SUPER_ADMIN'].includes(req.user?.role || '')) {
-            return res.status(403).json({ error: 'Not authorized to update this listing' });
+            res.status(403).json({ error: 'Not authorized to update this listing' });
+            return;
         }
 
         const { pricePerShare, sharesAvailable, minPurchase, status } = req.body;
@@ -247,7 +252,8 @@ router.put('/listings/:id', async (req: AuthenticatedRequest, res: Response) => 
         }
         if (sharesAvailable !== undefined) {
             if (sharesAvailable > listings[index].sharesOwned) {
-                return res.status(400).json({ error: 'Cannot list more shares than owned' });
+                res.status(400).json({ error: 'Cannot list more shares than owned' });
+                return;
             }
             listings[index].sharesAvailable = sharesAvailable;
             listings[index].totalValue = sharesAvailable * listings[index].pricePerShare;
@@ -265,28 +271,33 @@ router.put('/listings/:id', async (req: AuthenticatedRequest, res: Response) => 
 });
 
 // Buy shares (Create trade)
-router.post('/listings/:id/buy', async (req: AuthenticatedRequest, res: Response) => {
+router.post('/listings/:id/buy', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         const listing = listings.find(l => l.id === req.params.id);
         if (!listing) {
-            return res.status(404).json({ error: 'Listing not found' });
+            res.status(404).json({ error: 'Listing not found' });
+            return;
         }
 
         if (listing.status !== 'ACTIVE') {
-            return res.status(400).json({ error: 'Listing is not active' });
+            res.status(400).json({ error: 'Listing is not active' });
+            return;
         }
 
         const { shares } = req.body;
 
         // Validations
         if (shares < listing.minPurchase) {
-            return res.status(400).json({ error: `Minimum purchase is ${listing.minPurchase} shares` });
+            res.status(400).json({ error: `Minimum purchase is ${listing.minPurchase} shares` });
+            return;
         }
         if (shares > listing.sharesAvailable) {
-            return res.status(400).json({ error: 'Not enough shares available' });
+            res.status(400).json({ error: 'Not enough shares available' });
+            return;
         }
         if (listing.sellerId === req.user?.id) {
-            return res.status(400).json({ error: 'Cannot buy your own shares' });
+            res.status(400).json({ error: 'Cannot buy your own shares' });
+            return;
         }
 
         const totalAmount = shares * listing.pricePerShare;
@@ -337,15 +348,17 @@ router.post('/listings/:id/buy', async (req: AuthenticatedRequest, res: Response
 });
 
 // Execute trade (Admin/System)
-router.post('/trades/:id/execute', async (req: AuthenticatedRequest, res: Response) => {
+router.post('/trades/:id/execute', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         const index = trades.findIndex(t => t.id === req.params.id);
         if (index === -1) {
-            return res.status(404).json({ error: 'Trade not found' });
+            res.status(404).json({ error: 'Trade not found' });
+            return;
         }
 
         if (trades[index].status !== 'PENDING') {
-            return res.status(400).json({ error: 'Trade is not pending' });
+            res.status(400).json({ error: 'Trade is not pending' });
+            return;
         }
 
         trades[index].status = 'COMPLETED';

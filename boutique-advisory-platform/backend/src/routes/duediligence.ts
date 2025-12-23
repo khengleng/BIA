@@ -150,11 +150,12 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
 });
 
 // Get due diligence by ID
-router.get('/:id', async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:id', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         const dd = dueDiligences.find(d => d.id === req.params.id);
         if (!dd) {
-            return res.status(404).json({ error: 'Due diligence not found' });
+            res.status(404).json({ error: 'Due diligence not found' });
+            return;
         }
 
         res.json(dd);
@@ -165,11 +166,12 @@ router.get('/:id', async (req: AuthenticatedRequest, res: Response) => {
 });
 
 // Get due diligence for specific SME
-router.get('/sme/:smeId', async (req: AuthenticatedRequest, res: Response) => {
+router.get('/sme/:smeId', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         const dd = dueDiligences.find(d => d.smeId === req.params.smeId && d.status === 'COMPLETED');
         if (!dd) {
-            return res.status(404).json({ error: 'No completed due diligence found for this SME' });
+            res.status(404).json({ error: 'No completed due diligence found for this SME' });
+            return;
         }
 
         res.json(dd);
@@ -220,11 +222,12 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
 });
 
 // Update due diligence scores (Advisor only)
-router.put('/:id', async (req: AuthenticatedRequest, res: Response) => {
+router.put('/:id', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         const index = dueDiligences.findIndex(d => d.id === req.params.id);
         if (index === -1) {
-            return res.status(404).json({ error: 'Due diligence not found' });
+            res.status(404).json({ error: 'Due diligence not found' });
+            return;
         }
 
         const {
@@ -282,11 +285,12 @@ router.put('/:id', async (req: AuthenticatedRequest, res: Response) => {
 });
 
 // Get score breakdown
-router.get('/:id/breakdown', async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:id/breakdown', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         const dd = dueDiligences.find(d => d.id === req.params.id);
         if (!dd) {
-            return res.status(404).json({ error: 'Due diligence not found' });
+            res.status(404).json({ error: 'Due diligence not found' });
+            return;
         }
 
         const breakdown = {
