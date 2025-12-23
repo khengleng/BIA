@@ -9,7 +9,7 @@ router.get('/', async (req: Request, res: Response) => {
     const deals = await prisma.deal.findMany({
       include: {
         sme: true,
-        dealInvestors: {
+        investors: {
           include: {
             investor: true
           }
@@ -31,7 +31,7 @@ router.get('/:id', async (req: Request, res: Response) => {
       where: { id },
       include: {
         sme: true,
-        dealInvestors: {
+        investors: {
           include: {
             investor: true
           }
@@ -39,11 +39,11 @@ router.get('/:id', async (req: Request, res: Response) => {
         documents: true
       }
     });
-    
+
     if (!deal) {
       return res.status(404).json({ error: 'Deal not found' });
     }
-    
+
     return res.json(deal);
   } catch (error) {
     console.error('Get deal error:', error);
@@ -55,7 +55,7 @@ router.get('/:id', async (req: Request, res: Response) => {
 router.post('/', async (req: Request, res: Response) => {
   try {
     const { smeId, title, description, amount, equity, successFee } = req.body;
-    
+
     const deal = await prisma.deal.create({
       data: {
         smeId,
@@ -75,7 +75,7 @@ router.post('/', async (req: Request, res: Response) => {
         }
       }
     });
-    
+
     res.status(201).json(deal);
   } catch (error) {
     console.error('Create deal error:', error);
@@ -88,7 +88,7 @@ router.put('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
-    
+
     const deal = await prisma.deal.update({
       where: { id },
       data: updateData,
@@ -96,7 +96,7 @@ router.put('/:id', async (req: Request, res: Response) => {
         sme: true
       }
     });
-    
+
     return res.json(deal);
   } catch (error) {
     console.error('Update deal error:', error);

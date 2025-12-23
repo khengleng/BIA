@@ -237,13 +237,14 @@ export function shouldMaskData(userRole: string, dataOwnerRole?: string, isOwner
 /**
  * Mask object fields based on configuration
  */
-export function maskObject<T extends Record<string, any>>(
+export function maskObject<T extends Record<string, unknown>>(
     obj: T,
     userRole: string,
     isOwner: boolean = false
 ): T {
     const config = shouldMaskData(userRole, undefined, isOwner);
-    const masked = { ...obj };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const masked = { ...obj } as any;
 
     // Mask email fields
     if (config.maskEmail) {
@@ -282,20 +283,20 @@ export function maskObject<T extends Record<string, any>>(
         if (masked.documentId) masked.documentId = maskDocumentId(masked.documentId);
     }
 
-    return masked;
+    return masked as T;
 }
 
 /**
  * Mask array of objects
  */
-export function maskArray<T extends Record<string, any>>(
+export function maskArray<T extends Record<string, unknown>>(
     array: T[],
     userRole: string,
     ownerIdField: string = 'userId',
     currentUserId?: string
 ): T[] {
     return array.map(item => {
-        const isOwner = currentUserId && item[ownerIdField] === currentUserId;
+        const isOwner = currentUserId ? item[ownerIdField] === currentUserId : false;
         return maskObject(item, userRole, isOwner);
     });
 }
