@@ -15,8 +15,9 @@ import {
 import DashboardLayout from '../../components/layout/DashboardLayout'
 import { useToast } from '../../contexts/ToastContext'
 import { authorizedRequest } from '../../lib/api'
+import usePermissions from '../../hooks/usePermissions'
 
-import { SME, User } from '../../types'
+import { SME } from '../../types'
 
 // Local interfaces removed in favor of shared types
 
@@ -24,7 +25,9 @@ export default function SMEsPage() {
   const router = useRouter()
   const { addToast } = useToast()
 
-  const [user, setUser] = useState<User | null>(null)
+  // Use centralized permissions hook
+  const { canCreateSME, canEditSME, canDeleteSME, user, isAuthenticated } = usePermissions()
+
   const [smes, setSmes] = useState<SME[]>([])
   const [filteredSmes, setFilteredSmes] = useState<SME[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -51,13 +54,11 @@ export default function SMEsPage() {
   useEffect(() => {
     const fetchUserAndData = async () => {
       try {
-        const userData = localStorage.getItem('user')
-        if (!userData) {
+        // Check authentication via hook
+        if (!isAuthenticated) {
           router.push('/auth/login')
           return
         }
-        const parsedUser = JSON.parse(userData)
-        setUser(parsedUser)
 
         const response = await authorizedRequest('/api/smes')
         if (response.ok) {
@@ -189,7 +190,7 @@ export default function SMEsPage() {
     <DashboardLayout>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-white">SMEs</h1>
-        {(user?.role === 'ADMIN' || user?.role === 'ADVISOR') && (
+        {canCreateSME && (
           <Link href="/smes/add" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center transition-colors">
             <Plus className="w-4 h-4 mr-2" />
             Add SME
@@ -259,7 +260,7 @@ export default function SMEsPage() {
                   <Eye className="w-4 h-4 mr-1" />
                   View
                 </Link>
-                {(user?.role === 'ADMIN' || user?.role === 'ADVISOR') && (
+                {(canEditSME() || canDeleteSME) && (
                   <>
                     <button
                       onClick={() => handleEdit(sme)}

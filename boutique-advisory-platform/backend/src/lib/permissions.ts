@@ -1,0 +1,354 @@
+/**
+ * Centralized Permission System
+ * 
+ * Best Practice RBAC implementation with:
+ * - Centralized permission definitions
+ * - Role hierarchy with inheritance
+ * - Resource-level permissions
+ * - Owner-based access control
+ * - Audit logging support
+ */
+
+// Role types
+export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'ADVISOR' | 'SUPPORT' | 'INVESTOR' | 'SME';
+
+// Permission action types
+export type PermissionAction = 'create' | 'read' | 'update' | 'delete' | 'list' | 'export' | 'certify' | 'approve';
+
+// Resource types
+export type Resource =
+    | 'sme'
+    | 'investor'
+    | 'advisor'
+    | 'deal'
+    | 'document'
+    | 'user'
+    | 'tenant'
+    | 'workflow'
+    | 'certification'
+    | 'report'
+    | 'settings'
+    | 'audit_log'
+    | 'matchmaking';
+
+// Special permission modifiers
+const OWNER_SUFFIX = ':owner';
+
+/**
+ * Role Hierarchy - Higher roles inherit permissions from lower roles
+ */
+export const ROLE_HIERARCHY: Record<UserRole, UserRole[]> = {
+    SUPER_ADMIN: ['ADMIN', 'ADVISOR', 'SUPPORT'],  // Inherits all
+    ADMIN: ['ADVISOR'],                             // Inherits ADVISOR permissions
+    ADVISOR: [],                                    // Base advisory role
+    SUPPORT: [],                                    // Read-only role
+    INVESTOR: [],                                   // Resource owner role
+    SME: [],                                        // Resource owner role
+};
+
+/**
+ * Centralized Permission Definitions
+ * 
+ * Format: 'resource.action': [roles that have this permission]
+ * Use ':owner' suffix for owner-only access
+ */
+export const PERMISSIONS: Record<string, string[]> = {
+    // ==================== SME Permissions ====================
+    'sme.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR'],
+    'sme.read': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR', 'SME:owner'],
+    'sme.create': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
+    'sme.update': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SME:owner'],
+    'sme.delete': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
+    'sme.export': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
+    'sme.certify': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
+
+    // ==================== Investor Permissions ====================
+    'investor.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'SME', 'INVESTOR'],
+    'investor.read': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'SME', 'INVESTOR:owner'],
+    'investor.create': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
+    'investor.update': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR:owner'],
+    'investor.delete': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
+    'investor.export': ['SUPER_ADMIN', 'ADMIN'],
+
+    // ==================== Advisor Permissions ====================
+    'advisor.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT'],
+    'advisor.read': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR:owner', 'SUPPORT'],
+    'advisor.create': ['SUPER_ADMIN', 'ADMIN'],
+    'advisor.update': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR:owner'],
+    'advisor.delete': ['SUPER_ADMIN', 'ADMIN'],
+
+    // ==================== Deal Permissions ====================
+    'deal.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR', 'SME'],
+    'deal.read': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR', 'SME:owner'],
+    'deal.create': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR'],
+    'deal.update': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR:owner'],
+    'deal.delete': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
+    'deal.approve': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
+
+    // ==================== Document Permissions ====================
+    'document.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR', 'SME'],
+    'document.read': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR', 'SME:owner'],
+    'document.create': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SME:owner'],
+    'document.update': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SME:owner'],
+    'document.delete': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SME:owner'],
+    'document.download': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR', 'SME:owner'],
+
+    // ==================== User Permissions ====================
+    'user.list': ['SUPER_ADMIN', 'ADMIN'],
+    'user.read': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR:owner', 'INVESTOR:owner', 'SME:owner'],
+    'user.create': ['SUPER_ADMIN', 'ADMIN'],
+    'user.update': ['SUPER_ADMIN', 'ADMIN'],
+    'user.delete': ['SUPER_ADMIN'],
+    'user.suspend': ['SUPER_ADMIN', 'ADMIN'],
+
+    // ==================== Tenant Permissions ====================
+    'tenant.list': ['SUPER_ADMIN'],
+    'tenant.read': ['SUPER_ADMIN', 'ADMIN'],
+    'tenant.create': ['SUPER_ADMIN'],
+    'tenant.update': ['SUPER_ADMIN'],
+    'tenant.delete': ['SUPER_ADMIN'],
+
+    // ==================== Workflow Permissions ====================
+    'workflow.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT'],
+    'workflow.read': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'SME:owner', 'INVESTOR:owner'],
+    'workflow.create': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
+    'workflow.update': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
+    'workflow.approve': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
+
+    // ==================== Certification Permissions ====================
+    'certification.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT'],
+    'certification.read': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'SME:owner'],
+    'certification.create': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
+    'certification.update': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
+    'certification.approve': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
+
+    // ==================== Report Permissions ====================
+    'report.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
+    'report.read': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
+    'report.create': ['SUPER_ADMIN', 'ADMIN'],
+    'report.export': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
+    'report.financial': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
+    'report.analytics': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
+
+    // ==================== Settings Permissions ====================
+    'settings.read': ['SUPER_ADMIN', 'ADMIN'],
+    'settings.update': ['SUPER_ADMIN', 'ADMIN'],
+    'settings.system': ['SUPER_ADMIN'],
+
+    // ==================== Audit Log Permissions ====================
+    'audit_log.list': ['SUPER_ADMIN', 'ADMIN'],
+    'audit_log.read': ['SUPER_ADMIN', 'ADMIN'],
+    'audit_log.export': ['SUPER_ADMIN'],
+
+    // ==================== Matchmaking Permissions ====================
+    'matchmaking.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
+    'matchmaking.read': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
+    'matchmaking.express_interest': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
+    'matchmaking.create_match': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
+};
+
+/**
+ * Permission context for checking access
+ */
+export interface PermissionContext {
+    userId: string;
+    userRole: UserRole;
+    tenantId?: string;
+    resourceOwnerId?: string;
+    resourceId?: string;
+}
+
+/**
+ * Check if a user has a specific permission
+ * 
+ * @param ctx - Permission context with user info
+ * @param permission - Permission string (e.g., 'sme.create')
+ * @returns boolean indicating if user has permission
+ */
+export function hasPermission(ctx: PermissionContext, permission: string): boolean {
+    const { userId, userRole, resourceOwnerId } = ctx;
+
+    // Get allowed roles for this permission
+    const allowedRoles = PERMISSIONS[permission];
+
+    if (!allowedRoles) {
+        console.warn(`Unknown permission: ${permission}`);
+        return false;
+    }
+
+    // Check if user's role (or inherited roles) have direct permission
+    if (allowedRoles.includes(userRole)) {
+        return true;
+    }
+
+    // Check inherited roles
+    const inheritedRoles = getInheritedRoles(userRole);
+    for (const inheritedRole of inheritedRoles) {
+        if (allowedRoles.includes(inheritedRole)) {
+            return true;
+        }
+    }
+
+    // Check owner-based permission
+    if (resourceOwnerId && resourceOwnerId === userId) {
+        const ownerPermission = `${userRole}${OWNER_SUFFIX}`;
+        if (allowedRoles.includes(ownerPermission)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Get all roles that a user inherits from
+ */
+export function getInheritedRoles(role: UserRole): UserRole[] {
+    const inherited: UserRole[] = [];
+    const directInheritance = ROLE_HIERARCHY[role] || [];
+
+    for (const inheritedRole of directInheritance) {
+        inherited.push(inheritedRole);
+        // Recursively get inherited roles
+        inherited.push(...getInheritedRoles(inheritedRole));
+    }
+
+    return [...new Set(inherited)]; // Remove duplicates
+}
+
+/**
+ * Check if a role can perform an action on a resource
+ * Convenience function for common checks
+ */
+export function canPerformAction(
+    userRole: UserRole,
+    resource: Resource,
+    action: PermissionAction,
+    isOwner: boolean = false,
+    userId?: string
+): boolean {
+    const permission = `${resource}.${action}`;
+    return hasPermission({
+        userId: userId || '',
+        userRole,
+        resourceOwnerId: isOwner ? userId : undefined,
+    }, permission);
+}
+
+/**
+ * Get all permissions for a specific role
+ */
+export function getPermissionsForRole(role: UserRole): string[] {
+    const permissions: string[] = [];
+
+    for (const [permission, allowedRoles] of Object.entries(PERMISSIONS)) {
+        // Direct permission
+        if (allowedRoles.includes(role)) {
+            permissions.push(permission);
+            continue;
+        }
+
+        // Inherited permission
+        const inherited = getInheritedRoles(role);
+        if (inherited.some(r => allowedRoles.includes(r))) {
+            permissions.push(permission);
+            continue;
+        }
+
+        // Owner permission
+        if (allowedRoles.includes(`${role}${OWNER_SUFFIX}`)) {
+            permissions.push(`${permission} (owner only)`);
+        }
+    }
+
+    return permissions;
+}
+
+/**
+ * Permission check result with details
+ */
+export interface PermissionCheckResult {
+    allowed: boolean;
+    permission: string;
+    reason: 'direct' | 'inherited' | 'owner' | 'denied';
+    checkedAt: Date;
+}
+
+/**
+ * Detailed permission check with logging support
+ */
+export function checkPermissionDetailed(
+    ctx: PermissionContext,
+    permission: string
+): PermissionCheckResult {
+    const { userId, userRole, resourceOwnerId } = ctx;
+    const allowedRoles = PERMISSIONS[permission] || [];
+
+    // Direct role check
+    if (allowedRoles.includes(userRole)) {
+        return {
+            allowed: true,
+            permission,
+            reason: 'direct',
+            checkedAt: new Date(),
+        };
+    }
+
+    // Inherited role check
+    const inheritedRoles = getInheritedRoles(userRole);
+    for (const inheritedRole of inheritedRoles) {
+        if (allowedRoles.includes(inheritedRole)) {
+            return {
+                allowed: true,
+                permission,
+                reason: 'inherited',
+                checkedAt: new Date(),
+            };
+        }
+    }
+
+    // Owner check
+    if (resourceOwnerId && resourceOwnerId === userId) {
+        const ownerPermission = `${userRole}${OWNER_SUFFIX}`;
+        if (allowedRoles.includes(ownerPermission)) {
+            return {
+                allowed: true,
+                permission,
+                reason: 'owner',
+                checkedAt: new Date(),
+            };
+        }
+    }
+
+    return {
+        allowed: false,
+        permission,
+        reason: 'denied',
+        checkedAt: new Date(),
+    };
+}
+
+/**
+ * Export permission groups for UI
+ */
+export const PERMISSION_GROUPS = {
+    SME_MANAGEMENT: ['sme.list', 'sme.read', 'sme.create', 'sme.update', 'sme.delete', 'sme.certify'],
+    INVESTOR_MANAGEMENT: ['investor.list', 'investor.read', 'investor.create', 'investor.update', 'investor.delete'],
+    DEAL_MANAGEMENT: ['deal.list', 'deal.read', 'deal.create', 'deal.update', 'deal.delete', 'deal.approve'],
+    DOCUMENT_MANAGEMENT: ['document.list', 'document.read', 'document.create', 'document.delete', 'document.download'],
+    USER_MANAGEMENT: ['user.list', 'user.read', 'user.create', 'user.update', 'user.delete'],
+    SYSTEM_SETTINGS: ['settings.read', 'settings.update', 'settings.system'],
+    REPORTS: ['report.list', 'report.read', 'report.export', 'report.financial', 'report.analytics'],
+    MATCHMAKING: ['matchmaking.list', 'matchmaking.read', 'matchmaking.express_interest', 'matchmaking.create_match'],
+};
+
+export default {
+    PERMISSIONS,
+    ROLE_HIERARCHY,
+    PERMISSION_GROUPS,
+    hasPermission,
+    canPerformAction,
+    getPermissionsForRole,
+    checkPermissionDetailed,
+    getInheritedRoles,
+};
