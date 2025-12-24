@@ -251,8 +251,8 @@ export default function SyndicatesPage() {
                         key={status}
                         onClick={() => setFilter(status as any)}
                         className={`px-4 py-2 rounded-lg transition-all ${filter === status
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                             }`}
                     >
                         {status === 'all' ? 'All' : status}
@@ -279,12 +279,14 @@ export default function SyndicatesPage() {
                             </div>
 
                             {/* Lead Investor */}
-                            <div className="flex items-center gap-2 mb-4">
-                                <Star className="w-4 h-4 text-amber-400" />
-                                <span className="text-sm text-gray-400">Lead Investor:</span>
-                                <span className="text-sm text-white font-medium">{syndicate.leadInvestor.name}</span>
-                                <span className="text-xs text-gray-500">({syndicate.leadInvestor.type})</span>
-                            </div>
+                            {syndicate.leadInvestor && (
+                                <div className="flex items-center gap-2 mb-4">
+                                    <Star className="w-4 h-4 text-amber-400" />
+                                    <span className="text-sm text-gray-400">Lead Investor:</span>
+                                    <span className="text-sm text-white font-medium">{syndicate.leadInvestor.name}</span>
+                                    <span className="text-xs text-gray-500">({syndicate.leadInvestor.type})</span>
+                                </div>
+                            )}
 
                             {/* Deal Info */}
                             {syndicate.deal && (
