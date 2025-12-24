@@ -23,6 +23,8 @@ import syndicateRoutes from './routes/syndicates';
 import dueDiligenceRoutes from './routes/duediligence';
 import communityRoutes from './routes/community';
 import secondaryTradingRoutes from './routes/secondary-trading';
+import notificationRoutes from './routes/notifications';
+import dashboardRoutes from './routes/dashboard';
 
 // Load environment variables
 dotenv.config();
@@ -3556,6 +3558,8 @@ app.use('/api/syndicates', syndicateRoutes);
 app.use('/api/due-diligence', dueDiligenceRoutes);
 app.use('/api/community', communityRoutes);
 app.use('/api/secondary-trading', secondaryTradingRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
