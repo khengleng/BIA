@@ -54,10 +54,35 @@ router.get('/posts', async (req: AuthenticatedRequest, res: Response): Promise<v
             prisma.communityPost.count({ where })
         ]);
 
-        // Transform for frontend (add author info from authorId)
-        const result = posts.map(p => ({
+        // Fetch author info for each post
+        const authorIds = [...new Set(posts.map(p => p.authorId))] as string[];
+        const authors = await prisma.user.findMany({
+            where: { id: { in: authorIds } },
+            select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                role: true
+            }
+        });
+        const authorMap = new Map(authors.map(a => [a.id, {
+            id: a.id,
+            name: `${a.firstName} ${a.lastName}`,
+            role: a.role,
+            avatar: null
+        }]));
+
+        // Transform for frontend
+        const result = posts.map((p: any) => ({
             ...p,
-            commentCount: p._count.comments
+            commentCount: p._count.comments,
+            author: authorMap.get(p.authorId) || {
+                id: p.authorId,
+                name: 'Unknown User',
+                role: 'USER',
+                avatar: null
+            },
+            isAnnouncement: p.category === 'ANNOUNCEMENT'
         }));
 
         res.json({
