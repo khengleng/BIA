@@ -1136,58 +1136,131 @@ app.post('/api/auth/register', registrationLimiter, async (req, res) => {
       return;
     }
 
-    // Check if user already exists
-    const existingUser = users.find(u => u.email === email);
-
-    if (existingUser) {
-      res.status(409).json({
-        error: 'User already exists with this email'
-      });
-      return;
-    }
+    // Check if we should use database
+    const useDatabase = await shouldUseDatabase();
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // Create user
-    const user = {
-      id: `user_${Date.now()}`,
-      email,
-      password: hashedPassword,
-      role,
-      firstName,
-      lastName,
-      tenantId: 'default',
-      createdAt: new Date()
-    };
+    let user: any;
 
-    users.push(user);
+    if (useDatabase) {
+      // Check if user already exists in database
+      const existingUser = await prisma.user.findUnique({
+        where: {
+          tenantId_email: {
+            tenantId: 'default',
+            email: email
+          }
+        }
+      });
 
-    // Create role-specific profile
-    if (role === 'SME') {
-      const sme = {
-        id: `sme_${Date.now()}`,
-        userId: user.id,
+      if (existingUser) {
+        res.status(409).json({
+          error: 'User already exists with this email'
+        });
+        return;
+      }
+
+      // Create user in database
+      user = await prisma.user.create({
+        data: {
+          email,
+          password: hashedPassword,
+          role,
+          firstName,
+          lastName,
+          tenantId: 'default',
+        }
+      });
+
+      // Create role-specific profile in database
+      if (role === 'SME') {
+        await prisma.sME.create({
+          data: {
+            userId: user.id,
+            tenantId: 'default',
+            name: `${firstName} ${lastName}`,
+            sector: 'Technology',
+            stage: 'SEED',
+            fundingRequired: 100000,
+            description: 'New SME registration',
+            status: 'DRAFT',
+          }
+        });
+      } else if (role === 'INVESTOR') {
+        await prisma.investor.create({
+          data: {
+            userId: user.id,
+            tenantId: 'default',
+            name: `${firstName} ${lastName}`,
+            type: 'ANGEL',
+            kycStatus: 'PENDING',
+            preferences: {},
+            portfolio: [],
+          }
+        });
+      } else if (role === 'ADVISOR') {
+        await prisma.advisor.create({
+          data: {
+            userId: user.id,
+            tenantId: 'default',
+            name: `${firstName} ${lastName}`,
+            specialization: [],
+            certificationList: [],
+          }
+        });
+      }
+    } else {
+      // Fallback to in-memory
+      const existingUser = users.find(u => u.email === email);
+
+      if (existingUser) {
+        res.status(409).json({
+          error: 'User already exists with this email'
+        });
+        return;
+      }
+
+      user = {
+        id: `user_${Date.now()}`,
+        email,
+        password: hashedPassword,
+        role,
+        firstName,
+        lastName,
         tenantId: 'default',
-        name: `${firstName} ${lastName}`,
-        sector: 'Technology',
-        stage: 'SEED',
-        fundingRequired: 100000,
-        description: 'New SME registration',
         createdAt: new Date()
       };
-      smes.push(sme);
-    } else if (role === 'INVESTOR') {
-      const investor = {
-        id: `investor_${Date.now()}`,
-        userId: user.id,
-        tenantId: 'default',
-        name: `${firstName} ${lastName}`,
-        type: 'ANGEL',
-        kycStatus: 'PENDING',
-        createdAt: new Date()
-      };
-      investors.push(investor);
+
+      users.push(user);
+
+      // Create role-specific profile in memory
+      if (role === 'SME') {
+        const sme = {
+          id: `sme_${Date.now()}`,
+          userId: user.id,
+          tenantId: 'default',
+          name: `${firstName} ${lastName}`,
+          sector: 'Technology',
+          stage: 'SEED',
+          fundingRequired: 100000,
+          description: 'New SME registration',
+          createdAt: new Date()
+        };
+        smes.push(sme);
+      } else if (role === 'INVESTOR') {
+        const investor = {
+          id: `investor_${Date.now()}`,
+          userId: user.id,
+          tenantId: 'default',
+          name: `${firstName} ${lastName}`,
+          type: 'ANGEL',
+          kycStatus: 'PENDING',
+          createdAt: new Date()
+        };
+        investors.push(investor);
+      }
     }
 
     // Generate JWT token
