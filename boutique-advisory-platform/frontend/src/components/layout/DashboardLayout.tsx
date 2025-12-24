@@ -77,27 +77,33 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
 
     const navItems = [
-        { href: '/dashboard', label: 'Dashboard', icon: BarChart3 },
-        { href: '/analytics', label: 'Analytics', icon: TrendingUp },
-        { href: '/smes', label: 'SMEs', icon: Building2 },
-        { href: '/investors', label: 'Investors', icon: Users },
-        { href: '/deals', label: 'Deals', icon: Handshake },
-        { href: '/pipeline', label: 'Pipeline', icon: KanbanSquare },
-        { href: '/matchmaking', label: 'Matchmaking', icon: Sparkles },
-        { href: '/messages', label: 'Messages', icon: MessageSquare },
-        { href: '/calendar', label: 'Calendar', icon: Calendar },
-        { href: '/dataroom', label: 'Data Room', icon: FolderLock },
-        { href: '/advisory', label: 'Advisory', icon: Award },
-        { href: '/reports', label: 'Reports', icon: FileText },
+        { href: '/dashboard', label: 'Dashboard', icon: BarChart3, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
+        { href: '/analytics', label: 'Analytics', icon: TrendingUp, roles: ['ADMIN', 'ADVISOR', 'INVESTOR'] },
+        { href: '/smes', label: 'SMEs', icon: Building2, roles: ['ADMIN', 'ADVISOR', 'INVESTOR'] },
+        { href: '/investors', label: 'Investors', icon: Users, roles: ['ADMIN', 'ADVISOR', 'SME'] },
+        { href: '/deals', label: 'Deals', icon: Handshake, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
+        { href: '/pipeline', label: 'Pipeline', icon: KanbanSquare, roles: ['ADMIN', 'ADVISOR'] },
+        { href: '/matchmaking', label: 'Matchmaking', icon: Sparkles, roles: ['ADMIN', 'ADVISOR'] },
+        { href: '/messages', label: 'Messages', icon: MessageSquare, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
+        { href: '/calendar', label: 'Calendar', icon: Calendar, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
+        { href: '/dataroom', label: 'Data Room', icon: FolderLock, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
+        { href: '/advisory', label: 'Advisory', icon: Award, roles: ['ADMIN', 'ADVISOR'] },
+        { href: '/reports', label: 'Reports', icon: FileText, roles: ['ADMIN', 'ADVISOR'] },
         // New Features Section
-        { href: '', label: '― New Features ―', icon: null, divider: true },
-        { href: '/syndicates', label: 'Syndicates', icon: UsersRound, isNew: true },
-        { href: '/due-diligence', label: 'Due Diligence', icon: Shield, isNew: true },
-        { href: '/community', label: 'Community', icon: MessagesSquare, isNew: true },
-        { href: '/secondary-trading', label: 'Trading', icon: ArrowLeftRight, isNew: true },
+        { href: '', label: '― New Features ―', icon: null, divider: true, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
+        { href: '/syndicates', label: 'Syndicates', icon: UsersRound, isNew: true, roles: ['ADMIN', 'ADVISOR', 'INVESTOR'] },
+        { href: '/due-diligence', label: 'Due Diligence', icon: Shield, isNew: true, roles: ['ADMIN', 'ADVISOR'] },
+        { href: '/community', label: 'Community', icon: MessagesSquare, isNew: true, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
+        { href: '/secondary-trading', label: 'Trading', icon: ArrowLeftRight, isNew: true, roles: ['ADMIN', 'ADVISOR', 'INVESTOR'] },
         // Settings at the end
-        { href: '/settings', label: 'Settings', icon: Settings },
+        { href: '/settings', label: 'Settings', icon: Settings, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
     ]
+
+    // Filter nav items based on user role
+    const filteredNavItems = navItems.filter(item => {
+        if (!item.roles) return true;
+        return user && item.roles.includes(user.role);
+    });
 
     if (isLoading) {
         return (
@@ -140,7 +146,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 </div>
 
                 <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-                    {navItems.map((item, index) => {
+                    {filteredNavItems.map((item, index) => {
                         // Handle divider items
                         if ((item as any).divider) {
                             return (
