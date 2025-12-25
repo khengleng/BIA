@@ -227,7 +227,7 @@ export default function SecondaryTradingPage() {
                             <Briefcase className="w-4 h-4" />
                             Active Listings
                         </div>
-                        <p className="text-2xl font-bold text-white">{stats.activeListings}</p>
+                        <p className="text-2xl font-bold text-white">{stats.activeListings || 0}</p>
                     </div>
 
                     <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
@@ -235,7 +235,7 @@ export default function SecondaryTradingPage() {
                             <DollarSign className="w-4 h-4" />
                             Total Value
                         </div>
-                        <p className="text-2xl font-bold text-white">${(stats.totalListingValue / 1000).toFixed(0)}K</p>
+                        <p className="text-2xl font-bold text-white">${((stats.totalListingValue || 0) / 1000).toFixed(0)}K</p>
                     </div>
 
                     <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
@@ -243,7 +243,7 @@ export default function SecondaryTradingPage() {
                             <CheckCircle2 className="w-4 h-4" />
                             Completed Trades
                         </div>
-                        <p className="text-2xl font-bold text-white">{stats.completedTrades}</p>
+                        <p className="text-2xl font-bold text-white">{stats.completedTrades || 0}</p>
                     </div>
 
                     <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
@@ -251,7 +251,7 @@ export default function SecondaryTradingPage() {
                             <Activity className="w-4 h-4" />
                             Total Volume
                         </div>
-                        <p className="text-2xl font-bold text-white">${(stats.totalVolume / 1000).toFixed(0)}K</p>
+                        <p className="text-2xl font-bold text-white">${((stats.totalVolume || 0) / 1000).toFixed(0)}K</p>
                     </div>
 
                     <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
@@ -259,8 +259,8 @@ export default function SecondaryTradingPage() {
                             <TrendingUp className="w-4 h-4" />
                             Avg Return
                         </div>
-                        <p className={`text-2xl font-bold ${stats.avgReturn >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                            {stats.avgReturn >= 0 ? '+' : ''}{stats.avgReturn.toFixed(1)}%
+                        <p className={`text-2xl font-bold ${(stats.avgReturn || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {(stats.avgReturn || 0) >= 0 ? '+' : ''}{(stats.avgReturn || 0).toFixed(1)}%
                         </p>
                     </div>
 
@@ -269,7 +269,7 @@ export default function SecondaryTradingPage() {
                             <BarChart3 className="w-4 h-4" />
                             24h Volume
                         </div>
-                        <p className="text-2xl font-bold text-white">${stats.last24hVolume.toFixed(0)}</p>
+                        <p className="text-2xl font-bold text-white">${(stats.last24hVolume || 0).toFixed(0)}</p>
                     </div>
                 </div>
             )}
@@ -279,8 +279,8 @@ export default function SecondaryTradingPage() {
                 <button
                     onClick={() => setActiveTab('marketplace')}
                     className={`pb-3 px-1 text-sm font-medium transition-colors relative ${activeTab === 'marketplace'
-                            ? 'text-blue-400'
-                            : 'text-gray-400 hover:text-white'
+                        ? 'text-blue-400'
+                        : 'text-gray-400 hover:text-white'
                         }`}
                 >
                     <div className="flex items-center gap-2">
@@ -294,8 +294,8 @@ export default function SecondaryTradingPage() {
                 <button
                     onClick={() => setActiveTab('my-trades')}
                     className={`pb-3 px-1 text-sm font-medium transition-colors relative ${activeTab === 'my-trades'
-                            ? 'text-blue-400'
-                            : 'text-gray-400 hover:text-white'
+                        ? 'text-blue-400'
+                        : 'text-gray-400 hover:text-white'
                         }`}
                 >
                     <div className="flex items-center gap-2">
@@ -343,7 +343,7 @@ export default function SecondaryTradingPage() {
                                     <div className="grid grid-cols-3 gap-4 mb-4">
                                         <div className="bg-gray-700/50 rounded-lg p-3 text-center">
                                             <p className="text-xs text-gray-400 mb-1">Price/Share</p>
-                                            <p className="text-lg font-bold text-white">${listing.pricePerShare.toFixed(2)}</p>
+                                            <p className="text-lg font-bold text-white">${(listing.pricePerShare || 0).toFixed(2)}</p>
                                             <div className={`flex items-center justify-center gap-1 text-xs ${listing.returnPercentage >= 0 ? 'text-green-400' : 'text-red-400'
                                                 }`}>
                                                 {listing.returnPercentage >= 0 ? (
@@ -351,7 +351,7 @@ export default function SecondaryTradingPage() {
                                                 ) : (
                                                     <ArrowDownRight className="w-3 h-3" />
                                                 )}
-                                                {listing.returnPercentage.toFixed(1)}%
+                                                {(listing.returnPercentage || 0).toFixed(1)}%
                                             </div>
                                         </div>
                                         <div className="bg-gray-700/50 rounded-lg p-3 text-center">
@@ -361,7 +361,7 @@ export default function SecondaryTradingPage() {
                                         </div>
                                         <div className="bg-gray-700/50 rounded-lg p-3 text-center">
                                             <p className="text-xs text-gray-400 mb-1">Total Value</p>
-                                            <p className="text-lg font-bold text-green-400">${(listing.totalValue / 1000).toFixed(1)}K</p>
+                                            <p className="text-lg font-bold text-green-400">${((listing.totalValue || 0) / 1000).toFixed(1)}K</p>
                                             <p className="text-xs text-gray-500">min ${listing.minPurchase}</p>
                                         </div>
                                     </div>
@@ -383,7 +383,7 @@ export default function SecondaryTradingPage() {
                                 {/* Action Footer */}
                                 <div className="px-5 py-4 bg-gray-800/80 border-t border-gray-700 flex justify-between items-center">
                                     <div className="text-sm text-gray-400">
-                                        Original: ${listing.originalPricePerShare.toFixed(2)}/share
+                                        Original: ${(listing.originalPricePerShare || 0).toFixed(2)}/share
                                     </div>
                                     {listing.status === 'ACTIVE' && listing.sellerId !== user?.id && (
                                         <button
@@ -429,13 +429,13 @@ export default function SecondaryTradingPage() {
                                         <div className="flex justify-between items-start mb-2">
                                             <div>
                                                 <p className="text-white font-medium">{trade.shares} shares</p>
-                                                <p className="text-sm text-gray-400">@ ${trade.pricePerShare.toFixed(2)}</p>
+                                                <p className="text-sm text-gray-400">@ ${(trade.pricePerShare || 0).toFixed(2)}</p>
                                             </div>
                                             {getStatusBadge(trade.status)}
                                         </div>
                                         <div className="flex justify-between text-sm">
                                             <span className="text-gray-400">Total:</span>
-                                            <span className="text-green-400 font-semibold">${trade.totalAmount.toFixed(2)}</span>
+                                            <span className="text-green-400 font-semibold">${(trade.totalAmount || 0).toFixed(2)}</span>
                                         </div>
                                         <div className="flex justify-between text-xs text-gray-500 mt-2">
                                             <span>From: {trade.seller.name}</span>
@@ -465,13 +465,13 @@ export default function SecondaryTradingPage() {
                                         <div className="flex justify-between items-start mb-2">
                                             <div>
                                                 <p className="text-white font-medium">{trade.shares} shares</p>
-                                                <p className="text-sm text-gray-400">@ ${trade.pricePerShare.toFixed(2)}</p>
+                                                <p className="text-sm text-gray-400">@ ${(trade.pricePerShare || 0).toFixed(2)}</p>
                                             </div>
                                             {getStatusBadge(trade.status)}
                                         </div>
                                         <div className="flex justify-between text-sm">
                                             <span className="text-gray-400">Net:</span>
-                                            <span className="text-blue-400 font-semibold">${trade.netAmount.toFixed(2)}</span>
+                                            <span className="text-blue-400 font-semibold">${(trade.netAmount || 0).toFixed(2)}</span>
                                         </div>
                                         <div className="flex justify-between text-xs text-gray-500 mt-2">
                                             <span>To: {trade.buyer.name}</span>
@@ -513,7 +513,7 @@ export default function SecondaryTradingPage() {
                             {/* Price Info */}
                             <div className="flex justify-between items-center">
                                 <span className="text-gray-400">Price per share:</span>
-                                <span className="text-xl font-bold text-white">${selectedListing.pricePerShare.toFixed(2)}</span>
+                                <span className="text-xl font-bold text-white">${(selectedListing.pricePerShare || 0).toFixed(2)}</span>
                             </div>
 
                             {/* Shares Input */}
@@ -538,7 +538,7 @@ export default function SecondaryTradingPage() {
                                 <div className="flex justify-between items-center">
                                     <span className="text-green-400">Total Cost:</span>
                                     <span className="text-2xl font-bold text-green-400">
-                                        ${(parseFloat(buyShares || '0') * selectedListing.pricePerShare).toFixed(2)}
+                                        ${(parseFloat(buyShares || '0') * (selectedListing.pricePerShare || 0)).toFixed(2)}
                                     </span>
                                 </div>
                                 <p className="text-xs text-gray-500 mt-1">+ 1% platform fee</p>

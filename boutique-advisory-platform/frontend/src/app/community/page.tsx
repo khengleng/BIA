@@ -308,8 +308,8 @@ export default function CommunityPage() {
                         <button
                             onClick={() => setActiveCategory('all')}
                             className={`px-4 py-2 rounded-lg transition-all flex items-center gap-2 ${activeCategory === 'all'
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                                 }`}
                         >
                             All Posts
@@ -319,8 +319,8 @@ export default function CommunityPage() {
                                 key={category}
                                 onClick={() => setActiveCategory(category)}
                                 className={`px-4 py-2 rounded-lg transition-all flex items-center gap-2 ${activeCategory === category
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                                     }`}
                             >
                                 <Icon className="w-4 h-4" />
@@ -343,14 +343,14 @@ export default function CommunityPage() {
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
                                             <span className="text-white font-semibold">
-                                                {post.author.name.charAt(0).toUpperCase()}
+                                                {(post.author?.name || 'U').charAt(0).toUpperCase()}
                                             </span>
                                         </div>
                                         <div>
                                             <div className="flex items-center gap-2">
-                                                <span className="text-white font-medium">{post.author.name}</span>
-                                                <span className={`text-xs ${roleColors[post.author.role] || 'text-gray-400'}`}>
-                                                    {post.author.role}
+                                                <span className="text-white font-medium">{post.author?.name || 'Unknown'}</span>
+                                                <span className={`text-xs ${roleColors[post.author?.role || ''] || 'text-gray-400'}`}>
+                                                    {post.author?.role || 'Member'}
                                                 </span>
                                             </div>
                                             <span className="text-xs text-gray-500">{formatDate(post.createdAt)}</span>
@@ -472,13 +472,13 @@ export default function CommunityPage() {
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
                                     <span className="text-white font-semibold">
-                                        {selectedPost.author.name.charAt(0).toUpperCase()}
+                                        {(selectedPost.author?.name || 'U').charAt(0).toUpperCase()}
                                     </span>
                                 </div>
                                 <div>
-                                    <span className="text-white font-medium">{selectedPost.author.name}</span>
-                                    <span className={`ml-2 text-xs ${roleColors[selectedPost.author.role]}`}>
-                                        {selectedPost.author.role}
+                                    <span className="text-white font-medium">{selectedPost.author?.name || 'Unknown'}</span>
+                                    <span className={`ml-2 text-xs ${roleColors[selectedPost.author?.role || ''] || 'text-gray-400'}`}>
+                                        {selectedPost.author?.role || 'Member'}
                                     </span>
                                     <p className="text-xs text-gray-500">{formatDate(selectedPost.createdAt)}</p>
                                 </div>
@@ -560,15 +560,15 @@ export default function CommunityPage() {
                                         <div key={comment.id} className="flex gap-3">
                                             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
                                                 <span className="text-white font-semibold text-sm">
-                                                    {comment.author.name.charAt(0).toUpperCase()}
+                                                    {(comment.author?.name || 'U').charAt(0).toUpperCase()}
                                                 </span>
                                             </div>
                                             <div className="flex-1">
                                                 <div className="bg-gray-700/50 rounded-lg p-3">
                                                     <div className="flex items-center gap-2 mb-1">
-                                                        <span className="text-white text-sm font-medium">{comment.author.name}</span>
-                                                        <span className={`text-xs ${roleColors[comment.author.role]}`}>
-                                                            {comment.author.role}
+                                                        <span className="text-white text-sm font-medium">{comment.author?.name || 'Unknown'}</span>
+                                                        <span className={`text-xs ${roleColors[comment.author?.role || ''] || 'text-gray-400'}`}>
+                                                            {comment.author?.role || 'Member'}
                                                         </span>
                                                         <span className="text-xs text-gray-500">{formatDate(comment.createdAt)}</span>
                                                     </div>

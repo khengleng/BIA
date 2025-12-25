@@ -26,7 +26,7 @@ export default function SMEsPage() {
   const { addToast } = useToast()
 
   // Use centralized permissions hook
-  const { canCreateSME, canEditSME, canDeleteSME, user, isAuthenticated } = usePermissions()
+  const { canCreateSME, canEditSME, canDeleteSME, user, isAuthenticated, isLoading: authLoading } = usePermissions()
 
   const [smes, setSmes] = useState<SME[]>([])
   const [filteredSmes, setFilteredSmes] = useState<SME[]>([])
@@ -53,13 +53,16 @@ export default function SMEsPage() {
 
   useEffect(() => {
     const fetchUserAndData = async () => {
-      try {
-        // Check authentication via hook
-        if (!isAuthenticated) {
-          router.push('/auth/login')
-          return
-        }
+      // Wait for auth to finish loading
+      if (authLoading) return;
 
+      // Check authentication via hook
+      if (!isAuthenticated) {
+        router.push('/auth/login')
+        return
+      }
+
+      try {
         const response = await authorizedRequest('/api/smes')
         if (response.ok) {
           const data = await response.json()
@@ -78,7 +81,7 @@ export default function SMEsPage() {
     }
 
     fetchUserAndData()
-  }, [router, addToast])
+  }, [router, addToast, authLoading, isAuthenticated])
 
   useEffect(() => {
     // Filter SMEs based on search query

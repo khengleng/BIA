@@ -126,7 +126,7 @@ const GradeCircle = ({ score }: { score: number }) => {
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className={`text-2xl font-bold ${color}`}>{grade}</span>
-                <span className="text-xs text-gray-400">{score.toFixed(0)}%</span>
+                <span className="text-xs text-gray-400">{(score || 0).toFixed(0)}%</span>
             </div>
         </div>
     )
@@ -249,7 +249,7 @@ export default function DueDiligencePage() {
                             </div>
                             <div>
                                 <p className="text-xs text-gray-400">Avg Score</p>
-                                <p className="text-xl font-bold text-white">{stats.averageScore.toFixed(1)}</p>
+                                <p className="text-xl font-bold text-white">{(stats.averageScore || 0).toFixed(1)}</p>
                             </div>
                         </div>
                     </div>
@@ -262,7 +262,7 @@ export default function DueDiligencePage() {
                             <div>
                                 <p className="text-xs text-gray-400">High Risk</p>
                                 <p className="text-xl font-bold text-white">
-                                    {stats.riskDistribution.HIGH + stats.riskDistribution.VERY_HIGH}
+                                    {(stats.riskDistribution?.HIGH || 0) + (stats.riskDistribution?.VERY_HIGH || 0)}
                                 </p>
                             </div>
                         </div>
@@ -275,14 +275,14 @@ export default function DueDiligencePage() {
                 <div className="bg-gray-800 rounded-xl p-6 border border-gray-700 mb-8">
                     <h3 className="text-lg font-semibold text-white mb-4">Risk Distribution</h3>
                     <div className="grid grid-cols-4 gap-4">
-                        {Object.entries(stats.riskDistribution).map(([level, count]) => {
+                        {stats.riskDistribution && Object.entries(stats.riskDistribution).map(([level, count]) => {
                             const colors = {
                                 LOW: 'bg-green-500',
                                 MEDIUM: 'bg-amber-500',
                                 HIGH: 'bg-orange-500',
                                 VERY_HIGH: 'bg-red-500'
                             }
-                            const percentage = stats.completed > 0 ? (count / stats.completed * 100) : 0
+                            const percentage = (stats.completed || 0) > 0 ? ((count || 0) / (stats.completed || 1) * 100) : 0
 
                             return (
                                 <div key={level} className="text-center">
@@ -310,8 +310,8 @@ export default function DueDiligencePage() {
                         key={status}
                         onClick={() => setFilter(status as any)}
                         className={`px-4 py-2 rounded-lg transition-all ${filter === status
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                             }`}
                     >
                         {status === 'all' ? 'All' : status.replace('_', ' ')}
@@ -337,11 +337,11 @@ export default function DueDiligencePage() {
 
                                     <div>
                                         <div className="flex items-center gap-3 mb-2">
-                                            <h3 className="text-xl font-bold text-white">{report.sme.name}</h3>
+                                            <h3 className="text-xl font-bold text-white">{report.sme?.name || 'Unknown SME'}</h3>
                                             <RiskBadge level={report.riskLevel} />
                                             <span className={`px-2 py-1 rounded text-xs ${report.status === 'COMPLETED' ? 'bg-green-500/20 text-green-400' :
-                                                    report.status === 'IN_PROGRESS' ? 'bg-blue-500/20 text-blue-400' :
-                                                        'bg-gray-500/20 text-gray-400'
+                                                report.status === 'IN_PROGRESS' ? 'bg-blue-500/20 text-blue-400' :
+                                                    'bg-gray-500/20 text-gray-400'
                                                 }`}>
                                                 {report.status}
                                             </span>
@@ -350,7 +350,7 @@ export default function DueDiligencePage() {
                                         <div className="flex items-center gap-4 text-sm text-gray-400">
                                             <span className="flex items-center gap-1">
                                                 <Building2 className="w-4 h-4" />
-                                                {report.sme.sector}
+                                                {report.sme?.sector || 'Unknown'}
                                             </span>
                                             {report.advisor && (
                                                 <span className="flex items-center gap-1">
