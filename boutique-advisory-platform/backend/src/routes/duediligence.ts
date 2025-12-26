@@ -6,7 +6,7 @@
 
 import { Router, Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
-import { prisma } from '../database';
+import { prisma, prismaReplica } from '../database';
 import { shouldUseDatabase } from '../migration-manager';
 import { RiskLevel, DueDiligenceStatus } from '@prisma/client';
 
@@ -72,7 +72,7 @@ router.get('/', async (req: AuthenticatedRequest, res: Response): Promise<void> 
 
         const { smeId, status, riskLevel } = req.query;
 
-        const dueDiligences = await prisma.dueDiligence.findMany({
+        const dueDiligences = await prismaReplica.dueDiligence.findMany({
             where: {
                 ...(smeId ? { smeId: smeId as string } : {}),
                 ...(status ? { status: status as DueDiligenceStatus } : {}),
@@ -111,7 +111,7 @@ router.get('/:id', async (req: AuthenticatedRequest, res: Response): Promise<voi
             return;
         }
 
-        const dd = await prisma.dueDiligence.findUnique({
+        const dd = await prismaReplica.dueDiligence.findUnique({
             where: { id: req.params.id },
             include: {
                 sme: {
@@ -152,7 +152,7 @@ router.get('/sme/:smeId', async (req: AuthenticatedRequest, res: Response): Prom
             return;
         }
 
-        const dd = await prisma.dueDiligence.findFirst({
+        const dd = await prismaReplica.dueDiligence.findFirst({
             where: {
                 smeId: req.params.smeId,
                 status: 'COMPLETED'
@@ -334,7 +334,7 @@ router.get('/:id/breakdown', async (req: AuthenticatedRequest, res: Response): P
             return;
         }
 
-        const dd = await prisma.dueDiligence.findUnique({
+        const dd = await prismaReplica.dueDiligence.findUnique({
             where: { id: req.params.id }
         });
 
@@ -380,13 +380,13 @@ router.get('/stats/overview', async (req: AuthenticatedRequest, res: Response): 
         }
 
         const [total, completed, pending, inProgress] = await Promise.all([
-            prisma.dueDiligence.count(),
-            prisma.dueDiligence.count({ where: { status: 'COMPLETED' } }),
-            prisma.dueDiligence.count({ where: { status: 'PENDING' } }),
-            prisma.dueDiligence.count({ where: { status: 'IN_PROGRESS' } })
+            prismaReplica.dueDiligence.count(),
+            prismaReplica.dueDiligence.count({ where: { status: 'COMPLETED' } }),
+            prismaReplica.dueDiligence.count({ where: { status: 'PENDING' } }),
+            prismaReplica.dueDiligence.count({ where: { status: 'IN_PROGRESS' } })
         ]);
 
-        const completedDDs = await prisma.dueDiligence.findMany({
+        const completedDDs = await prismaReplica.dueDiligence.findMany({
             where: { status: 'COMPLETED' },
             select: { overallScore: true, riskLevel: true }
         });

@@ -6,7 +6,7 @@
 
 import { Router, Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
-import { prisma } from '../database';
+import { prisma, prismaReplica } from '../database';
 import { shouldUseDatabase } from '../migration-manager';
 
 const router = Router();
@@ -30,7 +30,7 @@ router.get('/listings', async (req: AuthenticatedRequest, res: Response): Promis
         if (minPrice) where.pricePerShare = { ...where.pricePerShare, gte: parseFloat(minPrice as string) };
         if (maxPrice) where.pricePerShare = { ...where.pricePerShare, lte: parseFloat(maxPrice as string) };
 
-        const listings = await prisma.secondaryListing.findMany({
+        const listings = await prismaReplica.secondaryListing.findMany({
             where,
             include: {
                 trades: true
@@ -53,7 +53,7 @@ router.get('/listings/:id', async (req: AuthenticatedRequest, res: Response): Pr
             return;
         }
 
-        const listing = await prisma.secondaryListing.findUnique({
+        const listing = await prismaReplica.secondaryListing.findUnique({
             where: { id: req.params.id },
             include: {
                 trades: {
@@ -285,12 +285,12 @@ router.get('/trades/my', async (req: AuthenticatedRequest, res: Response): Promi
         }
 
         const [asBuyer, asSeller] = await Promise.all([
-            prisma.secondaryTrade.findMany({
+            prismaReplica.secondaryTrade.findMany({
                 where: { buyerId: investor.id },
                 include: { listing: true },
                 orderBy: { createdAt: 'desc' }
             }),
-            prisma.secondaryTrade.findMany({
+            prismaReplica.secondaryTrade.findMany({
                 where: { sellerId: investor.id },
                 include: { listing: true },
                 orderBy: { createdAt: 'desc' }
@@ -347,14 +347,14 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response): Promise<v
         }
 
         const [totalListings, activeListings, totalTrades, volumeResult, feeResult] = await Promise.all([
-            prisma.secondaryListing.count(),
-            prisma.secondaryListing.count({ where: { status: 'ACTIVE' } }),
-            prisma.secondaryTrade.count({ where: { status: 'COMPLETED' } }),
-            prisma.secondaryTrade.aggregate({
+            prismaReplica.secondaryListing.count(),
+            prismaReplica.secondaryListing.count({ where: { status: 'ACTIVE' } }),
+            prismaReplica.secondaryTrade.count({ where: { status: 'COMPLETED' } }),
+            prismaReplica.secondaryTrade.aggregate({
                 where: { status: 'COMPLETED' },
                 _sum: { totalAmount: true }
             }),
-            prisma.secondaryTrade.aggregate({
+            prismaReplica.secondaryTrade.aggregate({
                 where: { status: 'COMPLETED' },
                 _sum: { fee: true }
             })

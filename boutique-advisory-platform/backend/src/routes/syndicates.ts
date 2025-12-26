@@ -6,7 +6,7 @@
 
 import { Router, Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
-import { prisma } from '../database';
+import { prisma, prismaReplica } from '../database';
 import { shouldUseDatabase } from '../migration-manager';
 import { SyndicateStatus } from '@prisma/client';
 
@@ -14,7 +14,7 @@ const router = Router();
 
 // Helper to calculate raised amount from members
 async function calculateRaisedAmount(syndicateId: string): Promise<number> {
-    const result = await prisma.syndicateMember.aggregate({
+    const result = await prismaReplica.syndicateMember.aggregate({
         where: {
             syndicateId,
             status: 'APPROVED'
@@ -35,7 +35,7 @@ router.get('/', async (req: AuthenticatedRequest, res: Response): Promise<void> 
 
         const { status, leadInvestorId } = req.query;
 
-        const syndicates = await prisma.syndicate.findMany({
+        const syndicates = await prismaReplica.syndicate.findMany({
             where: {
                 ...(status ? { status: status as SyndicateStatus } : {}),
                 ...(leadInvestorId ? { leadInvestorId: leadInvestorId as string } : {})
@@ -85,7 +85,7 @@ router.get('/:id', async (req: AuthenticatedRequest, res: Response): Promise<voi
             return;
         }
 
-        const syndicate = await prisma.syndicate.findUnique({
+        const syndicate = await prismaReplica.syndicate.findUnique({
             where: { id: req.params.id },
             include: {
                 leadInvestor: {
@@ -335,7 +335,16 @@ router.post('/:id/members/:memberId/approve', async (req: AuthenticatedRequest, 
         });
 
         // Check if syndicate is now fully funded
-        const raisedAmount = await calculateRaisedAmount(req.params.id);
+        // We calculate sum manually here using the primary connection to be safe against replication lag
+        const result = await prisma.syndicateMember.aggregate({
+            where: {
+                syndicateId: req.params.id,
+                status: 'APPROVED'
+            },
+            _sum: { amount: true }
+        });
+        const raisedAmount = result._sum.amount || 0;
+
         if (raisedAmount >= syndicate.targetAmount) {
             await prisma.syndicate.update({
                 where: { id: req.params.id },
@@ -365,13 +374,13 @@ router.get('/stats/overview', async (req: AuthenticatedRequest, res: Response): 
         }
 
         const [totalSyndicates, openSyndicates, fundedSyndicates, totalMembers] = await Promise.all([
-            prisma.syndicate.count(),
-            prisma.syndicate.count({ where: { status: 'OPEN' } }),
-            prisma.syndicate.count({ where: { status: 'FUNDED' } }),
-            prisma.syndicateMember.count({ where: { status: 'APPROVED' } })
+            prismaReplica.syndicate.count(),
+            prismaReplica.syndicate.count({ where: { status: 'OPEN' } }),
+            prismaReplica.syndicate.count({ where: { status: 'FUNDED' } }),
+            prismaReplica.syndicateMember.count({ where: { status: 'APPROVED' } })
         ]);
 
-        const totalRaisedResult = await prisma.syndicateMember.aggregate({
+        const totalRaisedResult = await prismaReplica.syndicateMember.aggregate({
             where: { status: 'APPROVED' },
             _sum: { amount: true }
         });

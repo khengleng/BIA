@@ -6,7 +6,7 @@
 
 import { Router, Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
-import { prisma } from '../database';
+import { prisma, prismaReplica } from '../database';
 import { shouldUseDatabase } from '../migration-manager';
 
 const router = Router();
@@ -37,7 +37,7 @@ router.get('/posts', async (req: AuthenticatedRequest, res: Response): Promise<v
         }
 
         const [posts, total] = await Promise.all([
-            prisma.communityPost.findMany({
+            prismaReplica.communityPost.findMany({
                 where,
                 orderBy: [
                     { isPinned: 'desc' },
@@ -51,12 +51,12 @@ router.get('/posts', async (req: AuthenticatedRequest, res: Response): Promise<v
                     }
                 }
             }),
-            prisma.communityPost.count({ where })
+            prismaReplica.communityPost.count({ where })
         ]);
 
         // Fetch author info for each post
         const authorIds = [...new Set(posts.map(p => p.authorId))] as string[];
-        const authors = await prisma.user.findMany({
+        const authors = await prismaReplica.user.findMany({
             where: { id: { in: authorIds } },
             select: {
                 id: true,
@@ -106,7 +106,8 @@ router.get('/posts/:id', async (req: AuthenticatedRequest, res: Response): Promi
             return;
         }
 
-        const post = await prisma.communityPost.findUnique({
+        // Read from replica
+        const post = await prismaReplica.communityPost.findUnique({
             where: { id: req.params.id },
             include: {
                 comments: {
@@ -125,7 +126,7 @@ router.get('/posts/:id', async (req: AuthenticatedRequest, res: Response): Promi
             return;
         }
 
-        // Increment view count
+        // Increment view count on primary (fire and forget mostly, or await)
         await prisma.communityPost.update({
             where: { id: req.params.id },
             data: { views: { increment: 1 } }
@@ -354,16 +355,16 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response): Promise<v
         }
 
         const [totalPosts, totalComments, likesResult] = await Promise.all([
-            prisma.communityPost.count({ where: { status: 'PUBLISHED' } }),
-            prisma.comment.count(),
-            prisma.communityPost.aggregate({
+            prismaReplica.communityPost.count({ where: { status: 'PUBLISHED' } }),
+            prismaReplica.comment.count(),
+            prismaReplica.communityPost.aggregate({
                 where: { status: 'PUBLISHED' },
                 _sum: { likes: true }
             })
         ]);
 
         // Get category distribution
-        const categories = await prisma.communityPost.groupBy({
+        const categories = await prismaReplica.communityPost.groupBy({
             by: ['category'],
             where: { status: 'PUBLISHED' },
             _count: { category: true },
