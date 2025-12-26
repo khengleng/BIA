@@ -1,26 +1,25 @@
 # Multi-stage build for production
-FROM node:18-alpine AS deps
+FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --only=production
 
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM node:18-alpine AS runner
+FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV production
 
-# Copy necessary files
-COPY --from=builder /app/next.config.ts ./
-COPY --from=builder /app/public ./public
+# Copy necessary files from standalone build
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
 
 EXPOSE 3000
 
