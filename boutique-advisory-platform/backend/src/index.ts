@@ -8,6 +8,8 @@ import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import path from 'path';
 import rateLimit from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
+import { CookieOptions } from 'express';
 import { prisma, connectDatabase } from './database';
 import {
   checkMigrationStatus,
@@ -695,150 +697,19 @@ const calendarEvents: any[] = [
   }
 ];
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/');
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
-  }
-});
-
-const upload = multer({
-  storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = /pdf|doc|docx|xlsx|xls|jpg|jpeg|png/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
-    if (mimetype && extname) {
-      return cb(null, true);
-    } else {
-      cb(new Error('Only PDF, DOC, DOCX, XLSX, XLS, JPG, JPEG, PNG files are allowed'));
-    }
-  }
-});
-
-// CORS configuration - supports production, staging, and development
-const getCorsOrigins = (): (string | RegExp)[] | string => {
-  const env = process.env.NODE_ENV || 'development';
-  const frontendUrl = process.env.FRONTEND_URL;
-
-  // Development origins
-  const devOrigins: string[] = ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:1001'];
-
-  // Production origins
-  const prodOrigins: string[] = [
-    'https://frontend-production-deae.up.railway.app',
-    ...(frontendUrl ? [frontendUrl] : [])
-  ];
-
-  // Staging origins - uses FRONTEND_URL env var plus Railway staging patterns
-  const stagingOrigins: (string | RegExp)[] = [
-    ...(frontendUrl ? [frontendUrl] : []),
-    // Add common Railway staging patterns
-    /^https:\/\/frontend-staging-.*\.up\.railway\.app$/,
-    /^https:\/\/.*-staging\.up\.railway\.app$/
-  ];
-
-  switch (env) {
-    case 'production':
-      return prodOrigins;
-    case 'staging':
-      return stagingOrigins;
-    default:
-      return devOrigins;
-  }
-};
-
-// Middleware
-app.use(helmet());
-app.use(cors({
-  origin: getCorsOrigins(),
-  credentials: true
-}));
-app.use(morgan('combined'));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
-app.use('/uploads', express.static('uploads'));
-
-// Rate limiting configurations
-// General API rate limiter - 100 requests per 15 minutes
-const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  limit: 100,
-  standardHeaders: 'draft-7',
-  legacyHeaders: false,
-  message: { error: 'Too many requests, please try again later.' }
-});
-
-// Strict rate limiter for auth endpoints - 5 attempts per 15 minutes
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  limit: 5,
-  standardHeaders: 'draft-7',
-  legacyHeaders: false,
-  message: { error: 'Too many authentication attempts, please try again after 15 minutes.' },
-  skipSuccessfulRequests: true // Don't count successful logins
-});
-
-// Password reset limiter - 3 attempts per hour
-const passwordResetLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  limit: 3,
-  standardHeaders: 'draft-7',
-  legacyHeaders: false,
-  message: { error: 'Too many password reset attempts, please try again after 1 hour.' }
-});
-
-// Registration limiter - 3 registrations per hour per IP
-const registrationLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  limit: 3,
-  standardHeaders: 'draft-7',
-  legacyHeaders: false,
-  message: { error: 'Too many registration attempts, please try again after 1 hour.' }
-});
-
-// Apply general rate limiting to all API routes
-app.use('/api/', generalLimiter);
-
-// CAPTCHA verification helper function
-const verifyCaptcha = async (captchaToken: string): Promise<boolean> => {
-  // If no CAPTCHA secret is configured, skip verification (for development)
-  const captchaSecret = process.env.RECAPTCHA_SECRET_KEY;
-  if (!captchaSecret) {
-    console.log('⚠️ CAPTCHA verification skipped - RECAPTCHA_SECRET_KEY not configured');
-    return true;
-  }
-
-  try {
-    const response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `secret=${captchaSecret}&response=${captchaToken}`
-    });
-
-    const data = await response.json() as { success: boolean; score?: number };
-
-    // For reCAPTCHA v3, check score (0.0 - 1.0, higher is more likely human)
-    if (data.score !== undefined) {
-      return data.success && data.score >= 0.5;
-    }
-
-    // For reCAPTCHA v2
-    return data.success;
-  } catch (error) {
-    console.error('CAPTCHA verification error:', error);
-    return false;
-  }
-};
-
+// ============================================
+// MIDDLEWARE DEFINITIONS
+// ============================================
 
 // Authentication middleware
 const authenticateToken = async (req: express.Request, res: express.Response, next: express.NextFunction): Promise<void> => {
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  let token = authHeader && authHeader.split(' ')[1];
+
+  // Also check secure cookie if header is missing
+  if (!token && req.signedCookies) {
+    token = req.signedCookies['token'];
+  }
 
   if (!token) {
     res.status(401).json({ error: 'Access token required' });
@@ -934,6 +805,178 @@ const authorizeResourceAccess = (resourceType: 'sme' | 'investor' | 'deal') => {
   };
 };
 
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/');
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /pdf|doc|docx|xlsx|xls|jpg|jpeg|png/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Only PDF, DOC, DOCX, XLSX, XLS, JPG, JPEG, PNG files are allowed'));
+    }
+  }
+});
+
+// Protected file serve endpoint
+app.get('/uploads/:filename', authenticateToken, (req, res) => {
+  const filename = req.params.filename;
+  const filePath = path.join(__dirname, '../uploads', filename);
+
+  // Basic path traversal protection
+  if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+    res.status(400).json({ error: 'Invalid filename' });
+    return;
+  }
+
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      res.status(404).json({ error: 'File not found' });
+    }
+  });
+});
+
+// CORS configuration - supports production, staging, and development
+const getCorsOrigins = (): (string | RegExp)[] | string => {
+  const env = process.env.NODE_ENV || 'development';
+  const frontendUrl = process.env.FRONTEND_URL;
+
+  // Development origins
+  const devOrigins: string[] = ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:1001'];
+
+  // Production origins
+  const prodOrigins: string[] = [
+    'https://frontend-production-deae.up.railway.app',
+    ...(frontendUrl ? [frontendUrl] : [])
+  ];
+
+  // Staging origins - uses FRONTEND_URL env var plus Railway staging patterns
+  const stagingOrigins: (string | RegExp)[] = [
+    ...(frontendUrl ? [frontendUrl] : []),
+    // Add common Railway staging patterns
+    /^https:\/\/frontend-staging-.*\.up\.railway\.app$/,
+    /^https:\/\/.*-staging\.up\.railway\.app$/
+  ];
+
+  switch (env) {
+    case 'production':
+      return prodOrigins;
+    case 'staging':
+      return stagingOrigins;
+    default:
+      return devOrigins;
+  }
+};
+
+// Middleware
+app.use(helmet());
+app.use(cors({
+  origin: getCorsOrigins(),
+  credentials: true
+}));
+app.use(morgan('combined'));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser(process.env.COOKIE_SECRET || 'cookie-secret-key'));
+// app.use('/uploads', express.static('uploads')); // VULNERABILITY: Disable public access to uploads
+
+const COOKIE_OPTIONS: CookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production', // true in production
+  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' for cross-domain in prod
+  signed: true,
+  maxAge: 24 * 60 * 60 * 1000 // 24 hours
+};
+
+// Rate limiting configurations
+// General API rate limiter - 100 requests per 15 minutes
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 100,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' }
+});
+
+// Apply global rate limiting
+app.use(generalLimiter);
+
+// Strict rate limiter for auth endpoints - 5 attempts per 15 minutes
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 5,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: 'Too many authentication attempts, please try again after 15 minutes.' },
+  skipSuccessfulRequests: true // Don't count successful logins
+});
+
+// Password reset limiter - 3 attempts per hour
+const passwordResetLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  limit: 3,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: 'Too many password reset attempts, please try again after 1 hour.' }
+});
+
+// Registration limiter - 3 registrations per hour per IP
+const registrationLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  limit: 3,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: 'Too many registration attempts, please try again after 1 hour.' }
+});
+
+// Apply general rate limiting to all API routes
+app.use('/api/', generalLimiter);
+
+// CAPTCHA verification helper function
+const verifyCaptcha = async (captchaToken: string): Promise<boolean> => {
+  // If no CAPTCHA secret is configured, skip verification (for development)
+  const captchaSecret = process.env.RECAPTCHA_SECRET_KEY;
+  if (!captchaSecret) {
+    console.log('⚠️ CAPTCHA verification skipped - RECAPTCHA_SECRET_KEY not configured');
+    return true;
+  }
+
+  try {
+    const response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `secret=${captchaSecret}&response=${captchaToken}`
+    });
+
+    const data = await response.json() as { success: boolean; score?: number };
+
+    // For reCAPTCHA v3, check score (0.0 - 1.0, higher is more likely human)
+    if (data.score !== undefined) {
+      return data.success && data.score >= 0.5;
+    }
+
+    // For reCAPTCHA v2
+    return data.success;
+  } catch (error) {
+    console.error('CAPTCHA verification error:', error);
+    return false;
+  }
+};
+
+
+// Middleware definitions have been moved up.
+
 // Migration management endpoints
 app.get('/api/migration/status', async (req, res) => {
   try {
@@ -1016,6 +1059,10 @@ app.post('/api/migration/fallback-to-memory', (req, res) => {
 
 // Test endpoint to get login tokens for testing
 app.get('/api/test/tokens', (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    res.status(404).json({ error: 'Not found' });
+    return;
+  }
   try {
     const tokens = {
       admin: jwt.sign(
@@ -1270,9 +1317,12 @@ app.post('/api/auth/register', registrationLimiter, async (req, res) => {
       { expiresIn: '24h' }
     );
 
+    // Set secure cookie
+    res.cookie('token', token, COOKIE_OPTIONS);
+
     res.status(201).json({
       message: 'User registered successfully',
-      token,
+      token, // Keep returning token for non-browser clients or backward compatibility
       user: {
         id: user.id,
         email: user.email,
@@ -1349,9 +1399,12 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
       { expiresIn: '24h' }
     );
 
+    // Set secure cookie
+    res.cookie('token', token, COOKIE_OPTIONS);
+
     res.status(200).json({
       message: 'Login successful',
-      token,
+      token, // Keep returning token for non-browser clients or backward compatibility
       user: {
         id: user.id,
         email: user.email,
@@ -1364,6 +1417,17 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+// Logout endpoint
+app.post('/api/auth/logout', (req, res) => {
+  res.clearCookie('token', COOKIE_OPTIONS);
+  res.json({ message: 'Logged out successfully' });
+});
+
+// Session check endpoint
+app.get('/api/auth/me', authenticateToken, (req, res) => {
+  res.json({ user: req.user });
 });
 
 // Forgot Password endpoint
@@ -3627,12 +3691,12 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 // ============================================
 // NEW FEATURE ROUTES
 // ============================================
-app.use('/api/syndicates', syndicateRoutes);
-app.use('/api/due-diligence', dueDiligenceRoutes);
-app.use('/api/community', communityRoutes);
-app.use('/api/secondary-trading', secondaryTradingRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/syndicates', authenticateToken, syndicateRoutes);
+app.use('/api/due-diligence', authenticateToken, dueDiligenceRoutes);
+app.use('/api/community', authenticateToken, communityRoutes);
+app.use('/api/secondary-trading', authenticateToken, secondaryTradingRoutes);
+app.use('/api/notifications', authenticateToken, notificationRoutes);
+app.use('/api/dashboard', authenticateToken, dashboardRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

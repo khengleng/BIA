@@ -1,23 +1,42 @@
 import { PrismaClient } from '@prisma/client'
 
-declare global {
-  var __prisma: PrismaClient | undefined
-}
-
-export const prisma = globalThis.__prisma || new PrismaClient({
+// Primary Client (Read/Write)
+export const prisma = new PrismaClient({
   log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL
+    }
+  }
 })
 
-if (process.env.NODE_ENV !== 'production') {
-  globalThis.__prisma = prisma
-}
+// Replica Client (Read Only)
+// Falls back to primary if replica URL is not configured
+const replicaUrl = process.env.DATABASE_URL_REPLICA || process.env.DATABASE_URL
+
+export const prismaReplica = new PrismaClient({
+  log: ['error'],
+  datasources: {
+    db: {
+      url: replicaUrl
+    }
+  }
+})
 
 export async function connectDatabase() {
   try {
+    // Connect access to primary
     await prisma.$connect()
-    console.log('✅ Database connected successfully')
+    console.log('✅ Primary Database connected successfully')
+
+    // Connect access to replica if distinct
+    if (process.env.DATABASE_URL_REPLICA) {
+      await prismaReplica.$connect()
+      console.log('✅ Replica Database connected successfully')
+    }
   } catch (error) {
     console.error('❌ Database connection failed:', error)
+    // Critical failure if primary cannot connect
     throw error
   }
 }
@@ -25,6 +44,9 @@ export async function connectDatabase() {
 export async function disconnectDatabase() {
   try {
     await prisma.$disconnect()
+    if (process.env.DATABASE_URL_REPLICA) {
+      await prismaReplica.$disconnect()
+    }
     console.log('✅ Database disconnected successfully')
   } catch (error) {
     console.error('❌ Database disconnection failed:', error)

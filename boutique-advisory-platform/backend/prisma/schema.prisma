@@ -28,6 +28,7 @@ model Tenant {
   deals       Deal[]
   workflows   Workflow[]
   documents   Document[]
+  notifications Notification[]
 
   @@map("tenants")
 }
@@ -52,6 +53,7 @@ model User {
   sme         SME?     @relation("SMEUser")
   investor    Investor? @relation("InvestorUser")
   advisor     Advisor? @relation("AdvisorUser")
+  notifications Notification[]
 
   @@unique([tenantId, email])
   @@map("users")
@@ -421,6 +423,26 @@ model SecondaryTrade {
   @@map("secondary_trades")
 }
 
+// Notification System
+model Notification {
+  id          String           @id @default(cuid())
+  tenantId    String
+  userId      String
+  type        NotificationType
+  title       String
+  message     String
+  read        Boolean          @default(false)
+  actionUrl   String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  // Relations
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
 // Enums
 enum UserRole {
   SME
@@ -585,4 +607,19 @@ enum TradeStatus {
   COMPLETED
   CANCELLED
   FAILED
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+  DEAL
+  SYSTEM
+  MATCH_FOUND
+  INTEREST_RECEIVED
+  DEAL_UPDATE
+  DOCUMENT_UPLOADED
+  MESSAGE_RECEIVED
+  MEETING_REMINDER
 }

@@ -39,14 +39,15 @@ export default function NotificationCenter() {
         const fetchNotifications = async () => {
             try {
                 const token = localStorage.getItem('token')
-                if (!token) return
+                // if (!token) return // Allow cookie-based auth
 
                 setIsLoading(true)
                 const response = await fetch(`${API_URL}/api/notifications`, {
                     headers: {
-                        'Authorization': `Bearer ${token}`,
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
                         'Content-Type': 'application/json'
-                    }
+                    },
+                    credentials: 'include'
                 })
 
                 if (response.ok) {
@@ -85,9 +86,10 @@ export default function NotificationCenter() {
             await fetch(`${API_URL}/api/notifications/${notifId}/read`, {
                 method: 'PUT',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
                     'Content-Type': 'application/json'
-                }
+                },
+                credentials: 'include'
             })
 
             setNotifications(prev => prev.map(n =>
@@ -105,9 +107,10 @@ export default function NotificationCenter() {
             await fetch(`${API_URL}/api/notifications/read-all`, {
                 method: 'PUT',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
                     'Content-Type': 'application/json'
-                }
+                },
+                credentials: 'include'
             })
 
             setNotifications(prev => prev.map(n => ({ ...n, read: true })))

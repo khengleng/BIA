@@ -18,9 +18,9 @@ export interface AuthenticatedRequest extends Request {
 export const extractTenant = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     // Extract tenant from subdomain or header
-    const tenantId = req.headers['x-tenant-id'] as string || 
-                    req.subdomains[0] || 
-                    process.env.DEFAULT_TENANT_ID || 'default';
+    const tenantId = req.headers['x-tenant-id'] as string ||
+      req.subdomains[0] ||
+      process.env.DEFAULT_TENANT_ID || 'default';
 
     if (!tenantId) {
       return res.status(400).json({ error: 'Tenant ID is required' });
@@ -48,7 +48,7 @@ export const extractTenant = async (req: AuthenticatedRequest, res: Response, ne
 export const authenticate = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'Authorization header required' });
     }
@@ -64,7 +64,7 @@ export const authenticate = async (req: AuthenticatedRequest, res: Response, nex
       });
 
       const userInfo = response.data;
-      
+
       // Find user in our database
       const user = await prisma.user.findFirst({
         where: {
@@ -91,7 +91,7 @@ export const authenticate = async (req: AuthenticatedRequest, res: Response, nex
       next();
       return;
     } catch (keycloakError) {
-      console.error('Keycloak verification failed:', keycloakError);
+      console.error('Keycloak verification failed:', keycloakError instanceof Error ? keycloakError.message : 'Unknown error');
       return res.status(401).json({ error: 'Invalid token' });
     }
   } catch (error) {

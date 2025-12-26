@@ -27,6 +27,7 @@ import {
     ArrowLeftRight
 } from 'lucide-react'
 import { User } from '../../types'
+import { API_URL } from '@/lib/api'
 import NotificationCenter from '../NotificationCenter'
 
 interface DashboardLayoutProps {
@@ -43,19 +44,23 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     useEffect(() => {
         const fetchUser = async () => {
             try {
-                const token = localStorage.getItem('token')
-                const userData = localStorage.getItem('user')
+                // Try to get user from API (checks HttpOnly cookie)
+                const response = await fetch(`${API_URL}/api/auth/me`, {
+                    credentials: 'include'
+                })
 
-                if (!token || !userData) {
-                    router.push('/auth/login')
-                    return
+                if (response.ok) {
+                    const data = await response.json()
+                    setUser(data.user)
+                    // Update fresh user data in localStorage just for other components to use if needed
+                    localStorage.setItem('user', JSON.stringify(data.user))
+                } else {
+                    // Session invalid
+                    throw new Error('Session invalid')
                 }
-
-                const user = JSON.parse(userData)
-                setUser(user)
             } catch (error) {
                 console.error('Error fetching user:', error)
-                localStorage.removeItem('token')
+                localStorage.removeItem('token') // Clean up if it exists
                 localStorage.removeItem('user')
                 router.push('/auth/login')
             } finally {

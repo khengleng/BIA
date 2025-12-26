@@ -61,6 +61,7 @@ export default function LoginPage() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Critical for receiving HttpOnly cookie
         body: JSON.stringify({
           email: formData.email,
           password: formData.password,
@@ -69,8 +70,9 @@ export default function LoginPage() {
 
       if (response.ok) {
         const data = await response.json()
-        // Store token and user data
-        localStorage.setItem('token', data.token)
+        // Token is now in HttpOnly cookie
+        // localStorage.setItem('token', data.token) // REMOVED for security
+        localStorage.setItem('user', JSON.stringify(data.user))
         localStorage.setItem('user', JSON.stringify(data.user))
         // Redirect to dashboard
         router.push('/dashboard')

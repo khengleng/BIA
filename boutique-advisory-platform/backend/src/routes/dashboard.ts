@@ -6,7 +6,7 @@
 
 import { Router, Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
-import { prisma } from '../database';
+import { prisma, prismaReplica } from '../database';
 import { shouldUseDatabase } from '../migration-manager';
 
 const router = Router();
@@ -38,14 +38,14 @@ router.get('/analytics', async (req: AuthenticatedRequest, res: Response): Promi
             return;
         }
 
-        // Get real data from database
+        // Get real data from database using Replica for reads
         const [smeCount, investorCount, dealCount] = await Promise.all([
-            prisma.sME.count(),
-            prisma.investor.count(),
-            prisma.deal.count({ where: { status: 'PUBLISHED' } })
+            prismaReplica.sME.count(),
+            prismaReplica.investor.count(),
+            prismaReplica.deal.count({ where: { status: 'PUBLISHED' } })
         ]);
 
-        const deals = await prisma.deal.findMany({
+        const deals = await prismaReplica.deal.findMany({
             where: { status: 'PUBLISHED' },
             select: { amount: true }
         });

@@ -17,6 +17,7 @@ export async function apiRequest(
     return fetch(url, {
         ...options,
         headers,
+        credentials: 'include', // Ensure cookies are sent (for HttpOnly auth)
     });
 }
 
