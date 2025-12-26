@@ -5,11 +5,57 @@
  */
 
 import { Router, Response } from 'express';
-import { AuthenticatedRequest } from '../middleware/auth';
+import { AuthenticatedRequest, authorize } from '../middleware/auth';
 import { prisma, prismaReplica } from '../database';
 import { shouldUseDatabase } from '../migration-manager';
+import { NotificationType } from '@prisma/client';
 
 const router = Router();
+
+// Create notification (Admin/Advisor only)
+router.post('/', authorize(['ADMIN', 'ADVISOR']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+        const { userId, type, title, message, actionUrl } = req.body;
+
+        if (!shouldUseDatabase()) {
+            const newNotification = {
+                id: `notif_${Date.now()}`,
+                userId,
+                type: type || 'SYSTEM',
+                title,
+                message,
+                read: false,
+                actionUrl: actionUrl || null,
+                createdAt: new Date().toISOString()
+            };
+            // In a real mock scenario, we'd push to a global store, but here we just echo back
+            res.status(201).json(newNotification);
+            return;
+        }
+
+        // Validate notification type
+        let notifType: NotificationType = NotificationType.SYSTEM;
+        if (type && Object.values(NotificationType).includes(type as NotificationType)) {
+            notifType = type as NotificationType;
+        }
+
+        const notification = await prisma.notification.create({
+            data: {
+                tenantId: req.tenantId!, // Assumes middleware sets this
+                userId, // Target user
+                type: notifType,
+                title,
+                message,
+                actionUrl: actionUrl || null,
+            }
+        });
+
+        res.status(201).json(notification);
+    } catch (error) {
+        console.error('Error creating notification:', error);
+        res.status(500).json({ error: 'Failed to create notification' });
+    }
+});
 
 // Get user notifications
 router.get('/', async (req: AuthenticatedRequest, res: Response): Promise<void> => {

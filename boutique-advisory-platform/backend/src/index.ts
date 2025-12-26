@@ -11,6 +11,7 @@ import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
 import { CookieOptions } from 'express';
 import { prisma, connectDatabase } from './database';
+import { doubleCsrf } from 'csrf-csrf';
 import {
   checkMigrationStatus,
   performMigration,
@@ -911,6 +912,33 @@ const generalLimiter = rateLimit({
 
 // Apply global rate limiting
 app.use(generalLimiter);
+
+// CSRF Protection
+const {
+  doubleCsrfProtection,
+  generateCsrfToken
+} = doubleCsrf({
+  getSecret: () => process.env.COOKIE_SECRET || 'cookie-secret-key',
+  cookieName: 'x-csrf-token',
+  cookieOptions: {
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Must match other cookies
+    path: '/',
+    secure: process.env.NODE_ENV === 'production'
+  },
+  size: 64,
+  ignoredMethods: ['GET', 'HEAD', 'OPTIONS'],
+  getCsrfTokenFromRequest: (req: express.Request) => req.headers['x-csrf-token'] as string,
+  getSessionIdentifier: (req: express.Request) => '' // Session binding not used with stateless JWT for now
+});
+
+// CSRF Token Endpoint
+app.get('/api/csrf-token', (req, res) => {
+  const token = generateCsrfToken(req, res);
+  res.json({ csrfToken: token });
+});
+
+// Apply CSRF protection to all unsafe methods (POST, PUT, DELETE, etc.)
+app.use(doubleCsrfProtection);
 
 // Strict rate limiter for auth endpoints - 5 attempts per 15 minutes
 const authLimiter = rateLimit({
@@ -3356,99 +3384,7 @@ app.get('/api/dashboard/funnel', authenticateToken, async (req, res) => {
 // NOTIFICATIONS APIs
 // ============================================
 
-// Get user notifications
-app.get('/api/notifications', authenticateToken, async (req, res) => {
-  try {
-    const userId = req.user!.userId;
 
-    // Get notifications for the user (or all for admin)
-    let userNotifications = notifications;
-    if (req.user!.role !== 'ADMIN' && req.user!.role !== 'ADVISOR') {
-      userNotifications = notifications.filter(n => n.userId === userId);
-    }
-
-    // Sort by creation date descending
-    userNotifications.sort((a, b) =>
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-
-    const unreadCount = userNotifications.filter(n => !n.read).length;
-
-    res.json({
-      notifications: userNotifications,
-      unreadCount,
-      total: userNotifications.length
-    });
-  } catch (error) {
-    console.error('Error fetching notifications:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Mark notification as read
-app.put('/api/notifications/:id/read', authenticateToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const notification = notifications.find(n => n.id === id);
-    if (!notification) {
-      res.status(404).json({ error: 'Notification not found' });
-      return;
-    }
-
-    notification.read = true;
-
-    res.json({ message: 'Notification marked as read', notification });
-  } catch (error) {
-    console.error('Error updating notification:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Mark all notifications as read
-app.put('/api/notifications/read-all', authenticateToken, async (req, res) => {
-  try {
-    const userId = req.user!.userId;
-
-    let count = 0;
-    notifications.forEach(n => {
-      if (!n.read && (req.user!.role === 'ADMIN' || req.user!.role === 'ADVISOR' || n.userId === userId)) {
-        n.read = true;
-        count++;
-      }
-    });
-
-    res.json({ message: `${count} notifications marked as read` });
-  } catch (error) {
-    console.error('Error updating notifications:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Create notification (for system use)
-app.post('/api/notifications', authenticateToken, authorizeRoles('ADMIN', 'ADVISOR'), async (req, res) => {
-  try {
-    const { userId, type, title, message, actionUrl } = req.body;
-
-    const newNotification = {
-      id: `notif_${Date.now()}`,
-      userId,
-      type: type || 'GENERAL',
-      title,
-      message,
-      read: false,
-      actionUrl: actionUrl || null,
-      createdAt: new Date()
-    };
-
-    notifications.push(newNotification);
-
-    res.status(201).json(newNotification);
-  } catch (error) {
-    console.error('Error creating notification:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
 
 // ============================================
 // CALENDAR & SCHEDULING APIs
