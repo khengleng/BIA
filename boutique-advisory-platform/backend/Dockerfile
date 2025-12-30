@@ -22,8 +22,11 @@ COPY . .
 # Clear Prisma cache and generate client with correct binary targets
 RUN rm -rf node_modules/.prisma && npx prisma generate
 
+# Build the application
+RUN npm run build
+
 # Expose port
 EXPOSE 4000
 
-# Start the application in development mode
-CMD ["npm", "run", "dev"]
+# Start the application in production mode
+CMD ["node", "dist/src/index.js"]
