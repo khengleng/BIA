@@ -856,10 +856,13 @@ const getCorsOrigins = (): (string | RegExp)[] | string => {
   // Development origins
   const devOrigins: string[] = ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:1001'];
 
-  // Production origins
-  const prodOrigins: string[] = [
+  // Production origins - allow Railway frontend deployments
+  const prodOrigins: (string | RegExp)[] = [
+    'https://frontend-production-c363.up.railway.app',
     'https://frontend-production-deae.up.railway.app',
-    ...(frontendUrl ? [frontendUrl] : [])
+    ...(frontendUrl ? [frontendUrl] : []),
+    // Allow any Railway frontend deployment
+    /^https:\/\/frontend-production-.*\.up\.railway\.app$/
   ];
 
   // Staging origins - uses FRONTEND_URL env var plus Railway staging patterns
