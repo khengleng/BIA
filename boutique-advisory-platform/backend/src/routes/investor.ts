@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
-import { prisma } from '../config/database';
+import { prisma } from '../database';
+import { validateBody, updateInvestorSchema } from '../middleware/validation';
 
 const router = Router();
 
@@ -30,11 +31,11 @@ router.get('/:id', async (req: Request, res: Response) => {
         dealInvestments: true
       }
     });
-    
+
     if (!investor) {
       return res.status(404).json({ error: 'Investor not found' });
     }
-    
+
     return res.json(investor);
   } catch (error) {
     console.error('Get investor error:', error);
@@ -42,12 +43,18 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// Update investor
-router.put('/:id', async (req: Request, res: Response) => {
+// Update investor - with input validation
+router.put('/:id', validateBody(updateInvestorSchema), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
-    
+
+    // Check if investor exists
+    const existingInvestor = await prisma.investor.findUnique({ where: { id } });
+    if (!existingInvestor) {
+      return res.status(404).json({ error: 'Investor not found' });
+    }
+
     const investor = await prisma.investor.update({
       where: { id },
       data: updateData,
@@ -55,7 +62,7 @@ router.put('/:id', async (req: Request, res: Response) => {
         user: true
       }
     });
-    
+
     return res.json(investor);
   } catch (error) {
     console.error('Update investor error:', error);
@@ -64,3 +71,4 @@ router.put('/:id', async (req: Request, res: Response) => {
 });
 
 export default router;
+

@@ -187,7 +187,7 @@ router.get('/sme/:smeId', async (req: AuthenticatedRequest, res: Response): Prom
     }
 });
 
-// Create new due diligence (Advisor only)
+// Create new due diligence (Advisor/Admin only)
 router.post('/', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
@@ -195,9 +195,28 @@ router.post('/', async (req: AuthenticatedRequest, res: Response): Promise<void>
             return;
         }
 
+        // SECURITY: Only Advisors and Admins can create due diligence reports
+        const userRole = req.user?.role;
+        if (userRole !== 'ADVISOR' && userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
+            res.status(403).json({ error: 'Only advisors and admins can create due diligence reports' });
+            return;
+        }
+
         const { smeId } = req.body;
 
-        // Get advisor ID for the current user
+        if (!smeId) {
+            res.status(400).json({ error: 'SME ID is required' });
+            return;
+        }
+
+        // Verify SME exists
+        const sme = await prisma.sME.findUnique({ where: { id: smeId } });
+        if (!sme) {
+            res.status(404).json({ error: 'SME not found' });
+            return;
+        }
+
+        // Get advisor ID for the current user (if advisor)
         const advisor = await prisma.advisor.findFirst({
             where: { userId: req.user?.id }
         });

@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
-import { prisma } from '../config/database';
+import { prisma } from '../database';
+import { validateBody, createDealSchema, updateDealSchema } from '../middleware/validation';
 
 const router = Router();
 
@@ -51,21 +52,27 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// Create new deal
-router.post('/', async (req: Request, res: Response) => {
+// Create new deal - with input validation
+router.post('/', validateBody(createDealSchema), async (req: Request, res: Response) => {
   try {
     const { smeId, title, description, amount, equity, successFee } = req.body;
+
+    // Verify SME exists
+    const sme = await prisma.sME.findUnique({ where: { id: smeId } });
+    if (!sme) {
+      return res.status(404).json({ error: 'SME not found' });
+    }
 
     const deal = await prisma.deal.create({
       data: {
         smeId,
         title,
         description,
-        amount: parseFloat(amount),
-        equity: equity ? parseFloat(equity) : null,
-        successFee: successFee ? parseFloat(successFee) : null,
+        amount,
+        equity: equity ?? null,
+        successFee: successFee ?? null,
         status: 'DRAFT',
-        tenantId: 'default'
+        tenantId: sme.tenantId
       },
       include: {
         sme: {
@@ -76,18 +83,24 @@ router.post('/', async (req: Request, res: Response) => {
       }
     });
 
-    res.status(201).json(deal);
+    return res.status(201).json(deal);
   } catch (error) {
     console.error('Create deal error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// Update deal
-router.put('/:id', async (req: Request, res: Response) => {
+// Update deal - with input validation
+router.put('/:id', validateBody(updateDealSchema), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
+
+    // Check if deal exists
+    const existingDeal = await prisma.deal.findUnique({ where: { id } });
+    if (!existingDeal) {
+      return res.status(404).json({ error: 'Deal not found' });
+    }
 
     const deal = await prisma.deal.update({
       where: { id },
@@ -105,3 +118,4 @@ router.put('/:id', async (req: Request, res: Response) => {
 });
 
 export default router;
+

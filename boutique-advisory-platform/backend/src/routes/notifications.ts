@@ -4,16 +4,31 @@
  * Provides user notifications functionality
  */
 
-import { Router, Response } from 'express';
-import { AuthenticatedRequest, authorize } from '../middleware/auth';
+import { Router, Request, Response } from 'express';
 import { prisma, prismaReplica } from '../database';
 import { shouldUseDatabase } from '../migration-manager';
 import { NotificationType } from '@prisma/client';
 
+// Extended request interface for authenticated requests
+interface AuthenticatedRequest extends Request {
+    user?: {
+        id: string;
+        email: string;
+        role: string;
+        tenantId?: string;
+    };
+}
+
 const router = Router();
 
 // Create notification (Admin/Advisor only)
-router.post('/', authorize(['ADMIN', 'ADVISOR']), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.post('/', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    // SECURITY: Role-based authorization
+    const userRole = req.user?.role;
+    if (userRole !== 'ADMIN' && userRole !== 'ADVISOR' && userRole !== 'SUPER_ADMIN') {
+        res.status(403).json({ error: 'Only admins and advisors can create notifications' });
+        return;
+    }
     try {
         const { userId, type, title, message, actionUrl } = req.body;
 
@@ -41,7 +56,7 @@ router.post('/', authorize(['ADMIN', 'ADVISOR']), async (req: AuthenticatedReque
 
         const notification = await prisma.notification.create({
             data: {
-                tenantId: req.tenantId!, // Assumes middleware sets this
+                tenantId: req.user?.tenantId || 'default',
                 userId, // Target user
                 type: notifType,
                 title,
@@ -100,7 +115,7 @@ router.get('/', async (req: AuthenticatedRequest, res: Response): Promise<void> 
         const notifications = await prismaReplica.notification.findMany({
             where: {
                 userId: req.user?.id,
-                tenantId: req.tenantId
+                tenantId: req.user?.tenantId || 'default'
             },
             orderBy: {
                 createdAt: 'desc'
@@ -111,7 +126,7 @@ router.get('/', async (req: AuthenticatedRequest, res: Response): Promise<void> 
         const unreadCount = await prismaReplica.notification.count({
             where: {
                 userId: req.user?.id,
-                tenantId: req.tenantId,
+                tenantId: req.user?.tenantId || 'default',
                 read: false
             }
         });
@@ -166,7 +181,7 @@ router.put('/read-all', async (req: AuthenticatedRequest, res: Response): Promis
         await prisma.notification.updateMany({
             where: {
                 userId: req.user?.id,
-                tenantId: req.tenantId,
+                tenantId: req.user?.tenantId || 'default',
                 read: false
             },
             data: {

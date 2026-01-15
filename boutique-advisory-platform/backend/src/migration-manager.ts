@@ -1,9 +1,9 @@
 import { prisma } from './database'
 import bcrypt from 'bcryptjs'
 
-// Migration status
-let migrationCompleted = false
-let useDatabase = false
+// Migration status - ALWAYS USE DATABASE (no in-memory fallback)
+let migrationCompleted = true
+let useDatabase = true
 
 export interface MigrationStatus {
   completed: boolean
@@ -16,13 +16,13 @@ export async function checkMigrationStatus(): Promise<MigrationStatus> {
   try {
     // Check if database is accessible
     await prisma.$connect()
-    
+
     // Check if data exists in database
     const userCount = await prisma.user.count()
     const smeCount = await prisma.sME.count()
     const investorCount = await prisma.investor.count()
     const dealCount = await prisma.deal.count()
-    
+
     // If we have data in database, migration is complete
     if (userCount > 0 && smeCount > 0) {
       migrationCompleted = true
@@ -30,17 +30,17 @@ export async function checkMigrationStatus(): Promise<MigrationStatus> {
       console.log('✅ Database migration already completed')
       return { completed: true, useDatabase: true }
     }
-    
+
     // If no data in database, we need to migrate
     console.log('📋 Database is empty, migration needed')
     return { completed: false, useDatabase: false }
-    
+
   } catch (error) {
     console.error('❌ Database connection failed:', error)
-    return { 
-      completed: false, 
-      useDatabase: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
+    return {
+      completed: false,
+      useDatabase: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
     }
   }
 }
@@ -49,7 +49,7 @@ export async function checkMigrationStatus(): Promise<MigrationStatus> {
 export async function performMigration(): Promise<MigrationStatus> {
   try {
     console.log('🚀 Starting data migration to PostgreSQL...')
-    
+
     // Create default tenant
     console.log('📋 Creating default tenant...')
     const defaultTenant = await prisma.tenant.upsert({
@@ -66,9 +66,23 @@ export async function performMigration(): Promise<MigrationStatus> {
 
     // Create test users
     console.log('👥 Creating test users...')
-    
-    const hashedPassword = await bcrypt.hash('admin123', 12)
-    
+
+    // SECURITY: Use environment variable for initial admin password, or generate secure random
+    const initialPassword = process.env.INITIAL_ADMIN_PASSWORD;
+    if (!initialPassword) {
+      console.error('❌ SECURITY: INITIAL_ADMIN_PASSWORD environment variable is required for initial setup');
+      console.error('   Please set a strong password (min 12 chars, mixed case, numbers, symbols)');
+      throw new Error('INITIAL_ADMIN_PASSWORD environment variable is required');
+    }
+
+    // Validate password strength
+    if (initialPassword.length < 12) {
+      throw new Error('INITIAL_ADMIN_PASSWORD must be at least 12 characters');
+    }
+
+    const hashedPassword = await bcrypt.hash(initialPassword, 12)
+    console.log('✅ Using securely configured initial password')
+
     const users = [
       {
         id: 'admin_1',
@@ -119,7 +133,7 @@ export async function performMigration(): Promise<MigrationStatus> {
 
     // Create SMEs
     console.log('🏢 Creating SMEs...')
-    
+
     const smes = [
       {
         id: 'sme_1',
@@ -160,7 +174,7 @@ export async function performMigration(): Promise<MigrationStatus> {
 
     // Create Investors
     console.log('💼 Creating investors...')
-    
+
     const investors = [
       {
         id: 'investor_1',
@@ -185,7 +199,7 @@ export async function performMigration(): Promise<MigrationStatus> {
 
     // Create Deals
     console.log('🤝 Creating deals...')
-    
+
     const deals = [
       {
         id: 'deal_1',
@@ -210,7 +224,7 @@ export async function performMigration(): Promise<MigrationStatus> {
 
     // Create Deal Investors
     console.log('💰 Creating deal investments...')
-    
+
     const dealInvestors = [
       {
         dealId: 'deal_1',
@@ -236,7 +250,7 @@ export async function performMigration(): Promise<MigrationStatus> {
 
     // Create Documents
     console.log('📄 Creating documents...')
-    
+
     const documents = [
       {
         id: 'doc_1',
@@ -332,10 +346,10 @@ export async function performMigration(): Promise<MigrationStatus> {
     console.error('❌ Migration failed:', error)
     migrationCompleted = false
     useDatabase = false
-    return { 
-      completed: false, 
-      useDatabase: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
+    return {
+      completed: false,
+      useDatabase: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
     }
   }
 }
@@ -367,8 +381,9 @@ export function fallbackToInMemory() {
 }
 
 // Function to check if we should use database
+// ALWAYS RETURNS TRUE - No in-memory fallback
 export function shouldUseDatabase(): boolean {
-  return useDatabase && migrationCompleted
+  return true  // Always use database for data persistence
 }
 
 

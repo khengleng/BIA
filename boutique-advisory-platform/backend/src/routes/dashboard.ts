@@ -5,7 +5,7 @@
  */
 
 import { Router, Response } from 'express';
-import { AuthenticatedRequest } from '../middleware/auth';
+import { AuthenticatedRequest } from '../middleware/jwt-auth';
 import { prisma, prismaReplica } from '../database';
 import { shouldUseDatabase } from '../migration-manager';
 

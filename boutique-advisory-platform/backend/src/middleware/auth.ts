@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { cmApiClient } from '../config/external-services';
-import { prisma } from '../config/database';
+import { prisma } from '../database';
 
 export interface AuthenticatedRequest extends Request {
   user?: {
