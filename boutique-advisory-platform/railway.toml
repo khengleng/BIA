@@ -1,0 +1,9 @@
+# Railway configuration
+# This file tells Railway how to build and deploy from this monorepo
+
+[build]
+# For monorepos, you need to configure the root directory in Railway dashboard
+# Go to Service Settings > Source > Root Directory
+
+# Set to "backend" for the backend service
+# Set to "frontend" for the frontend service
