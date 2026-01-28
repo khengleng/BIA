@@ -1,0 +1,59 @@
+# Render.com Blueprint - Boutique Investment Advisory Platform
+# Deploy all services with: render blueprint sync
+
+databases:
+  - name: bia-database
+    plan: free  # Use 'starter' for production ($7/month)
+    databaseName: bia_production
+    user: bia_user
+    region: singapore  # Closest to Cambodia
+
+services:
+  # Backend API Service
+  - type: web
+    name: bia-backend
+    runtime: node
+    region: singapore
+    plan: free  # Use 'starter' for production
+    rootDir: boutique-advisory-platform/backend
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: DATABASE_URL
+        fromDatabase:
+          name: bia-database
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        value: https://bia-frontend.onrender.com
+      - key: FRONTEND_URL
+        value: https://bia-frontend.onrender.com
+      - key: SESSION_SECRET
+        generateValue: true
+
+  # Frontend Web Application
+  - type: web
+    name: bia-frontend
+    runtime: node
+    region: singapore
+    plan: free  # Use 'starter' for production
+    rootDir: boutique-advisory-platform/frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        value: https://bia-backend.onrender.com
+      - key: NEXTAUTH_URL
+        value: https://bia-frontend.onrender.com
+      - key: NEXTAUTH_SECRET
+        generateValue: true
