@@ -1,3 +1,25 @@
+// Early startup debug - this logs before ANY imports
+console.log('=== SERVER STARTUP INITIATED ===');
+console.log('Time:', new Date().toISOString());
+console.log('Node version:', process.version);
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('PORT:', process.env.PORT);
+
+// Catch any uncaught errors during module loading
+process.on('uncaughtException', (error) => {
+  console.error('=== UNCAUGHT EXCEPTION ===');
+  console.error('Error:', error.message);
+  console.error('Stack:', error.stack);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('=== UNHANDLED REJECTION ===');
+  console.error('Reason:', reason);
+  process.exit(1);
+});
+
+console.log('=== LOADING MODULES ===');
 
 import express from 'express';
 import cors from 'cors';

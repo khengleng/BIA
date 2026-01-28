@@ -1,1 +1,58 @@
+# Dependencies
+node_modules/
+
+# Build output
 dist/
+
+# Environment files (NEVER commit these!)
+.env
+.env.local
+.env.*.local
+.env.production
+.env.staging
+
+# Only commit example files
+!.env.example
+!env.example
+!env.production.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+
+# Coverage
+coverage/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Prisma
+prisma/migrations/.migration_lock.toml
+
+# Uploads (local dev only)
+uploads/*
+!uploads/.gitkeep
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Secrets and keys
+*.pem
+*.key
+*.cert
