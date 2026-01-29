@@ -391,9 +391,9 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
       });
 
       // In production: Send email with reset link containing the unhashed token
-      // The link would be: ${FRONTEND_URL}/reset-password?token=${resetToken}
-      console.log(`[SECURITY] Password reset token generated for ${sanitizedEmail}`);
-      console.log(`[SECURITY] Reset link: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`);
+      // For demo: Token is generated but not logged for security
+      // In a real implementation, this would send an email
+      console.log(`[DEMO] Password reset requested for user (email not logged for security)`);
     } else {
       // Log attempt for non-existent user (for security monitoring)
       await logAuditEvent({
