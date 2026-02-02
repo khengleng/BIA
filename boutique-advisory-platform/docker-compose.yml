@@ -4,7 +4,10 @@
 services:
   # PostgreSQL Database
   postgres:
-    image: postgres:15-alpine
+    build:
+      context: ./database
+      dockerfile: Dockerfile
+    image: bia-postgres:latest
     container_name: bia-postgres
     restart: unless-stopped
     environment:

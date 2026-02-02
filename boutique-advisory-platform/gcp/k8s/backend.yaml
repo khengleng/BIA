@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bia-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: bia-backend
+  template:
+    metadata:
+      labels:
+        app: bia-backend
+    spec:
+      containers:
+      - name: backend
+        image: gcr.io/cambobia/bia-backend:latest
+        ports:
+        - containerPort: 3001
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: DATABASE_URL
+          value: "postgresql://bia_admin:$(DB_PASSWORD)@postgres:5432/bia_production?schema=public"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: bia-secrets
+              key: database-password
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: bia-secrets
+              key: jwt-secret
+        - name: FRONTEND_URL
+          value: "https://your-platform-domain.com"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bia-backend
+spec:
+  selector:
+    app: bia-backend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3001
+  type: LoadBalancer

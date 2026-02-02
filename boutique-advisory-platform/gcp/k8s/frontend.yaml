@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bia-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: bia-frontend
+  template:
+    metadata:
+      labels:
+        app: bia-frontend
+    spec:
+      containers:
+      - name: frontend
+        image: gcr.io/cambobia/bia-frontend:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: NEXT_PUBLIC_API_URL
+          value: "https://api.your-platform-domain.com"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bia-frontend
+spec:
+  selector:
+    app: bia-frontend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
+  type: LoadBalancer

@@ -1,0 +1,43 @@
+steps:
+  # 1. Build & Push Database Image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/bia-postgres:latest', './database']
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/bia-postgres:latest']
+
+  # 2. Build & Push Backend Image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/bia-backend:latest', './backend']
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/bia-backend:latest']
+
+  # 3. Build & Push Frontend Image
+  # Note: $_BACKEND_SERVICE_URL must be provided in the Cloud Build Trigger settings
+  - name: 'gcr.io/cloud-builders/docker'
+    args: 
+      - 'build'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_API_URL=${_BACKEND_SERVICE_URL}'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/bia-frontend:latest'
+      - './frontend'
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/bia-frontend:latest']
+
+  # Optional 4: Deploy to GKE (Uncomment and configure if cluster exists)
+  # - name: 'gcr.io/cloud-builders/kubectl'
+  #   args: ['apply', '-f', 'gcp/k8s/']
+  #   env:
+  #   - 'CLOUDSDK_COMPUTE_ZONE=${_ZONE}'
+  #   - 'CLOUDSDK_CONTAINER_CLUSTER=${_CLUSTER_NAME}'
+
+images:
+  - 'gcr.io/$PROJECT_ID/bia-postgres:latest'
+  - 'gcr.io/$PROJECT_ID/bia-backend:latest'
+  - 'gcr.io/$PROJECT_ID/bia-frontend:latest'
+
+substitutions:
+  _BACKEND_SERVICE_URL: 'https://backend.cambobia.com' # Set your real backend URL here
+  _ZONE: 'us-central1-a'
+  _CLUSTER_NAME: 'bia-cluster'
+
