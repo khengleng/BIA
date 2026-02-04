@@ -70,9 +70,8 @@ export default function LoginPage() {
 
       if (response.ok) {
         const data = await response.json()
-        // Token is now in HttpOnly cookie
-        // localStorage.setItem('token', data.token) // REMOVED for security
-        localStorage.setItem('user', JSON.stringify(data.user))
+        // Save token for authenticated requests
+        localStorage.setItem('token', data.token)
         localStorage.setItem('user', JSON.stringify(data.user))
         // Redirect to dashboard
         router.push('/dashboard')

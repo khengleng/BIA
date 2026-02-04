@@ -76,11 +76,11 @@ export default function AnalyticsPage() {
 
                 if (response.ok) {
                     const data = await response.json()
-                    setKpis(data.kpis)
-                    setMonthlyDeals(data.monthlyDeals)
-                    setSectorDistribution(data.sectorDistribution)
-                    setStageDistribution(data.stageDistribution)
-                    setRecentActivity(data.recentActivity)
+                    setKpis(data.kpis || null)
+                    setMonthlyDeals(data.monthlyDeals || [])
+                    setSectorDistribution(data.sectorDistribution || {})
+                    setStageDistribution(data.stageDistribution || {})
+                    setRecentActivity(data.recentActivity || [])
                 }
             } catch (error) {
                 console.error('Error fetching analytics:', error)

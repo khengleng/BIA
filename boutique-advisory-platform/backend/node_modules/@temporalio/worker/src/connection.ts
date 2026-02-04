@@ -3,7 +3,17 @@ import * as grpc from '@grpc/grpc-js';
 import * as proto from 'protobufjs';
 import { IllegalStateError } from '@temporalio/common';
 import { native } from '@temporalio/core-bridge';
-import { ConnectionLike, Metadata, CallContext, WorkflowService } from '@temporalio/client';
+import {
+  ConnectionLike,
+  Metadata,
+  CallContext,
+  WorkflowService,
+  OperatorService,
+  HealthService,
+  TestService,
+  InternalConnectionLikeSymbol,
+} from '@temporalio/client';
+import { InternalConnectionOptions, InternalConnectionOptionsSymbol } from '@temporalio/client/lib/connection';
 import { TransportError } from './errors';
 import { NativeConnectionOptions } from './connection-options';
 import { Runtime } from './runtime';
@@ -21,7 +31,37 @@ export class NativeConnection implements ConnectionLike {
    */
   private readonly referenceHolders = new Set<native.Worker>();
 
+  /**
+   * Raw gRPC access to Temporal Server's {@link
+   * https://github.com/temporalio/api/blob/master/temporal/api/workflowservice/v1/service.proto | Workflow service}
+   */
   public readonly workflowService: WorkflowService;
+
+  /**
+   * Raw gRPC access to Temporal Server's
+   * {@link https://github.com/temporalio/api/blob/master/temporal/api/operatorservice/v1/service.proto | Operator service}
+   *
+   * The Operator Service API defines how Temporal SDKs and other clients interact with the Temporal
+   * server to perform administrative functions like registering a search attribute or a namespace.
+   *
+   * This Service API is NOT compatible with Temporal Cloud. Attempt to use it against a Temporal
+   * Cloud namespace will result in gRPC `unauthorized` error.
+   */
+  public readonly operatorService: OperatorService;
+
+  /**
+   * Raw gRPC access to the standard gRPC {@link https://github.com/grpc/grpc/blob/92f58c18a8da2728f571138c37760a721c8915a2/doc/health-checking.md | health service}.
+   */
+  public readonly healthService: HealthService;
+
+  /**
+   * Raw gRPC access to Temporal Server's
+   * {@link https://github.com/temporalio/api/blob/master/temporal/api/testservice/v1/service.proto | Test service}
+   *
+   * Will be `undefined` if connected to a server that does not support the test service.
+   */
+  public readonly testService: TestService | undefined;
+
   readonly callContextStorage = new AsyncLocalStorage<CallContext>();
 
   /**
@@ -29,9 +69,40 @@ export class NativeConnection implements ConnectionLike {
    */
   protected constructor(
     private readonly runtime: Runtime,
-    private readonly nativeClient: native.Client
+    private readonly nativeClient: native.Client,
+    private readonly enableTestService: boolean,
+    readonly plugins: NativeConnectionPlugin[]
   ) {
-    this.workflowService = WorkflowService.create(this.sendRequest.bind(this), false, false);
+    this.workflowService = WorkflowService.create(
+      this.sendRequest.bind(this, native.clientSendWorkflowServiceRequest.bind(undefined, this.nativeClient)),
+      false,
+      false
+    );
+    this.operatorService = OperatorService.create(
+      this.sendRequest.bind(this, native.clientSendOperatorServiceRequest.bind(undefined, this.nativeClient)),
+      false,
+      false
+    );
+    this.healthService = HealthService.create(
+      this.sendRequest.bind(this, native.clientSendHealthServiceRequest.bind(undefined, this.nativeClient)),
+      false,
+      false
+    );
+    if (this.enableTestService) {
+      this.testService = TestService.create(
+        this.sendRequest.bind(this, native.clientSendTestServiceRequest.bind(undefined, this.nativeClient)),
+        false,
+        false
+      );
+    }
+
+    // Set internal capability flag - not part of public API
+    Object.defineProperty(this, InternalConnectionLikeSymbol, {
+      value: { supportsEagerStart: true },
+      writable: false,
+      enumerable: false,
+      configurable: false,
+    });
   }
 
   /**
@@ -40,6 +111,7 @@ export class NativeConnection implements ConnectionLike {
   async ensureConnected(): Promise<void> {}
 
   private sendRequest(
+    sendRequestNative: (req: native.RpcCall) => Promise<Buffer>,
     method: proto.Method | proto.rpc.ServiceMethod<proto.Message<any>, proto.Message<any>>,
     requestData: any,
     callback: grpc.requestCallback<any>
@@ -55,8 +127,7 @@ export class NativeConnection implements ConnectionLike {
     // TODO: add support for abortSignal
 
     const ctx = this.callContextStorage.getStore() ?? {};
-    const metadata =
-      ctx.metadata != null ? Object.fromEntries(Object.entries(ctx.metadata).map(([k, v]) => [k, v.toString()])) : {};
+    const metadata = ctx.metadata != null ? tagMetadata(ctx.metadata) : {};
 
     const req = {
       rpc: method.name,
@@ -66,7 +137,7 @@ export class NativeConnection implements ConnectionLike {
       timeout: ctx.deadline ? getRelativeTimeout(ctx.deadline) : null,
     };
 
-    native.clientSendRequest(this.nativeClient, req).then(
+    sendRequestNative(req).then(
       (res) => {
         callback(null, resolvedResponseType.decode(Buffer.from(res)));
       },
@@ -153,26 +224,27 @@ export class NativeConnection implements ConnectionLike {
    * @deprecated use `connect` instead
    */
   static async create(options?: NativeConnectionOptions): Promise<NativeConnection> {
-    try {
-      const runtime = Runtime.instance();
-      const client = await runtime.createNativeClient(options);
-      return new this(runtime, client);
-    } catch (err) {
-      if (err instanceof TransportError) {
-        throw new TransportError(err.message);
-      }
-      throw err;
-    }
+    return this.connect(options);
   }
 
   /**
    * Eagerly connect to the Temporal server and return a NativeConnection instance
    */
   static async connect(options?: NativeConnectionOptions): Promise<NativeConnection> {
+    options = options ?? {};
+    for (const plugin of options.plugins ?? []) {
+      if (plugin.configureNativeConnection !== undefined) {
+        options = plugin.configureNativeConnection(options);
+      }
+    }
+    const internalOptions = (options as InternalConnectionOptions)?.[InternalConnectionOptionsSymbol] ?? {};
+    const enableTestService = internalOptions.supportsTestService ?? false;
+
     try {
       const runtime = Runtime.instance();
+
       const client = await runtime.createNativeClient(options);
-      return new this(runtime, client);
+      return new this(runtime, client, enableTestService, options.plugins ?? []);
     } catch (err) {
       if (err instanceof TransportError) {
         throw new TransportError(err.message);
@@ -199,8 +271,8 @@ export class NativeConnection implements ConnectionLike {
    *
    * Use {@link NativeConnectionOptions.metadata} to set the initial metadata for client creation.
    */
-  async setMetadata(metadata: Record<string, string>): Promise<void> {
-    native.clientUpdateHeaders(this.nativeClient, metadata);
+  async setMetadata(metadata: Metadata): Promise<void> {
+    native.clientUpdateHeaders(this.nativeClient, tagMetadata(metadata));
   }
 
   /**
@@ -275,4 +347,30 @@ function getRelativeTimeout(deadline: grpc.Deadline) {
   } else {
     return timeout;
   }
+}
+
+function tagMetadata(metadata: Metadata): Record<string, native.MetadataValue> {
+  return Object.fromEntries(
+    Object.entries(metadata).map(([k, value]) => [
+      k,
+      typeof value === 'string' ? { type: 'ascii' as const, value } : { type: 'binary' as const, value },
+    ])
+  );
+}
+
+/**
+ * Plugin to control the configuration of a native connection.
+ *
+ * @experimental Plugins is an experimental feature; APIs may change without notice.
+ */
+export interface NativeConnectionPlugin {
+  /**
+   * Gets the name of this plugin.
+   */
+  get name(): string;
+
+  /**
+   * Hook called when creating a native connection to allow modification of configuration.
+   */
+  configureNativeConnection?(options: NativeConnectionOptions): NativeConnectionOptions;
 }

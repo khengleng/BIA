@@ -1,0 +1,14 @@
+{
+    "name": "boutique-advisory-platform",
+    "version": "1.0.0",
+    "private": true,
+    "scripts": {
+        "install:all": "npm install --prefix backend && npm install --prefix frontend",
+        "dev:backend": "cd backend && npx prisma generate && npx nodemon src/index.ts",
+        "dev:frontend": "cd frontend && rm -rf .next && npm run dev",
+        "dev": "npm run dev:backend & npm run dev:frontend",
+        "db:setup": "cd backend && npx prisma db push && npx prisma db seed",
+        "clean": "rm -rf backend/node_modules frontend/node_modules backend/dist frontend/.next package-lock.json backend/package-lock.json frontend/package-lock.json",
+        "start:local": "npm run install:all && npm run db:setup && npm run dev"
+    }
+}

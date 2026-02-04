@@ -101,7 +101,7 @@ export default function ReportsPage() {
             'Total Investment': DollarSign,
             'Success Rate': TrendingUp
           }
-          const mappedStats = statsData.stats.map((stat: { title: string; value: string; change: string; trend: string }) => ({
+          const mappedStats = (statsData.stats || []).map((stat: { title: string; value: string; change: string; trend: string }) => ({
             ...stat,
             icon: iconMap[stat.title] || Handshake
           }))

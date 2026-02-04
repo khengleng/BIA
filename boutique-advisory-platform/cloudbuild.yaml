@@ -12,7 +12,6 @@ steps:
     args: ['push', 'gcr.io/$PROJECT_ID/bia-backend:latest']
 
   # 3. Build & Push Frontend Image
-  # Note: $_BACKEND_SERVICE_URL must be provided in the Cloud Build Trigger settings
   - name: 'gcr.io/cloud-builders/docker'
     args: 
       - 'build'
@@ -24,12 +23,28 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'gcr.io/$PROJECT_ID/bia-frontend:latest']
 
-  # Optional 4: Deploy to GKE (Uncomment and configure if cluster exists)
-  # - name: 'gcr.io/cloud-builders/kubectl'
-  #   args: ['apply', '-f', 'gcp/k8s/']
-  #   env:
-  #   - 'CLOUDSDK_COMPUTE_ZONE=${_ZONE}'
-  #   - 'CLOUDSDK_CONTAINER_CLUSTER=${_CLUSTER_NAME}'
+  # 4. Ensure Static IP exists (Required for Ingress)
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        gcloud compute addresses create bia-frontend-ip --global --quiet || echo "IP already exists"
+
+  # 5. Prepare Kubernetes Manifests (Replace Placeholder with actual Project ID)
+  - name: 'ubuntu'
+    args:
+      - 'bash'
+      - '-c'
+      - |
+        sed -i "s/PROJECT_ID_PLACEHOLDER/$PROJECT_ID/g" gcp/k8s/*.yaml
+
+  # 6. Deploy to GKE
+  - name: 'gcr.io/cloud-builders/kubectl'
+    args: ['apply', '-f', 'gcp/k8s/']
+    env:
+    - 'CLOUDSDK_COMPUTE_ZONE=${_ZONE}'
+    - 'CLOUDSDK_CONTAINER_CLUSTER=${_CLUSTER_NAME}'
 
 images:
   - 'gcr.io/$PROJECT_ID/bia-postgres:latest'
@@ -37,7 +52,6 @@ images:
   - 'gcr.io/$PROJECT_ID/bia-frontend:latest'
 
 substitutions:
-  _BACKEND_SERVICE_URL: 'https://backend.cambobia.com' # Set your real backend URL here
+  _BACKEND_SERVICE_URL: 'https://api.cambobia.com'
   _ZONE: 'us-central1-a'
   _CLUSTER_NAME: 'bia-cluster'
-

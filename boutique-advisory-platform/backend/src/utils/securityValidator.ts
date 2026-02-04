@@ -87,38 +87,30 @@ export function validateSecurityConfiguration(): { success: boolean; results: Se
 // ============================================
 
 function checkJwtSecret(): SecurityCheckResult {
-    const secret = process.env.JWT_SECRET;
+    const isProduction = process.env.NODE_ENV === 'production';
+    const secret = process.env.JWT_SECRET || '';
 
-    if (!secret) {
+    if (isProduction && (!secret || secret.length < 32)) {
         return {
             name: 'JWT_SECRET',
             passed: false,
-            message: 'JWT_SECRET environment variable is not set',
+            message: 'JWT_SECRET is too short or missing (min 32 characters required for production)',
             severity: 'CRITICAL'
         };
     }
 
-    if (secret.length < 32) {
+    if (isProduction && secret === 'your-super-secret-jwt-key-change-in-production') {
         return {
             name: 'JWT_SECRET',
             passed: false,
-            message: 'JWT_SECRET is too short (min 32 characters required)',
+            message: 'JWT_SECRET is using default value - CHANGE IMMEDIATELY for production',
             severity: 'CRITICAL'
         };
     }
 
-    if (secret === 'your-super-secret-jwt-key-change-in-production') {
-        return {
-            name: 'JWT_SECRET',
-            passed: false,
-            message: 'JWT_SECRET is using default value - CHANGE IMMEDIATELY',
-            severity: 'CRITICAL'
-        };
-    }
-
-    // Check for common weak secrets
+    // Check for common weak secrets in production
     const weakSecrets = ['secret', 'password', 'jwt', 'token', '123456', 'admin'];
-    if (weakSecrets.some(weak => secret.toLowerCase().includes(weak))) {
+    if (isProduction && weakSecrets.some(weak => secret.toLowerCase().includes(weak))) {
         return {
             name: 'JWT_SECRET',
             passed: false,
@@ -130,7 +122,7 @@ function checkJwtSecret(): SecurityCheckResult {
     return {
         name: 'JWT_SECRET',
         passed: true,
-        message: `JWT_SECRET is properly configured (${secret.length} characters)`,
+        message: secret ? `JWT_SECRET is configured (${secret.length} characters)` : 'JWT_SECRET not set (local dev mode)',
         severity: 'CRITICAL'
     };
 }
@@ -147,8 +139,8 @@ function checkNodeEnv(): SecurityCheckResult {
         };
     }
 
-    // If running on Railway or similar, warn if not production
-    if (process.env.RAILWAY_ENVIRONMENT || process.env.RENDER || process.env.HEROKU) {
+    // If running on a cloud platform, warn if not production
+    if (process.env.KUBERNETES_SERVICE_HOST || process.env.RENDER || process.env.HEROKU || process.env.GOOGLE_CLOUD_PROJECT) {
         return {
             name: 'NODE_ENV',
             passed: false,
@@ -270,12 +262,12 @@ function checkRateLimiting(): SecurityCheckResult {
 function checkHttpsEnforcement(): SecurityCheckResult {
     const isProduction = process.env.NODE_ENV === 'production';
 
-    // Railway automatically provides HTTPS
-    if (process.env.RAILWAY_ENVIRONMENT) {
+    // Many cloud platforms automatically provide HTTPS termination
+    if (process.env.KUBERNETES_SERVICE_HOST || process.env.GOOGLE_CLOUD_PROJECT) {
         return {
             name: 'HTTPS Enforcement',
             passed: true,
-            message: 'Running on Railway - HTTPS is provided automatically',
+            message: 'Running in cloud environment - HTTPS is typically handled by ingress/load balancer',
             severity: 'MEDIUM'
         };
     }

@@ -5,6 +5,7 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
+  storageClassName: standard
   resources:
     requests:
       storage: 10Gi
@@ -25,7 +26,7 @@ spec:
     spec:
       containers:
       - name: postgres
-        image: gcr.io/cambobia/bia-postgres:latest
+        image: gcr.io/PROJECT_ID_PLACEHOLDER/bia-postgres:latest
         ports:
         - containerPort: 5432
         env:
@@ -38,6 +39,16 @@ spec:
             secretKeyRef:
               name: bia-secrets
               key: database-password
+        readinessProbe:
+          exec:
+            command: ["pg_isready", "-U", "bia_admin", "-d", "bia_production"]
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        livenessProbe:
+          exec:
+            command: ["pg_isready", "-U", "bia_admin", "-d", "bia_production"]
+          initialDelaySeconds: 30
+          periodSeconds: 20
         volumeMounts:
         - name: postgres-storage
           mountPath: /var/lib/postgresql/data

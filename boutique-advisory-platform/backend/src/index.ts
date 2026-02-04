@@ -1,31 +1,11 @@
-// Early startup debug - this logs before ANY imports
-console.log('=== SERVER STARTUP INITIATED ===');
-console.log('Time:', new Date().toISOString());
-console.log('Node version:', process.version);
-console.log('NODE_ENV:', process.env.NODE_ENV);
-console.log('PORT:', process.env.PORT);
-
-// Catch any uncaught errors during module loading
-process.on('uncaughtException', (error) => {
-  console.error('=== UNCAUGHT EXCEPTION ===');
-  console.error('Error:', error.message);
-  console.error('Stack:', error.stack);
-  process.exit(1);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('=== UNHANDLED REJECTION ===');
-  console.error('Reason:', reason);
-  process.exit(1);
-});
-
-console.log('=== LOADING MODULES ===');
+import dotenv from 'dotenv';
+// Load environment variables IMMEDIATELY
+dotenv.config();
 
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
@@ -58,6 +38,15 @@ import smeRoutes from './routes/sme';
 import investorRoutes from './routes/investor';
 import dealRoutes from './routes/deal';
 import documentRoutes from './routes/document';
+import pipelineRoutes from './routes/pipeline';
+import matchesRoutes from './routes/matches';
+import messagesRoutes from './routes/messages';
+import calendarRoutes from './routes/calendar';
+import reportRoutes from './routes/reports';
+import dataroomRoutes from './routes/dataroom';
+
+// Security Validation
+import { validateSecurityConfiguration } from './utils/securityValidator';
 
 // Middleware
 import { authenticateToken, authorizeRoles } from './middleware/jwt-auth';
@@ -70,11 +59,40 @@ import {
   roleBasedRateLimiting
 } from './middleware/securityMiddleware';
 
-// Security Validation
-import { validateSecurityConfiguration } from './utils/securityValidator';
 
-// Load environment variables
-dotenv.config();
+// Helper to ensure admin account is synced with .env
+async function ensureAdminAccount() {
+  const adminEmail = 'admin@boutique-advisory.com';
+  const adminPassword = process.env.INITIAL_ADMIN_PASSWORD || 'BIA_Local_Admin_123!';
+
+  try {
+    const user = await prisma.user.findFirst({ where: { email: adminEmail } });
+    const hashedPassword = await bcrypt.hash(adminPassword, 10);
+
+    if (user) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { password: hashedPassword, status: 'ACTIVE' }
+      });
+      console.log(`✅ Admin account synced with password from .env`);
+    } else {
+      await prisma.user.create({
+        data: {
+          email: adminEmail,
+          password: hashedPassword,
+          role: 'ADMIN',
+          firstName: 'Admin',
+          lastName: 'User',
+          tenantId: 'default',
+          status: 'ACTIVE'
+        }
+      });
+      console.log(`✅ Admin account created with password from .env`);
+    }
+  } catch (error: any) {
+    console.warn('⚠️ Could not sync admin account:', error.message);
+  }
+}
 
 // Extend Express Request interface
 declare global {
@@ -86,10 +104,10 @@ declare global {
 }
 
 const app = express();
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 3003;
 const isProduction = process.env.NODE_ENV === 'production';
 
-// Trust proxy for Railway (required for rate limiting and secure cookies behind proxy)
+// Trust proxy (required for rate limiting and secure cookies on most cloud platforms)
 app.set('trust proxy', 1);
 
 // Security Headers with Helmet (stricter in production)
@@ -103,14 +121,14 @@ app.use(helmet({
       scriptSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:", "blob:"],
-      connectSrc: ["'self'", process.env.FRONTEND_URL || 'http://localhost:3000'],
+      connectSrc: ["'self'", process.env.FRONTEND_URL || 'http://localhost:3003'],
       fontSrc: ["'self'"],
       objectSrc: ["'none'"],
       upgradeInsecureRequests: [],
     }
   } : false,
-  hsts: isProduction ? {
-    maxAge: 31536000, // 1 year
+  hsts: isProduction && !process.env.FRONTEND_URL?.includes('localhost') ? {
+    maxAge: 31536000,
     includeSubDomains: true,
     preload: true
   } : false,
@@ -146,30 +164,30 @@ app.use(xssMiddleware);
 // CORS configuration - strict in production
 app.use(cors({
   origin: (origin, callback) => {
-    const allowedOrigins = [process.env.FRONTEND_URL || 'http://localhost:3000'];
+    // In production, strictly match the FRONTEND_URL
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3002';
+    const allowedOrigins = [frontendUrl, frontendUrl.replace(/\/$/, '')];
 
-    // Allow requests with no origin (mobile apps, Postman in dev)
-    if (!origin && !isProduction) {
+    // Always allow requests with no origin (like mobile apps or curl)
+    if (!origin) {
       return callback(null, true);
     }
 
-    if (allowedOrigins.includes(origin || '')) {
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
-    } else if (!isProduction) {
-      // In development, allow localhost variants
-      if (origin?.includes('localhost') || origin?.includes('127.0.0.1')) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
+    } else if (!isProduction || origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      // In development or for localhost, be more permissive
+      callback(null, true);
     } else {
+      console.warn(`Blocked by CORS: origin ${origin} not in ${allowedOrigins}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'X-CSRF-Token'],
-  maxAge: 86400, // 24 hours - reduce OPTIONS preflight requests
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'X-CSRF-Token', 'x-csrf-token'],
+  exposedHeaders: ['Set-Cookie'],
+  maxAge: 86400,
 }));
 
 // Rate limiting - stricter in production
@@ -186,7 +204,7 @@ app.use('/api/', limiter);
 // Stricter rate limiting for authentication endpoints (prevent brute force)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: isProduction ? 10 : 100, // 10 attempts per 15 min in production
+  max: isProduction ? 10 : 2000, // Very permissive in development
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many login attempts, please try again later.' },
@@ -240,6 +258,12 @@ app.use('/api/community', authenticateToken, communityRoutes);
 app.use('/api/secondary-trading', authenticateToken, secondaryTradingRoutes);
 app.use('/api/notifications', authenticateToken, notificationRoutes);
 app.use('/api/dashboard', authenticateToken, dashboardRoutes);
+app.use('/api/pipeline', authenticateToken, pipelineRoutes);
+app.use('/api/matches', authenticateToken, matchesRoutes);
+app.use('/api/messages', authenticateToken, messagesRoutes);
+app.use('/api/calendar', authenticateToken, calendarRoutes);
+app.use('/api/reports', authenticateToken, reportRoutes);
+app.use('/api/dataroom', authenticateToken, dataroomRoutes);
 
 // Migration endpoints - PROTECTED: Only available in development or with SUPER_ADMIN role (Fix #2)
 const migrationAuthMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -368,8 +392,10 @@ async function startServer() {
       console.log(`   - GET  /api/migration/status - Check migration status`);
       console.log(`   - POST /api/migration/perform - Perform migration`);
       console.log(`   - POST /api/migration/switch-to-database - Switch to database mode`);
-      console.log(`   - POST /api/migration/fallback-to-memory - Fallback to in-memory mode`);
     });
+
+    // Run admin sync after server starts
+    await ensureAdminAccount();
 
   } catch (error) {
     console.error('❌ Failed to start server:', error);

@@ -21,7 +21,7 @@ import { useToast } from '../../contexts/ToastContext'
 import usePermissions from '../../hooks/usePermissions'
 
 // Updated API URL to match the backend
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://backend-production-c9de.up.railway.app'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003'
 
 interface Syndicate {
     id: string

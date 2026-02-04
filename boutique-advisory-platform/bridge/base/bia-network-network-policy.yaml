@@ -1,0 +1,24 @@
+#! bia-network-network-policy.yaml
+# Generated code, do not edit
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+    name: bia-network-network-policy
+    namespace: boutique-advisory-platform
+spec:
+    podSelector:
+        matchLabels:
+            com.docker.compose.network.bia-network: "true"
+    policyTypes:
+        - Ingress
+        - Egress
+    ingress:
+        - from:
+            - podSelector:
+                matchLabels:
+                    com.docker.compose.network.bia-network: "true"
+    egress:
+        - to:
+            - podSelector:
+                matchLabels:
+                    com.docker.compose.network.bia-network: "true"

@@ -3,7 +3,8 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import ClientProviders from '../components/ClientProviders'
 
-const inter = Inter({ subsets: ['latin'] })
+// const inter = Inter({ subsets: ['latin'] })
+const inter = { className: 'sans-serif' }
 
 const APP_NAME = 'Boutique Advisory Platform'
 const APP_DEFAULT_TITLE = 'BIA - Boutique Advisory'
@@ -62,7 +63,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192x192.png" />
         <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-96x96.png" />

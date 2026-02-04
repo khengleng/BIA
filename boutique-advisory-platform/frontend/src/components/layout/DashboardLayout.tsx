@@ -27,7 +27,7 @@ import {
     ArrowLeftRight
 } from 'lucide-react'
 import { User } from '../../types'
-import { API_URL } from '@/lib/api'
+import { API_URL, authorizedRequest } from '@/lib/api'
 import NotificationCenter from '../NotificationCenter'
 
 interface DashboardLayoutProps {
@@ -43,33 +43,49 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
     useEffect(() => {
         const fetchUser = async () => {
+            // Don't fetch if we're on a public page to avoid infinite redirect loops
+            if (pathname?.startsWith('/auth/')) {
+                setIsLoading(false);
+                return;
+            }
+
             try {
-                // Try to get user from API (checks HttpOnly cookie)
-                const response = await fetch(`${API_URL}/api/auth/me`, {
-                    credentials: 'include'
-                })
+                // Check if token exists before making request
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    throw new Error('No session');
+                }
+
+                // Try to get user from API (checks Authorization header)
+                const response = await authorizedRequest('/api/auth/me')
 
                 if (response.ok) {
                     const data = await response.json()
                     setUser(data.user)
-                    // Update fresh user data in localStorage just for other components to use if needed
                     localStorage.setItem('user', JSON.stringify(data.user))
                 } else {
                     // Session invalid
                     throw new Error('Session invalid')
                 }
-            } catch (error) {
-                console.error('Error fetching user:', error)
-                localStorage.removeItem('token') // Clean up if it exists
+            } catch (error: any) {
+                // Only log unexpected errors, not standard "no session" redirects
+                if (error?.message !== 'No session' && error?.message !== 'Session invalid') {
+                    console.error('Error fetching user:', error);
+                }
+
+                localStorage.removeItem('token')
                 localStorage.removeItem('user')
-                router.push('/auth/login')
+                // Only redirect if we're not already on the login page
+                if (pathname !== '/auth/login' && pathname !== '/auth/register') {
+                    router.push('/auth/login')
+                }
             } finally {
                 setIsLoading(false)
             }
         }
 
         fetchUser()
-    }, [router])
+    }, [router, pathname])
 
     const handleLogout = () => {
         localStorage.removeItem('token')

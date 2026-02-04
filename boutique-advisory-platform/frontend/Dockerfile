@@ -1,4 +1,4 @@
-# BIA Frontend - Dockerfile for Railway
+# BIA Frontend - Dockerfile
 # Next.js Web Application with Standalone Output
 
 FROM node:20-alpine AS base
@@ -17,7 +17,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Build-time environment variables
-# These are replaced at build time by Railway
+# These are replaced at build time
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ENV NEXT_TELEMETRY_DISABLED=1

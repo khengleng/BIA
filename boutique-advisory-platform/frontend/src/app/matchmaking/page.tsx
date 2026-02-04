@@ -101,8 +101,8 @@ export default function MatchmakingPage() {
 
                 if (response.ok) {
                     const data = await response.json()
-                    setMatches(data.matches)
-                    setStats(data.stats)
+                    setMatches(data.matches || [])
+                    setStats(data.stats || null)
                 } else {
                     addToast('error', 'Failed to fetch matches')
                 }
@@ -167,11 +167,11 @@ export default function MatchmakingPage() {
         return 'bg-red-500/20'
     }
 
-    const filteredMatches = matches.filter(match => {
+    const filteredMatches = (matches || []).filter(match => {
         // Apply score filter
         if (filter === 'high' && match.matchScore < 70) return false
         if (filter === 'medium' && (match.matchScore < 40 || match.matchScore >= 70)) return false
-        if (filter === 'mutual' && !match.interestStatus.mutualInterest) return false
+        if (filter === 'mutual' && !match.interestStatus?.mutualInterest) return false
 
         // Apply search filter
         if (searchQuery) {

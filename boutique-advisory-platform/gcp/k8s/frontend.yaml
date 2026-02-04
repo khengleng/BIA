@@ -14,14 +14,33 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: gcr.io/cambobia/bia-frontend:latest
+        image: gcr.io/PROJECT_ID_PLACEHOLDER/bia-frontend:latest
         ports:
         - containerPort: 3000
         env:
         - name: NODE_ENV
           value: "production"
         - name: NEXT_PUBLIC_API_URL
-          value: "https://api.your-platform-domain.com"
+          value: "https://api.cambobia.com"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 200m
+            memory: 256Mi
 ---
 apiVersion: v1
 kind: Service
@@ -34,4 +53,4 @@ spec:
     - protocol: TCP
       port: 80
       targetPort: 3000
-  type: LoadBalancer
+  type: NodePort

@@ -20,7 +20,10 @@ async function main() {
     console.log('✅ Created tenant:', tenant.name);
 
     // Hash passwords
-    const passwordHash = await bcrypt.hash('admin123', 10);
+    const initialAdminPassword = process.env.INITIAL_ADMIN_PASSWORD || 'admin123';
+    console.log(`🔑 Using admin password: ${initialAdminPassword}`);
+
+    const passwordHash = await bcrypt.hash(initialAdminPassword, 10);
     const advisorHash = await bcrypt.hash('advisor123', 10);
     const investorHash = await bcrypt.hash('investor123', 10);
     const smeHash = await bcrypt.hash('sme123', 10);
@@ -451,10 +454,9 @@ async function main() {
 
     console.log('\n🎉 Database seeding completed successfully!');
     console.log('\n📋 Login credentials:');
-    console.log('   Admin:     admin@boutique-advisory.com / admin123');
+    console.log(`   Admin:     admin@boutique-advisory.com / ${initialAdminPassword}`);
     console.log('   Advisor:   advisor@boutique-advisory.com / advisor123');
     console.log('   Investor:  investor@boutique-advisory.com / investor123');
-    console.log('   Investor2: investor2@boutique-advisory.com / investor2');
     console.log('   SME:       sme@boutique-advisory.com / sme123');
     console.log('\n📊 Seeded Data Summary:');
     console.log('   - 2 SMEs');

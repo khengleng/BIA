@@ -87,8 +87,8 @@ export default function DataRoomPage() {
 
                 if (response.ok) {
                     const data = await response.json()
-                    setDataRooms(data)
-                    if (data.length > 0) {
+                    setDataRooms(Array.isArray(data) ? data : [])
+                    if (Array.isArray(data) && data.length > 0) {
                         setSelectedRoom(data[0])
                     }
                 }

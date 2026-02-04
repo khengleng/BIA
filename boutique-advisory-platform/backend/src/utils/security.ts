@@ -236,6 +236,8 @@ export function isLockedOut(identifier: string): boolean {
  * Record a failed authentication attempt
  */
 export function recordFailedAttempt(identifier: string): void {
+    if (process.env.NODE_ENV === 'development') return; // Disable lockout in dev
+
     const record = failedAttempts.get(identifier) || { count: 0 };
     record.count++;
 

@@ -79,9 +79,9 @@ export default function PipelinePage() {
 
                 if (response.ok) {
                     const data = await response.json()
-                    setStages(data.stages)
-                    setPipeline(data.pipeline)
-                    setSummary(data.summary)
+                    setStages(data.stages || [])
+                    setPipeline(data.pipeline || {})
+                    setSummary(data.summary || null)
                 }
             } catch (error) {
                 console.error('Error fetching pipeline:', error)

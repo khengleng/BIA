@@ -84,7 +84,7 @@ export default function CalendarPage() {
 
                 if (response.ok) {
                     const data = await response.json()
-                    setEvents(data.events)
+                    setEvents(data.events || [])
                 }
             } catch (error) {
                 console.error('Error fetching calendar:', error)
@@ -289,8 +289,8 @@ export default function CalendarPage() {
                                 key={mode}
                                 onClick={() => setViewMode(mode as 'week' | 'list')}
                                 className={`px-3 py-1 rounded text-sm capitalize ${viewMode === mode
-                                        ? 'bg-blue-600 text-white'
-                                        : 'text-gray-400 hover:text-white'
+                                    ? 'bg-blue-600 text-white'
+                                    : 'text-gray-400 hover:text-white'
                                     }`}
                             >
                                 {mode}
@@ -311,16 +311,16 @@ export default function CalendarPage() {
                                     <div
                                         key={index}
                                         className={`p-4 text-center border-r border-gray-700 last:border-r-0 ${day.toDateString() === new Date().toDateString()
-                                                ? 'bg-blue-600/20'
-                                                : ''
+                                            ? 'bg-blue-600/20'
+                                            : ''
                                             }`}
                                     >
                                         <p className="text-sm text-gray-400">
                                             {day.toLocaleDateString('en-US', { weekday: 'short' })}
                                         </p>
                                         <p className={`text-2xl font-bold ${day.toDateString() === new Date().toDateString()
-                                                ? 'text-blue-400'
-                                                : 'text-white'
+                                            ? 'text-blue-400'
+                                            : 'text-white'
                                             }`}>
                                             {day.getDate()}
                                         </p>
@@ -513,10 +513,10 @@ export default function CalendarPage() {
                                             </div>
                                         </div>
                                         <span className={`text-xs px-2 py-0.5 rounded ${attendee.status === 'ACCEPTED'
-                                                ? 'bg-green-500/20 text-green-400'
-                                                : attendee.status === 'DECLINED'
-                                                    ? 'bg-red-500/20 text-red-400'
-                                                    : 'bg-yellow-500/20 text-yellow-400'
+                                            ? 'bg-green-500/20 text-green-400'
+                                            : attendee.status === 'DECLINED'
+                                                ? 'bg-red-500/20 text-red-400'
+                                                : 'bg-yellow-500/20 text-yellow-400'
                                             }`}>
                                             {attendee.status}
                                         </span>

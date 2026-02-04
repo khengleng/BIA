@@ -38,16 +38,19 @@ export default function NotificationCenter() {
     useEffect(() => {
         const fetchNotifications = async () => {
             try {
-                const token = localStorage.getItem('token')
-                // if (!token) return // Allow cookie-based auth
+                const userData = localStorage.getItem('user')
+                if (!userData) {
+                    setIsLoading(false)
+                    return
+                }
 
                 setIsLoading(true)
+                const token = localStorage.getItem('token')
                 const response = await fetch(`${API_URL}/api/notifications`, {
                     headers: {
-                        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-                        'Content-Type': 'application/json'
-                    },
-                    credentials: 'include'
+                        'Content-Type': 'application/json',
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                    }
                 })
 
                 if (response.ok) {

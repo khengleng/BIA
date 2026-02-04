@@ -12,7 +12,7 @@ import { type temporal } from '@temporalio/proto';
 import { isGrpcServiceError, ServiceError } from './errors';
 import { defaultGrpcRetryOptions, makeGrpcRetryInterceptor } from './grpc-retry';
 import pkg from './pkg';
-import { CallContext, HealthService, Metadata, OperatorService, WorkflowService } from './types';
+import { CallContext, HealthService, Metadata, OperatorService, TestService, WorkflowService } from './types';
 
 /**
  * The default Temporal Server's TCP port for public gRPC connections.
@@ -130,12 +130,39 @@ export interface ConnectionOptions {
    * @default 10 seconds
    */
   connectTimeout?: Duration;
+
+  /**
+   * List of plugins to register with the connection.
+   *
+   * Plugins allow you to configure the connection options.
+   * Any plugins provided will also be passed to any client built from this connection.
+   *
+   * @experimental Plugins is an experimental feature; APIs may change without notice.
+   */
+  plugins?: ConnectionPlugin[];
 }
 
 export type ConnectionOptionsWithDefaults = Required<
   Omit<ConnectionOptions, 'tls' | 'connectTimeout' | 'callCredentials' | 'apiKey'>
 > & {
   connectTimeoutMs: number;
+};
+
+/**
+ * A symbol used to attach extra, SDK-internal connection options.
+ *
+ * @internal
+ * @hidden
+ */
+export const InternalConnectionOptionsSymbol = Symbol('__temporal_internal_connection_options');
+export type InternalConnectionOptions = ConnectionOptions & {
+  [InternalConnectionOptionsSymbol]?: {
+    /**
+     * Indicate whether the `TestService` should be enabled on this connection. This is set to true
+     * on connections created internally by `TestWorkflowEnvironment.createTimeSkipping()`.
+     */
+    supportsTestService?: boolean;
+  };
 };
 
 export const LOCAL_TARGET = 'localhost:7233';
@@ -155,6 +182,7 @@ function addDefaults(options: ConnectionOptions): ConnectionOptionsWithDefaults 
     interceptors: interceptors ?? [makeGrpcRetryInterceptor(defaultGrpcRetryOptions())],
     metadata: {},
     connectTimeoutMs: msOptionalToNumber(connectTimeout) ?? 10_000,
+    plugins: [],
     ...filterNullAndUndefined(rest),
   };
 }
@@ -165,8 +193,8 @@ function addDefaults(options: ConnectionOptions): ConnectionOptionsWithDefaults 
  * - Add default port to address if port not specified
  * - Set `Authorization` header based on {@link ConnectionOptions.apiKey}
  */
-function normalizeGRPCConfig(options?: ConnectionOptions): ConnectionOptions {
-  const { tls: tlsFromConfig, credentials, callCredentials, ...rest } = options || {};
+function normalizeGRPCConfig(options: ConnectionOptions): ConnectionOptions {
+  const { tls: tlsFromConfig, credentials, callCredentials, ...rest } = options;
   if (rest.apiKey) {
     if (rest.metadata?.['Authorization']) {
       throw new TypeError(
@@ -182,15 +210,18 @@ function normalizeGRPCConfig(options?: ConnectionOptions): ConnectionOptions {
   if (rest.address) {
     rest.address = normalizeGrpcEndpointAddress(rest.address, DEFAULT_TEMPORAL_GRPC_PORT);
   }
-  const tls = normalizeTlsConfig(tlsFromConfig);
+  const tls = normalizeTlsConfig(tlsFromConfig, options.apiKey);
   if (tls) {
     if (credentials) {
       throw new TypeError('Both `tls` and `credentials` ConnectionOptions were provided');
     }
+    const serverRootCert = tls.serverRootCACertificate && Buffer.from(tls.serverRootCACertificate);
+    const clientCertKey = tls.clientCertPair?.key && Buffer.from(tls.clientCertPair?.key);
+    const clientCertCrt = tls.clientCertPair?.crt && Buffer.from(tls.clientCertPair?.crt);
     return {
       ...rest,
       credentials: grpc.credentials.combineChannelCredentials(
-        grpc.credentials.createSsl(tls.serverRootCACertificate, tls.clientCertPair?.key, tls.clientCertPair?.crt),
+        grpc.credentials.createSsl(serverRootCert, clientCertKey, clientCertCrt),
         ...(callCredentials ?? [])
       ),
       channelArgs: {
@@ -240,6 +271,13 @@ export interface ConnectionCtorOptions {
   readonly operatorService: OperatorService;
 
   /**
+   * Raw gRPC access to the Temporal test service.
+   *
+   * Will be `undefined` if connected to a server that does not support the test service.
+   */
+  readonly testService: TestService | undefined;
+
+  /**
    * Raw gRPC access to the standard gRPC {@link https://github.com/grpc/grpc/blob/92f58c18a8da2728f571138c37760a721c8915a2/doc/health-checking.md | health service}.
    */
   readonly healthService: HealthService;
@@ -287,14 +325,23 @@ export class Connection {
   public readonly operatorService: OperatorService;
 
   /**
+   * Raw gRPC access to the Temporal test service.
+   *
+   * Will be `undefined` if connected to a server that does not support the test service.
+   */
+  public readonly testService: TestService | undefined;
+
+  /**
    * Raw gRPC access to the standard gRPC {@link https://github.com/grpc/grpc/blob/92f58c18a8da2728f571138c37760a721c8915a2/doc/health-checking.md | health service}.
    */
   public readonly healthService: HealthService;
 
+  public readonly plugins: ConnectionPlugin[];
+
   readonly callContextStorage: AsyncLocalStorage<CallContext>;
   private readonly apiKeyFnRef: { fn?: () => string };
 
-  protected static createCtorOptions(options?: ConnectionOptions): ConnectionCtorOptions {
+  protected static createCtorOptions(options: ConnectionOptions): ConnectionCtorOptions {
     const normalizedOptions = normalizeGRPCConfig(options);
     const apiKeyFnRef: { fn?: () => string } = {};
     if (normalizedOptions.apiKey) {
@@ -326,6 +373,7 @@ export class Connection {
       apiKeyFnRef,
     });
     const workflowService = WorkflowService.create(workflowRpcImpl, false, false);
+
     const operatorRpcImpl = this.generateRPCImplementation({
       serviceName: 'temporal.api.operatorservice.v1.OperatorService',
       client,
@@ -335,6 +383,20 @@ export class Connection {
       apiKeyFnRef,
     });
     const operatorService = OperatorService.create(operatorRpcImpl, false, false);
+
+    let testService: TestService | undefined = undefined;
+    if ((options as InternalConnectionOptions)?.[InternalConnectionOptionsSymbol]?.supportsTestService) {
+      const testRpcImpl = this.generateRPCImplementation({
+        serviceName: 'temporal.api.testservice.v1.TestService',
+        client,
+        callContextStorage,
+        interceptors: optionsWithDefaults?.interceptors,
+        staticMetadata: optionsWithDefaults.metadata,
+        apiKeyFnRef,
+      });
+      testService = TestService.create(testRpcImpl, false, false);
+    }
+
     const healthRpcImpl = this.generateRPCImplementation({
       serviceName: 'grpc.health.v1.Health',
       client,
@@ -350,6 +412,7 @@ export class Connection {
       callContextStorage,
       workflowService,
       operatorService,
+      testService,
       healthService,
       options: optionsWithDefaults,
       apiKeyFnRef,
@@ -394,6 +457,12 @@ export class Connection {
    * This method does not verify connectivity with the server. We recommend using {@link connect} instead.
    */
   static lazy(options?: ConnectionOptions): Connection {
+    options = options ?? {};
+    for (const plugin of options.plugins ?? []) {
+      if (plugin.configureConnection !== undefined) {
+        options = plugin.configureConnection(options);
+      }
+    }
     return new this(this.createCtorOptions(options));
   }
 
@@ -414,6 +483,7 @@ export class Connection {
     client,
     workflowService,
     operatorService,
+    testService,
     healthService,
     callContextStorage,
     apiKeyFnRef,
@@ -422,9 +492,11 @@ export class Connection {
     this.client = client;
     this.workflowService = this.withNamespaceHeaderInjector(workflowService);
     this.operatorService = operatorService;
+    this.testService = testService;
     this.healthService = healthService;
     this.callContextStorage = callContextStorage;
     this.apiKeyFnRef = apiKeyFnRef;
+    this.plugins = options.plugins ?? [];
   }
 
   protected static generateRPCImplementation({
@@ -480,7 +552,7 @@ export class Connection {
    * this will locally result in the request call throwing a {@link grpc.ServiceError|ServiceError}
    * with code {@link grpc.status.DEADLINE_EXCEEDED|DEADLINE_EXCEEDED}; see {@link isGrpcDeadlineError}.
    *
-   * It is stronly recommended to explicitly set deadlines. If no deadline is set, then it is
+   * It is strongly recommended to explicitly set deadlines. If no deadline is set, then it is
    * possible for the client to end up waiting forever for a response.
    *
    * @param deadline a point in time after which the request will be considered as failed; either a
@@ -635,4 +707,21 @@ export class Connection {
     }
     return wrapper as WorkflowService;
   }
+}
+
+/**
+ * Plugin to control the configuration of a connection.
+ *
+ * @experimental Plugins is an experimental feature; APIs may change without notice.
+ */
+export interface ConnectionPlugin {
+  /**
+   * Gets the name of this plugin.
+   */
+  get name(): string;
+
+  /**
+   * Hook called when creating a connection to allow modification of configuration.
+   */
+  configureConnection?(options: ConnectionOptions): ConnectionOptions;
 }

@@ -1,5 +1,5 @@
 // API Configuration
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://backend-production-c9de.up.railway.app';
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 // CSRF Token Management
 let csrfToken: string | null = null;

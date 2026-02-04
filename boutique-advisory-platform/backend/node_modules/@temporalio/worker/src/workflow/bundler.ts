@@ -4,7 +4,7 @@ import path from 'node:path';
 import util from 'node:util';
 import * as unionfs from 'unionfs';
 import * as memfs from 'memfs';
-import { Configuration, webpack } from 'webpack';
+import { Configuration, webpack, NormalModuleReplacementPlugin } from 'webpack';
 import { DefaultLogger, Logger, hasColorSupport } from '../logger';
 import { toMB } from '../utils';
 
@@ -53,16 +53,24 @@ export class WorkflowCodeBundler {
   protected readonly failureConverterPath?: string;
   protected readonly ignoreModules: string[];
   protected readonly webpackConfigHook: (config: Configuration) => Configuration;
+  protected readonly plugins: BundlerPlugin[];
 
-  constructor({
-    logger,
-    workflowsPath,
-    payloadConverterPath,
-    failureConverterPath,
-    workflowInterceptorModules,
-    ignoreModules,
-    webpackConfigHook,
-  }: BundleOptions) {
+  constructor(options: BundleOptions) {
+    this.plugins = options.plugins ?? [];
+    for (const plugin of this.plugins) {
+      if (plugin.configureBundler !== undefined) {
+        options = plugin.configureBundler(options);
+      }
+    }
+    const {
+      logger,
+      workflowsPath,
+      payloadConverterPath,
+      failureConverterPath,
+      workflowInterceptorModules,
+      ignoreModules,
+      webpackConfigHook,
+    } = options;
     this.logger = logger ?? new DefaultLogger('INFO');
     this.workflowsPath = workflowsPath;
     this.payloadConverterPath = payloadConverterPath;
@@ -208,6 +216,17 @@ exports.importInterceptors = function importInterceptors() {
           ...Object.fromEntries([...this.ignoreModules, ...disallowedModules].map((m) => [m, false])),
         },
       },
+      plugins: [
+        // `@temporalio/interceptors-opentelemetry` only requires `@temporalio/workflow` for interceptors that run in workflow context.
+        // In order to keep `@temporalio/workflow` as an optional peer dependency for `@temporalio/interceptors-opentelemetry`
+        // we use `workflow-imports` to reexport all required imports from `@temporalio/workflow`.
+        // Outside of workflow context the module used only contains stubs that will error if they are used.
+        // When creating the workflow bundle we replace the module containing the stubs with a module that reexports the actual implementations.
+        new NormalModuleReplacementPlugin(
+          /[\\/](?:@temporalio|packages)[\\/]interceptors-opentelemetry[\\/](?:src|lib)[\\/]workflow[\\/]workflow-imports\.[jt]s$/,
+          './workflow-imports-impl.js'
+        ),
+      ],
       externals: captureProblematicModules,
       module: {
         rules: [
@@ -295,7 +314,7 @@ exports.importInterceptors = function importInterceptors() {
 
             const outputFilename = Object.keys(stats.compilation.assets)[0];
             if (!err) {
-              resolve(path.join(distDir, outputFilename));
+              resolve(path.join(distDir, outputFilename!));
             }
           }
           reject(err);
@@ -305,6 +324,28 @@ exports.importInterceptors = function importInterceptors() {
       await util.promisify(compiler.close).bind(compiler)();
     }
   }
+}
+
+/**
+ * Plugin interface for bundler functionality.
+ *
+ * Plugins provide a way to extend and customize the behavior of Temporal bundlers.
+ *
+ * @experimental Plugins is an experimental feature; APIs may change without notice.
+ */
+export interface BundlerPlugin {
+  /**
+   * Gets the name of this plugin.
+   *
+   * Returns:
+   *   The name of the plugin.
+   */
+  get name(): string;
+
+  /**
+   * Hook called when creating a bundler to allow modification of configuration.
+   */
+  configureBundler?(options: BundleOptions): BundleOptions;
 }
 
 /**
@@ -350,6 +391,11 @@ export interface BundleOptions {
    * {@link https://webpack.js.org/configuration/ | configuration} object so you can modify it.
    */
   webpackConfigHook?: (config: Configuration) => Configuration;
+
+  /**
+   * List of plugins to register with the bundler.
+   */
+  plugins?: BundlerPlugin[];
 }
 
 /**

@@ -85,8 +85,8 @@ export default function MessagesPage() {
 
                 if (response.ok) {
                     const data = await response.json()
-                    setConversations(data)
-                    if (data.length > 0) {
+                    setConversations(Array.isArray(data) ? data : [])
+                    if (Array.isArray(data) && data.length > 0) {
                         setSelectedConversation(data[0])
                     }
                 }
@@ -116,7 +116,7 @@ export default function MessagesPage() {
 
                 if (response.ok) {
                     const data = await response.json()
-                    setMessages(data.messages)
+                    setMessages(data.messages || [])
                 }
             } catch (error) {
                 console.error('Error fetching messages:', error)
@@ -182,10 +182,14 @@ export default function MessagesPage() {
     }
 
     const getOtherParticipant = (conv: Conversation) => {
+        if (!conv || !conv.participantDetails || !Array.isArray(conv.participantDetails)) {
+            return { id: 'unknown', type: 'SME', name: 'Unknown Participant' }
+        }
         return conv.participantDetails.find(p => p.id !== user?.userId) || conv.participantDetails[0]
     }
 
-    const filteredConversations = conversations.filter(conv => {
+    const filteredConversations = (conversations || []).filter(conv => {
+        if (!conv) return false
         if (!searchQuery) return true
         const other = getOtherParticipant(conv)
         return other.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -284,7 +288,7 @@ export default function MessagesPage() {
                             <div className="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-800">
                                 <div className="flex items-center gap-3">
                                     <div className={`w-10 h-10 rounded-full flex items-center justify-center ${getOtherParticipant(selectedConversation).type === 'INVESTOR'
-                                            ? 'bg-blue-500/20' : 'bg-green-500/20'
+                                        ? 'bg-blue-500/20' : 'bg-green-500/20'
                                         }`}>
                                         {getOtherParticipant(selectedConversation).type === 'INVESTOR' ? (
                                             <Users className="w-5 h-5 text-blue-400" />
@@ -331,8 +335,8 @@ export default function MessagesPage() {
                                                     </p>
                                                 )}
                                                 <div className={`px-4 py-2 rounded-2xl ${isOwn
-                                                        ? 'bg-blue-600 text-white rounded-br-sm'
-                                                        : 'bg-gray-700 text-white rounded-bl-sm'
+                                                    ? 'bg-blue-600 text-white rounded-br-sm'
+                                                    : 'bg-gray-700 text-white rounded-bl-sm'
                                                     }`}>
                                                     <p>{message.content}</p>
                                                 </div>

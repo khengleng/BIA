@@ -14,26 +14,54 @@ spec:
     spec:
       containers:
       - name: backend
-        image: gcr.io/cambobia/bia-backend:latest
+        image: gcr.io/PROJECT_ID_PLACEHOLDER/bia-backend:latest
         ports:
         - containerPort: 3001
         env:
         - name: NODE_ENV
           value: "production"
-        - name: DATABASE_URL
-          value: "postgresql://bia_admin:$(DB_PASSWORD)@postgres:5432/bia_production?schema=public"
         - name: DB_PASSWORD
           valueFrom:
             secretKeyRef:
               name: bia-secrets
               key: database-password
+        - name: DATABASE_URL
+          value: "postgresql://bia_admin:$(DB_PASSWORD)@postgres:5432/bia_production?schema=public"
         - name: JWT_SECRET
           valueFrom:
             secretKeyRef:
               name: bia-secrets
               key: jwt-secret
+        - name: INITIAL_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: bia-secrets
+              key: initial-admin-password
         - name: FRONTEND_URL
-          value: "https://your-platform-domain.com"
+          value: "https://www.cambobia.com"
+        - name: CORS_ORIGIN
+          value: "https://www.cambobia.com"
+        - name: COOKIE_DOMAIN
+          value: "cambobia.com"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3001
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3001
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 200m
+            memory: 256Mi
 ---
 apiVersion: v1
 kind: Service
@@ -46,4 +74,4 @@ spec:
     - protocol: TCP
       port: 80
       targetPort: 3001
-  type: LoadBalancer
+  type: NodePort

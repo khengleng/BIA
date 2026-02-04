@@ -1,0 +1,9 @@
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: bia-managed-cert
+spec:
+  domains:
+    - cambobia.com
+    - www.cambobia.com
+    - api.cambobia.com

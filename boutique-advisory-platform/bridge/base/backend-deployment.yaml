@@ -1,0 +1,59 @@
+#! backend-deployment.yaml
+# Generated code, do not edit
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: backend
+    namespace: boutique-advisory-platform
+    labels:
+        com.docker.compose.project: boutique-advisory-platform
+        com.docker.compose.service: backend
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            com.docker.compose.project: boutique-advisory-platform
+            com.docker.compose.service: backend
+    strategy:
+        type: Recreate
+    template:
+        metadata:
+            labels:
+                com.docker.compose.project: boutique-advisory-platform
+                com.docker.compose.service: backend
+                com.docker.compose.network.bia-network: "true"
+        spec:
+            restartPolicy: unless-stopped
+            containers:
+                - name: bia-backend
+                  image: bia-backend:latest
+                  imagePullPolicy: IfNotPresent
+                  env:
+                    - name: CORS_ORIGIN
+                      value: "http://localhost:3002"
+                    - name: DATABASE_URL
+                      value: "postgresql://bia_user:bia_secret_password@postgres:5432/bia_development?schema=public"
+                    - name: FRONTEND_URL
+                      value: "http://localhost:3002"
+                    - name: INITIAL_ADMIN_PASSWORD
+                      value: "BIA_Local_Admin_123!"
+                    - name: JWT_REFRESH_SECRET
+                      value: "local-dev-refresh-secret-change-in-production"
+                    - name: JWT_SECRET
+                      value: "local-dev-jwt-secret-change-in-production-32chars"
+                    - name: NODE_ENV
+                      value: "production"
+                    - name: PORT
+                      value: "3001"
+                    - name: SESSION_SECRET
+                      value: "local-dev-session-secret-change-in-production"
+                  livenessProbe:
+                    exec:
+                        command: ['wget -qO- http://localhost:3001/health']
+                    periodSeconds: 30
+                    initialDelaySeconds: 30
+                    timeoutSeconds: 10
+                    failureThreshold: 3
+                  ports:
+                    - name: backend-3001
+                      containerPort: 3001
