@@ -207,6 +207,18 @@ export default function MatchmakingPage() {
                     </h1>
                     <p className="text-gray-400 mt-2">AI-powered SME and Investor matching based on preferences and compatibility</p>
                 </div>
+                {(user?.role === 'ADMIN' || user?.role === 'ADVISOR') && (
+                    <button
+                        onClick={() => {
+                            // In a real implementation, this would open a modal to select SME and Investor
+                            addToast('info', 'Opening manual match creator...')
+                        }}
+                        className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center transition-colors"
+                    >
+                        <HeartHandshake className="w-4 h-4 mr-2" />
+                        Create Manual Match
+                    </button>
+                )}
             </div>
 
             {/* Stats Cards */}

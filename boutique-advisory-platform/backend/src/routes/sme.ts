@@ -5,14 +5,33 @@ import { validateBody, updateSMESchema, idParamSchema, validateParams } from '..
 const router = Router();
 
 // Get all SMEs
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', async (req: any, res: Response) => {
   try {
-    const smes = await prisma.sME.findMany({
+    const userId = req.user?.id;
+    const userRole = req.user?.role;
+
+    const tenantId = req.user?.tenantId;
+
+    let query: any = {
+      where: {
+        tenantId: tenantId // Enforce multi-tenant isolation
+      },
       include: {
         user: true,
         deals: true
       }
-    });
+    };
+
+    // RBAC: SME can only see their own profile
+    if (userRole === 'SME') {
+      query.where.userId = userId;
+    } else if (userRole === 'INVESTOR') {
+      // Investors only see certified SMEs
+      query.where.status = 'CERTIFIED';
+    }
+    // ADVISOR, ADMIN can see all within tenant
+
+    const smes = await prisma.sME.findMany(query);
     return res.json(smes);
   } catch (error) {
     console.error('Get SMEs error:', error);
@@ -21,9 +40,12 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 // Get SME by ID
-router.get('/:id', async (req: Request, res: Response) => {
+router.get('/:id', async (req: any, res: Response) => {
   try {
     const { id } = req.params;
+    const userId = req.user?.id;
+    const userRole = req.user?.role;
+
     const sme = await prisma.sME.findUnique({
       where: { id },
       include: {
@@ -35,6 +57,11 @@ router.get('/:id', async (req: Request, res: Response) => {
 
     if (!sme) {
       return res.status(404).json({ error: 'SME not found' });
+    }
+
+    // RBAC: SME only see their own profile
+    if (userRole === 'SME' && sme.userId !== userId) {
+      return res.status(403).json({ error: 'Access denied: You can only view your own SME profile' });
     }
 
     return res.json(sme);

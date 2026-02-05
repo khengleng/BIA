@@ -5,14 +5,45 @@ import { validateBody, updateInvestorSchema } from '../middleware/validation';
 const router = Router();
 
 // Get all investors
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', async (req: any, res: Response) => {
   try {
-    const investors = await prisma.investor.findMany({
+    const userId = req.user?.id;
+    const userRole = req.user?.role;
+    const tenantId = req.user?.tenantId;
+
+    let query: any = {
+      where: {
+        tenantId: tenantId // Multi-tenant isolation
+      },
       include: {
         user: true,
-        dealInvestments: true
+        dealInvestments: {
+          include: {
+            deal: true
+          }
+        }
       }
-    });
+    };
+
+    // RBAC: SME only see investors interested in their deals
+    if (userRole === 'SME') {
+      // Find SME and their deals
+      const sme = await prisma.sME.findUnique({ where: { userId: userId } });
+      if (sme) {
+        query.where.dealInvestments = {
+          some: {
+            deal: {
+              smeId: sme.id
+            }
+          }
+        };
+      } else {
+        // If no SME profile, return empty list
+        return res.json([]);
+      }
+    }
+
+    const investors = await prisma.investor.findMany(query);
     return res.json(investors);
   } catch (error) {
     console.error('Get investors error:', error);

@@ -100,7 +100,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     const navItems = [
         { href: '/dashboard', label: 'Dashboard', icon: BarChart3, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
         { href: '/analytics', label: 'Analytics', icon: TrendingUp, roles: ['ADMIN', 'ADVISOR', 'INVESTOR'] },
-        { href: '/smes', label: 'SMEs', icon: Building2, roles: ['ADMIN', 'ADVISOR', 'INVESTOR'] },
+        { href: '/smes', label: 'SMEs', icon: Building2, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
         { href: '/investors', label: 'Investors', icon: Users, roles: ['ADMIN', 'ADVISOR', 'SME'] },
         { href: '/deals', label: 'Deals', icon: Handshake, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
         { href: '/pipeline', label: 'Pipeline', icon: KanbanSquare, roles: ['ADMIN', 'ADVISOR'] },

@@ -5,9 +5,16 @@ import { validateBody, createDealSchema, updateDealSchema } from '../middleware/
 const router = Router();
 
 // Get all deals
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', async (req: any, res: Response) => {
   try {
-    const deals = await prisma.deal.findMany({
+    const userId = req.user?.id;
+    const userRole = req.user?.role;
+    const tenantId = req.user?.tenantId;
+
+    let query: any = {
+      where: {
+        tenantId: tenantId // Multi-tenant isolation
+      },
       include: {
         sme: true,
         investors: {
@@ -16,7 +23,23 @@ router.get('/', async (req: Request, res: Response) => {
           }
         }
       }
-    });
+    };
+
+    if (userRole === 'SME') {
+      // Find SME and their deals
+      const sme = await prisma.sME.findUnique({ where: { userId: userId } });
+      if (sme) {
+        query.where.smeId = sme.id;
+      } else {
+        return res.json([]);
+      }
+    } else if (userRole === 'INVESTOR') {
+      // Investors see published deals
+      query.where.status = 'PUBLISHED';
+    }
+    // ADVISOR, ADMIN see all within tenant
+
+    const deals = await prisma.deal.findMany(query);
     return res.json(deals);
   } catch (error) {
     console.error('Get deals error:', error);

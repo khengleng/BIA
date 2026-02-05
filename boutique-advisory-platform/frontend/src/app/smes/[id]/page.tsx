@@ -369,6 +369,38 @@ export default function SMEPage() {
                   <Handshake className="w-4 h-4 mr-2" />
                   Create Deal
                 </button>
+                {/* Certify button for advisors */}
+                {(user?.role === 'ADMIN' || user?.role === 'ADVISOR') && sme.status !== 'CERTIFIED' && (
+                  <button
+                    onClick={async () => {
+                      if (confirm(`Are you sure you want to certify ${sme.name}?`)) {
+                        try {
+                          const token = localStorage.getItem('token')
+                          const response = await fetch(`${API_URL}/api/smes/${params.id}`, {
+                            method: 'PUT',
+                            headers: {
+                              'Authorization': `Bearer ${token}`,
+                              'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ status: 'CERTIFIED' })
+                          })
+                          if (response.ok) {
+                            alert('SME certified successfully!')
+                            window.location.reload()
+                          } else {
+                            alert('Failed to certify SME')
+                          }
+                        } catch (error) {
+                          console.error('Error certifying SME:', error)
+                        }
+                      }
+                    }}
+                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center"
+                  >
+                    <Award className="w-4 h-4 mr-2" />
+                    Certify SME
+                  </button>
+                )}
                 {/* Express Interest button for investors */}
                 {(user?.role === 'INVESTOR' || user?.role === 'ADMIN' || user?.role === 'ADVISOR') && (
                   <button
@@ -377,7 +409,6 @@ export default function SMEPage() {
                         const token = localStorage.getItem('token')
                         if (!token) return
 
-                        // For demo, use first investor. In real app, use current user's investor profile
                         const response = await fetch(`${API_URL}/api/interests`, {
                           method: 'POST',
                           headers: {
@@ -393,12 +424,7 @@ export default function SMEPage() {
                         })
 
                         if (response.ok) {
-                          const data = await response.json()
-                          if (data.mutualInterest) {
-                            alert('🎉 Mutual Interest! Both parties are interested!')
-                          } else {
-                            alert('✅ Interest expressed successfully!')
-                          }
+                          alert('✅ Interest expressed successfully!')
                         } else {
                           const errorData = await response.json()
                           alert(errorData.error || 'Failed to express interest')
