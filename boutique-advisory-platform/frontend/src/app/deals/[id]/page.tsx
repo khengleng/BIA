@@ -2,7 +2,7 @@
 import { API_URL } from '@/lib/api'
 
 import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
   Building2,
@@ -40,6 +40,7 @@ interface User {
 export default function DealDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
@@ -62,7 +63,12 @@ export default function DealDetailPage() {
     sector: '',
     industry: '',
     dealType: '',
-    valuation: ''
+    valuation: '',
+    expectedROI: '',
+    dueDiligenceScore: '',
+    marketSize: '',
+    riskAssessment: '',
+    competitiveAdvantage: ''
   })
   const [statusForm, setStatusForm] = useState({
     status: '',
@@ -115,6 +121,12 @@ export default function DealDetailPage() {
     fetchUser()
   }, [router])
 
+  useEffect(() => {
+    if (!isLoading && user && searchParams.get('edit') === 'true') {
+      handleEdit()
+    }
+  }, [isLoading, user, searchParams])
+
   const handleLogout = () => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
@@ -136,7 +148,12 @@ export default function DealDetailPage() {
       sector: deal.sector,
       industry: deal.industry,
       dealType: deal.dealType,
-      valuation: deal.valuation
+      valuation: deal.valuation,
+      expectedROI: deal.metrics?.expectedROI || '',
+      dueDiligenceScore: deal.metrics?.dueDiligenceScore || '',
+      marketSize: deal.metrics?.marketSize || '',
+      riskAssessment: deal.metrics?.riskAssessment || '',
+      competitiveAdvantage: deal.metrics?.competitiveAdvantage || ''
     })
     setShowEditModal(true)
   }
@@ -172,7 +189,12 @@ export default function DealDetailPage() {
       sector: '',
       industry: '',
       dealType: '',
-      valuation: ''
+      valuation: '',
+      expectedROI: '',
+      dueDiligenceScore: '',
+      marketSize: '',
+      riskAssessment: '',
+      competitiveAdvantage: ''
     })
   }
 
@@ -891,15 +913,17 @@ export default function DealDetailPage() {
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-gray-400">Risk Level</span>
-                          <span className="text-yellow-400">Medium</span>
+                          <span className={`${deal.metrics?.riskAssessment === 'High' ? 'text-red-400' : deal.metrics?.riskAssessment === 'Medium' ? 'text-yellow-400' : 'text-green-400'}`}>
+                            {deal.metrics?.riskAssessment || 'Low'}
+                          </span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-gray-400">Success Probability</span>
-                          <span className="text-blue-400">85%</span>
+                          <span className="text-gray-400">Due Diligence Score</span>
+                          <span className="text-blue-400">{deal.metrics?.dueDiligenceScore || 'N/A'}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-gray-400">Expected Close</span>
-                          <span className="text-white">On Time</span>
+                          <span className="text-gray-400">Expected ROI</span>
+                          <span className="text-green-400">{deal.metrics?.expectedROI || 'N/A'}</span>
                         </div>
                       </div>
                     </div>
@@ -909,19 +933,11 @@ export default function DealDetailPage() {
                       <div className="space-y-4">
                         <div className="flex justify-between items-center">
                           <span className="text-gray-400">Market Size</span>
-                          <span className="text-white">$2.5B</span>
+                          <span className="text-white">{deal.metrics?.marketSize || 'N/A'}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-gray-400">Growth Rate</span>
-                          <span className="text-green-400">+15%</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-400">Competition Level</span>
-                          <span className="text-yellow-400">Medium</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-400">Regulatory Risk</span>
-                          <span className="text-red-400">Low</span>
+                          <span className="text-gray-400">Competitive Advantage</span>
+                          <span className="text-green-400">{deal.metrics?.competitiveAdvantage || 'N/A'}</span>
                         </div>
                       </div>
                     </div>
@@ -1136,6 +1152,80 @@ export default function DealDetailPage() {
                   placeholder="Describe the deal..."
                 />
               </div>
+
+              {/* Advisor Insights: Metrics & Performance */}
+              {(user?.role === 'ADMIN' || user?.role === 'ADVISOR') && (
+                <div className="mt-8 pt-8 border-t border-gray-700">
+                  <h4 className="text-lg font-semibold text-blue-400 mb-4 flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5" />
+                    Advisor Insights (Performance Metrics)
+                  </h4>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Expected ROI</label>
+                      <input
+                        type="text"
+                        name="expectedROI"
+                        value={editForm.expectedROI}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="25%"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Due Diligence Score</label>
+                      <input
+                        type="text"
+                        name="dueDiligenceScore"
+                        value={editForm.dueDiligenceScore}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="8.5/10"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Market Size</label>
+                      <input
+                        type="text"
+                        name="marketSize"
+                        value={editForm.marketSize}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="$2.5B"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Risk Assessment</label>
+                      <select
+                        name="riskAssessment"
+                        value={editForm.riskAssessment}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Select Risk</option>
+                        <option value="Low">Low</option>
+                        <option value="Medium">Medium</option>
+                        <option value="High">High</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Competitive Advantage</label>
+                      <select
+                        name="competitiveAdvantage"
+                        value={editForm.competitiveAdvantage}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Select Advantage</option>
+                        <option value="Low">Low</option>
+                        <option value="Medium">Medium</option>
+                        <option value="High">High</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex space-x-3 mt-6">

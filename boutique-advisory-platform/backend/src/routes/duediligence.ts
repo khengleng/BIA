@@ -154,8 +154,7 @@ router.get('/sme/:smeId', async (req: AuthenticatedRequest, res: Response): Prom
 
         const dd = await prismaReplica.dueDiligence.findFirst({
             where: {
-                smeId: req.params.smeId,
-                status: 'COMPLETED'
+                smeId: req.params.smeId
             },
             include: {
                 sme: {
@@ -172,11 +171,11 @@ router.get('/sme/:smeId', async (req: AuthenticatedRequest, res: Response): Prom
                     }
                 }
             },
-            orderBy: { completedAt: 'desc' }
+            orderBy: { updatedAt: 'desc' }
         });
 
         if (!dd) {
-            res.status(404).json({ error: 'No completed due diligence found for this SME' });
+            res.status(200).json(null);
             return;
         }
 

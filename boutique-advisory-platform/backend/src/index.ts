@@ -13,6 +13,8 @@ import path from 'path';
 import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
 import { CookieOptions } from 'express';
+import { createServer } from 'http';
+import { initSocket } from './socket';
 import { prisma, connectDatabase } from './database';
 import { doubleCsrf } from 'csrf-csrf';
 import {
@@ -45,6 +47,9 @@ import messagesRoutes from './routes/messages';
 import calendarRoutes from './routes/calendar';
 import reportRoutes from './routes/reports';
 import dataroomRoutes from './routes/dataroom';
+import advisoryRoutes from './routes/advisory';
+import analyticsRoutes from './routes/analytics';
+import paymentRoutes from './routes/payments';
 
 // Security Validation
 import { validateSecurityConfiguration } from './utils/securityValidator';
@@ -143,25 +148,6 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
-// ============================================
-// SECURITY MIDDLEWARE (Applied to all requests)
-// ============================================
-
-// Add unique request ID for tracing
-app.use(requestIdMiddleware);
-
-// Additional security headers
-app.use(securityHeadersMiddleware);
-
-// IP security (block malicious IPs)
-app.use(ipSecurityMiddleware);
-
-// SQL injection prevention
-app.use(sqlInjectionMiddleware);
-
-// XSS prevention
-app.use(xssMiddleware);
-
 // CORS configuration - strict in production
 app.use(cors({
   origin: (origin, callback) => {
@@ -190,6 +176,30 @@ app.use(cors({
   exposedHeaders: ['Set-Cookie'],
   maxAge: 86400,
 }));
+
+// ============================================
+// SECURITY MIDDLEWARE (Applied to all requests)
+// ============================================
+
+// Add unique request ID for tracing
+app.use(requestIdMiddleware);
+
+// Additional security headers
+app.use(securityHeadersMiddleware);
+
+// IP security (block malicious IPs)
+app.use(ipSecurityMiddleware);
+
+// SQL injection prevention
+app.use(sqlInjectionMiddleware);
+
+// XSS prevention
+app.use(xssMiddleware);
+
+// ============================================
+// ROUTES
+// ============================================
+
 
 // Rate limiting - stricter in production
 const limiter = rateLimit({
@@ -255,6 +265,7 @@ app.use('/api/documents', authenticateToken, documentRoutes);
 // Feature endpoints (already protected)
 app.use('/api/syndicates', authenticateToken, syndicateRoutes);
 app.use('/api/due-diligence', authenticateToken, dueDiligenceRoutes);
+app.use('/api/duediligence', authenticateToken, dueDiligenceRoutes);
 app.use('/api/community', authenticateToken, communityRoutes);
 app.use('/api/secondary-trading', authenticateToken, secondaryTradingRoutes);
 app.use('/api/notifications', authenticateToken, notificationRoutes);
@@ -264,8 +275,14 @@ app.use('/api/matches', authenticateToken, matchesRoutes);
 app.use('/api/messages', authenticateToken, messagesRoutes);
 app.use('/api/calendar', authenticateToken, calendarRoutes);
 app.use('/api/report', authenticateToken, reportRoutes);
+app.use('/api/reports', authenticateToken, reportRoutes);
 app.use('/api/dataroom', authenticateToken, dataroomRoutes);
 app.use('/api/audit', authenticateToken, auditRoutes);
+app.use('/api/advisory', authenticateToken, advisoryRoutes);
+app.use('/api/advisory-services', authenticateToken, advisoryRoutes);
+app.use('/api/advisors', authenticateToken, advisoryRoutes);
+app.use('/api/analytics', authenticateToken, analyticsRoutes);
+app.use('/api/payments', authenticateToken, paymentRoutes);
 
 // Migration endpoints - PROTECTED: Only available in development or with SUPER_ADMIN role (Fix #2)
 const migrationAuthMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -385,15 +402,18 @@ async function startServer() {
       }
     }
 
+    // Create HTTP server
+    const httpServer = createServer(app);
+
+    // Initialize Socket.io
+    initSocket(httpServer);
+
     // Start server
-    app.listen(PORT, () => {
+    httpServer.listen(PORT, () => {
       console.log(`🚀 Boutique Advisory Platform API running on port ${PORT}`);
+      console.log(`📡 Real-time WebSockets enabled`);
       console.log(`📊 Health check available at http://localhost:${PORT}/health`);
       console.log(`🔄 Migration status: http://localhost:${PORT}/api/migration/status`);
-      console.log(`📋 Migration endpoints:`);
-      console.log(`   - GET  /api/migration/status - Check migration status`);
-      console.log(`   - POST /api/migration/perform - Perform migration`);
-      console.log(`   - POST /api/migration/switch-to-database - Switch to database mode`);
     });
 
     // Run admin sync after server starts

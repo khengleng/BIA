@@ -32,7 +32,7 @@ const upload = multer({
 });
 
 // Upload document
-router.post('/', authenticateToken, upload.single('file'), async (req: any, res: Response) => {
+router.post('/upload', authenticateToken, upload.single('file'), async (req: any, res: Response) => {
     try {
         const { name, type, smeId, dealId } = req.body;
         const file = req.file;
@@ -44,7 +44,7 @@ router.post('/', authenticateToken, upload.single('file'), async (req: any, res:
         const document = await prisma.document.create({
             data: {
                 tenantId: 'default',
-                name,
+                name: name || file.originalname,
                 type: type || 'OTHER',
                 url: `/uploads/${file.filename}`,
                 size: file.size,

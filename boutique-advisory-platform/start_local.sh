@@ -34,9 +34,9 @@ cd ..
 # 3. Start Application Services
 echo "🌍 Starting Services..."
 
-# Kills existing node processes on ports 3001/3003 (optional, prevents 'port in use' errors)
+# Kills existing node processes on ports 3001/3005 (optional, prevents 'port in use' errors)
 # lsof -ti:3001 | xargs kill -9 2>/dev/null
-# lsof -ti:3003 | xargs kill -9 2>/dev/null
+# lsof -ti:3005 | xargs kill -9 2>/dev/null
 
 # Start Backend
 cd backend
@@ -47,14 +47,14 @@ cd ..
 
 # Start Frontend
 cd frontend
-echo "Starting Frontend (Port 3000)..."
+echo "Starting Frontend (Port 3005)..."
 npm run dev &
 FRONTEND_PID=$!
 cd ..
 
 echo "✅ Deployment Successful!"
 echo "   - Backend: http://localhost:3001"
-echo "   - Frontend: http://localhost:3000"
+echo "   - Frontend: http://localhost:3005"
 echo "   (Press Ctrl+C to stop both servers)"
 
 # Wait for processes

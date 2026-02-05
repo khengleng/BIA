@@ -33,12 +33,33 @@ router.get('/listings', async (req: AuthenticatedRequest, res: Response): Promis
         const listings = await prismaReplica.secondaryListing.findMany({
             where,
             include: {
+                seller: {
+                    select: { id: true, name: true, type: true }
+                },
+                dealInvestor: {
+                    include: {
+                        deal: {
+                            include: {
+                                sme: { select: { id: true, name: true } }
+                            }
+                        }
+                    }
+                },
                 trades: true
             },
             orderBy: { listedAt: 'desc' }
         });
 
-        res.json(listings);
+        // Map to format that frontend expects (l.deal instead of l.dealInvestor.deal)
+        const formattedListings = listings.map(l => ({
+            ...l,
+            deal: l.dealInvestor.deal,
+            // Calculate return percentage if we have original price (placeholder for now)
+            returnPercentage: ((l.pricePerShare - 10) / 10) * 100, // Example: assumed $10 original
+            originalPricePerShare: 10
+        }));
+
+        res.json(formattedListings);
     } catch (error) {
         console.error('Error fetching listings:', error);
         res.status(500).json({ error: 'Failed to fetch listings' });
@@ -284,20 +305,52 @@ router.get('/trades/my', async (req: AuthenticatedRequest, res: Response): Promi
             return;
         }
 
-        const [asBuyer, asSeller] = await Promise.all([
+        const [purchases, sales] = await Promise.all([
             prismaReplica.secondaryTrade.findMany({
                 where: { buyerId: investor.id },
-                include: { listing: true },
+                include: {
+                    listing: {
+                        include: {
+                            dealInvestor: {
+                                include: {
+                                    deal: {
+                                        include: {
+                                            sme: { select: { id: true, name: true } }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    seller: { select: { id: true, name: true } },
+                    buyer: { select: { id: true, name: true } }
+                },
                 orderBy: { createdAt: 'desc' }
             }),
             prismaReplica.secondaryTrade.findMany({
                 where: { sellerId: investor.id },
-                include: { listing: true },
+                include: {
+                    listing: {
+                        include: {
+                            dealInvestor: {
+                                include: {
+                                    deal: {
+                                        include: {
+                                            sme: { select: { id: true, name: true } }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    seller: { select: { id: true, name: true } },
+                    buyer: { select: { id: true, name: true } }
+                },
                 orderBy: { createdAt: 'desc' }
             })
         ]);
 
-        res.json({ asBuyer, asSeller });
+        res.json({ purchases, sales });
     } catch (error) {
         console.error('Error fetching trades:', error);
         res.status(500).json({ error: 'Failed to fetch trades' });

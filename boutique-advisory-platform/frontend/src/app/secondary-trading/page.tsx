@@ -422,7 +422,7 @@ export default function SecondaryTradingPage() {
                             Purchases
                         </h3>
 
-                        {myTrades.purchases.length > 0 ? (
+                        {(myTrades?.purchases?.length || 0) > 0 ? (
                             <div className="space-y-3">
                                 {myTrades.purchases.map((trade) => (
                                     <div key={trade.id} className="bg-gray-700/50 rounded-lg p-4">
@@ -458,7 +458,7 @@ export default function SecondaryTradingPage() {
                             Sales
                         </h3>
 
-                        {myTrades.sales.length > 0 ? (
+                        {(myTrades?.sales?.length || 0) > 0 ? (
                             <div className="space-y-3">
                                 {myTrades.sales.map((trade) => (
                                     <div key={trade.id} className="bg-gray-700/50 rounded-lg p-4">

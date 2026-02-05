@@ -76,6 +76,7 @@ router.put('/:id', validateBody(updateSMESchema), async (req: Request, res: Resp
   try {
     const { id } = req.params;
     const updateData = req.body;
+    console.log(`[SME Update] Updating SME ${id} with data:`, JSON.stringify(updateData, null, 2));
 
     // Check if SME exists
     const existingSme = await prisma.sME.findUnique({ where: { id } });

@@ -5,6 +5,7 @@ import { prisma } from '../database';
 const router = Router();
 
 // Start a conversation (Idempotent)
+// Start a conversation (Idempotent)
 router.post('/start', async (req: AuthenticatedRequest, res: Response) => {
     try {
         const { recipientId, initialMessage, dealId } = req.body;
@@ -78,10 +79,10 @@ router.post('/start', async (req: AuthenticatedRequest, res: Response) => {
             });
         }
 
-        res.status(201).json(newConv);
+        return res.status(201).json(newConv);
     } catch (error) {
         console.error('Error starting conversation:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
     }
 });
 
@@ -138,10 +139,10 @@ router.get('/conversations', async (req: AuthenticatedRequest, res: Response) =>
             };
         });
 
-        res.json(formatted);
+        return res.json(formatted);
     } catch (error) {
         console.error('Error fetching conversations:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
     }
 });
 
@@ -184,10 +185,10 @@ router.get('/conversations/:id', async (req: AuthenticatedRequest, res: Response
             createdAt: m.createdAt
         }));
 
-        res.json({ messages: formatted });
+        return res.json({ messages: formatted });
     } catch (error) {
         console.error('Error fetching messages:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
     }
 });
 
@@ -225,7 +226,7 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
             data: { updatedAt: new Date() }
         });
 
-        res.json({
+        return res.json({
             id: newMessage.id,
             conversationId: newMessage.conversationId,
             senderId: newMessage.senderId,
@@ -237,7 +238,7 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
         });
     } catch (error) {
         console.error('Error sending message:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
     }
 });
 

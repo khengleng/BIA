@@ -25,7 +25,7 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
             }
         ];
 
-        res.json(events);
+        res.json({ events });
     } catch (error) {
         console.error('Error fetching calendar events:', error);
         res.status(500).json({ error: 'Internal server error' });

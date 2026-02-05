@@ -185,7 +185,7 @@ export default function MessagesPage() {
         if (!conv || !conv.participantDetails || !Array.isArray(conv.participantDetails)) {
             return { id: 'unknown', type: 'SME', name: 'Unknown Participant' }
         }
-        return conv.participantDetails.find(p => p.id !== user?.userId) || conv.participantDetails[0]
+        return conv.participantDetails.find(p => p.id !== user?.id) || conv.participantDetails[0]
     }
 
     const filteredConversations = (conversations || []).filter(conv => {
@@ -321,7 +321,7 @@ export default function MessagesPage() {
                             {/* Messages */}
                             <div className="flex-1 overflow-y-auto p-4 space-y-4">
                                 {messages.map(message => {
-                                    const isOwn = message.senderId === user?.userId
+                                    const isOwn = message.senderId === user?.id
 
                                     return (
                                         <div

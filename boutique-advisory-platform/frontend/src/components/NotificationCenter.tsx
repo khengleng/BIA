@@ -16,6 +16,7 @@ import {
     AlertCircle
 } from 'lucide-react'
 import { API_URL } from '@/lib/api'
+import { useSocket } from '@/hooks/useSocket'
 
 interface Notification {
     id: string
@@ -45,21 +46,20 @@ export default function NotificationCenter() {
                 }
 
                 setIsLoading(true)
-                const token = localStorage.getItem('token')
-                const response = await fetch(`${API_URL}/api/notifications`, {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-                    }
-                })
+                const { authorizedRequest } = await import('@/lib/api')
+                const response = await authorizedRequest('/api/notifications')
 
                 if (response.ok) {
                     const data = await response.json()
-                    setNotifications(data.notifications)
-                    setUnreadCount(data.unreadCount)
+                    setNotifications(data.notifications || [])
+                    setUnreadCount(data.unreadCount || 0)
+                } else if (response.status === 401) {
+                    console.warn('Unauthorized access to notifications')
+                } else {
+                    console.error('Failed to fetch notifications:', response.statusText)
                 }
             } catch (error) {
-                console.error('Error fetching notifications:', error)
+                console.error('Network error fetching notifications:', error)
             } finally {
                 setIsLoading(false)
             }
@@ -67,10 +67,22 @@ export default function NotificationCenter() {
 
         fetchNotifications()
 
-        // Poll for new notifications every 30 seconds
-        const interval = setInterval(fetchNotifications, 30000)
+        // Poll for new notifications every 60 seconds (fallback)
+        const interval = setInterval(fetchNotifications, 60000)
         return () => clearInterval(interval)
     }, [])
+
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+    const { lastNotification } = useSocket(token)
+
+    useEffect(() => {
+        if (lastNotification) {
+            setNotifications(prev => [lastNotification, ...prev])
+            if (!lastNotification.read) {
+                setUnreadCount(prev => prev + 1)
+            }
+        }
+    }, [lastNotification])
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -85,14 +97,9 @@ export default function NotificationCenter() {
 
     const markAsRead = async (notifId: string) => {
         try {
-            const token = localStorage.getItem('token')
-            await fetch(`${API_URL}/api/notifications/${notifId}/read`, {
-                method: 'PUT',
-                headers: {
-                    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-                    'Content-Type': 'application/json'
-                },
-                credentials: 'include'
+            const { authorizedRequest } = await import('@/lib/api')
+            await authorizedRequest(`/api/notifications/${notifId}/read`, {
+                method: 'PUT'
             })
 
             setNotifications(prev => prev.map(n =>
@@ -106,14 +113,9 @@ export default function NotificationCenter() {
 
     const markAllAsRead = async () => {
         try {
-            const token = localStorage.getItem('token')
-            await fetch(`${API_URL}/api/notifications/read-all`, {
-                method: 'PUT',
-                headers: {
-                    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-                    'Content-Type': 'application/json'
-                },
-                credentials: 'include'
+            const { authorizedRequest } = await import('@/lib/api')
+            await authorizedRequest('/api/notifications/read-all', {
+                method: 'PUT'
             })
 
             setNotifications(prev => prev.map(n => ({ ...n, read: true })))

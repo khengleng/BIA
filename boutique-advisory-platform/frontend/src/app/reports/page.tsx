@@ -117,9 +117,6 @@ export default function ReportsPage() {
         }
       } catch (error) {
         console.error('Error fetching data:', error)
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-        window.location.href = '/auth/login'
       } finally {
         setIsLoading(false)
       }

@@ -4,182 +4,166 @@ import { prisma } from '../database';
 
 const router = Router();
 
+// Refined scoring helper
+const calculateMatchScore = (sme: any, investor: any) => {
+    let score = 0;
+    const factors: any = {};
+
+    // 1. Sector Match (30 points)
+    const preferredSectors = (investor.preferences as any)?.preferredSectors || [];
+    if (preferredSectors.includes(sme.sector)) {
+        score += 30;
+        factors.sector = { score: 30, details: `Perfect alignment in ${sme.sector}` };
+    } else {
+        factors.sector = { score: 0, details: 'Sector mismatch' };
+    }
+
+    // 2. Stage Match (20 points)
+    const preferredStages = (investor.preferences as any)?.preferredStages || [];
+    if (preferredStages.includes(sme.stage)) {
+        score += 20;
+        factors.stage = { score: 20, details: `Aligned with ${sme.stage} stage` };
+    } else {
+        factors.stage = { score: 0, details: 'Stage mismatch' };
+    }
+
+    // 3. Investment Amount Fit (20 points)
+    const minTicket = (investor.preferences as any)?.minInvestment || 0;
+    const maxTicket = (investor.preferences as any)?.maxInvestment || 1000000000;
+    if (sme.fundingRequired >= minTicket && sme.fundingRequired <= maxTicket) {
+        score += 20;
+        factors.funding = { score: 20, details: 'Funding requirement fits investor ticket size' };
+    } else {
+        factors.funding = { score: 0, details: 'Ticket size mismatch' };
+    }
+
+    // 4. Advisor Certification (15 points)
+    if (sme.certified) {
+        score += 15;
+        factors.certification = { score: 15, details: 'SME is Advisor Certified (Proven Diligence)' };
+    } else {
+        factors.certification = { score: 0, details: 'Self-reported business data' };
+    }
+
+    // 5. Traction/Platform Score (15 points)
+    const tractionContribution = Math.min((sme.score || 0) / 100 * 15, 15);
+    score += Math.round(tractionContribution);
+    factors.traction = { score: Math.round(tractionContribution), details: `Based on platform assessment score (${sme.score})` };
+
+    return { score: Math.round(score), factors };
+};
+
 // Get matches
 router.get('/', async (req: AuthenticatedRequest, res: Response) => {
     try {
         const userId = req.user?.id;
         const role = req.user?.role;
 
-        // Fetch SMEs and Investors for matching
-        let smesQuery: any = { take: 10 };
-        let investorsQuery: any = { take: 10 };
+        let matches: any[] = [];
 
         if (role === 'SME') {
-            smesQuery = { where: { userId: userId }, include: { deals: true } };
+            const sme = await prisma.sME.findUnique({ where: { userId } });
+            if (!sme) return res.json({ matches: [], stats: {} });
+
+            matches = await prisma.match.findMany({
+                where: { smeId: sme.id },
+                include: { investor: true, interests: true },
+                orderBy: { score: 'desc' }
+            });
         } else if (role === 'INVESTOR') {
-            investorsQuery = { where: { userId: userId } };
+            const investor = await prisma.investor.findUnique({ where: { userId } });
+            if (!investor) return res.json({ matches: [], stats: {} });
+
+            matches = await prisma.match.findMany({
+                where: { investorId: investor.id },
+                include: { sme: true, interests: true },
+                orderBy: { score: 'desc' }
+            });
+        } else {
+            // Admin/Advisor see all
+            matches = await prisma.match.findMany({
+                include: { sme: true, investor: true, interests: true },
+                orderBy: { score: 'desc' },
+                take: 50
+            });
         }
 
-        const [smes, investors] = await Promise.all([
-            prisma.sME.findMany(smesQuery),
-            prisma.investor.findMany(investorsQuery)
-        ]);
-
-        // If SME/INVESTOR has no profile yet, return empty
-        if ((role === 'SME' || role === 'INVESTOR') && (smes.length === 0 && investors.length === 0)) {
-            return res.json({ matches: [], stats: { totalPossibleMatches: 0, highScoreMatches: 0, mutualInterests: 0 } });
-        }
-
-        // Generate mock matches based on filtered entities
-        // For ADVISOR, we show all SME-Investor combinations
-        // For SME, we show them matched with all potential investors
-        // For INVESTOR, we show them matched with all potential SMEs
-
-        let matchSmes = smes;
-        let matchInvestors = investors;
-
-        if (role === 'SME') {
-            // SME sees all investors matched to them
-            matchInvestors = await prisma.investor.findMany({ take: 10 });
-        } else if (role === 'INVESTOR') {
-            // Investor sees all SMEs matched to them
-            matchSmes = await prisma.sME.findMany({ take: 10 });
-        } else if (role === 'ADVISOR' || role === 'ADMIN') {
-            // Advisor sees everything
-            matchSmes = await prisma.sME.findMany({ take: 5 });
-            matchInvestors = await prisma.investor.findMany({ take: 5 });
-        }
-
-        const mockMatches = [];
-        for (const sme of matchSmes) {
-            for (const investor of matchInvestors) {
-                // Calculate real-ish compatibility
-                let baseScore = 60;
-                const factors: any = {
-                    sector: { score: 0, match: false, details: 'Sector mismatch' },
-                    stage: { score: 0, match: false, details: 'Stage mismatch' },
-                    certification: { score: sme.status === 'CERTIFIED' ? 100 : 0, match: sme.status === 'CERTIFIED', details: sme.status === 'CERTIFIED' ? 'Advisor Certified' : 'Pending Review' }
-                };
-
-                // Sector match
-                // Note: assuming investor.preferences might contain preferred sectors
-                const preferredSectors = (investor.preferences as any)?.preferredSectors || [];
-                if (preferredSectors.includes(sme.sector)) {
-                    baseScore += 15;
-                    factors.sector = { score: 100, match: true, details: 'Perfect sector alignment' };
-                }
-
-                // Stage match
-                if (sme.stage === 'GROWTH' || sme.stage === 'EXPANSION') {
-                    baseScore += 10;
-                    factors.stage = { score: 90, match: true, details: 'High-growth stage' };
-                }
-
-                // Random jitter
-                const matchScore = Math.min(Math.max(baseScore + Math.floor(Math.random() * 10), 0), 99);
-
-                mockMatches.push({
-                    investor: {
-                        id: investor.id,
-                        name: investor.name,
-                        type: investor.type
-                    },
-                    sme: {
-                        id: sme.id,
-                        name: sme.name,
-                        sector: sme.sector,
-                        stage: sme.stage,
-                        status: sme.status,
-                        score: sme.score
-                    },
-                    matchScore,
-                    factors,
-                    interestStatus: {
-                        investorExpressedInterest: Math.random() > 0.8,
-                        smeExpressedInterest: Math.random() > 0.8,
-                        mutualInterest: false
-                    }
-                });
-            }
-        }
-
-        // Filter mutual interest
-        mockMatches.forEach(m => {
-            if (m.interestStatus.investorExpressedInterest && m.interestStatus.smeExpressedInterest) {
-                m.interestStatus.mutualInterest = true;
-            }
-        });
-
+        // Stats calculation
         const stats = {
-            totalPossibleMatches: mockMatches.length,
-            highScoreMatches: mockMatches.filter(m => m.matchScore >= 80).length,
-            mediumScoreMatches: mockMatches.filter(m => m.matchScore >= 60 && m.matchScore < 80).length,
-            lowScoreMatches: mockMatches.filter(m => m.matchScore < 60).length,
-            mutualInterests: mockMatches.filter(m => m.interestStatus.mutualInterest).length,
-            pendingInterests: mockMatches.filter(m => m.interestStatus.investorExpressedInterest || m.interestStatus.smeExpressedInterest).length
+            totalPossibleMatches: matches.length,
+            highScoreMatches: matches.filter(m => m.score >= 80).length,
+            mediumScoreMatches: matches.filter(m => m.score >= 50 && m.score < 80).length,
+            mutualInterests: matches.filter(m => {
+                const investorLiked = m.interests.some((i: any) => i.interest === true && i.userId === m.investor?.userId);
+                const smeLiked = m.interests.some((i: any) => i.interest === true && i.userId === m.sme?.userId);
+                return (investorLiked && smeLiked) || false;
+            }).length
         };
 
-        return res.json({ matches: mockMatches, stats });
+        return res.json({ matches, stats });
     } catch (error) {
         console.error('Error fetching matches:', error);
         return res.status(500).json({ error: 'Internal server error' });
     }
 });
 
-// Create a manual match
-router.post('/match', async (req: AuthenticatedRequest, res: Response) => {
+// Trigger Re-computation
+router.post('/recompute', async (req: AuthenticatedRequest, res: Response) => {
     try {
-        const { smeId, investorId } = req.body;
-        const role = req.user?.role;
-        const tenantId = req.user?.tenantId;
+        const smes = await prisma.sME.findMany();
+        const investors = await prisma.investor.findMany();
+        const tenantId = req.user?.tenantId || 'default';
 
-        if (role !== 'ADVISOR' && role !== 'ADMIN') {
-            return res.status(403).json({ error: 'Only Advisors can create manual matches' });
-        }
+        let count = 0;
+        for (const sme of smes) {
+            for (const investor of investors) {
+                const { score, factors } = calculateMatchScore(sme, investor);
 
-        // In a real system, we would create a Match record.
-        // For now, we simulate success and return the match object.
-        const [sme, investor] = await Promise.all([
-            prisma.sME.findUnique({ where: { id: smeId } }),
-            prisma.investor.findUnique({ where: { id: investorId } })
-        ]);
-
-        if (!sme || !investor) {
-            return res.status(404).json({ error: 'SME or Investor not found' });
-        }
-
-        return res.json({
-            message: 'Manual match created successfully',
-            match: {
-                smeId,
-                investorId,
-                status: 'ADVISOR_MATCHED',
-                timestamp: new Date().toISOString()
+                await prisma.match.upsert({
+                    where: {
+                        smeId_investorId: {
+                            smeId: sme.id,
+                            investorId: investor.id
+                        }
+                    },
+                    update: { score, factors: factors as any },
+                    create: {
+                        tenantId,
+                        smeId: sme.id,
+                        investorId: investor.id,
+                        score,
+                        factors: factors as any
+                    }
+                });
+                count++;
             }
-        });
+        }
+
+        return res.json({ message: `Successfully recomputed ${count} matches` });
     } catch (error) {
-        console.error('Error creating match:', error);
-        return res.status(500).json({ error: 'Internal server error' });
+        console.error('Error recomputing matches:', error);
+        return res.status(500).json({ error: 'Failed to recompute matches' });
     }
 });
 
-// Verify an automated match
-router.post('/verify', async (req: AuthenticatedRequest, res: Response) => {
+// Express Interest
+router.post('/:id/interest', async (req: AuthenticatedRequest, res: Response) => {
     try {
-        const { matchId } = req.body;
-        const role = req.user?.role;
+        const { interest } = req.body; // true = like, false = dislike
+        const matchId = req.params.id;
+        const userId = req.user?.id;
 
-        if (role !== 'ADVISOR' && role !== 'ADMIN') {
-            return res.status(403).json({ error: 'Only Advisors can verify matches' });
-        }
-
-        return res.json({
-            message: 'Match verified successfully',
-            matchId,
-            verifiedAt: new Date().toISOString()
+        const updatedInterest = await prisma.matchInterest.upsert({
+            where: {
+                matchId_userId: { matchId, userId }
+            },
+            update: { interest },
+            create: { matchId, userId, interest }
         });
+
+        return res.json({ message: 'Interest recorded', interest: updatedInterest });
     } catch (error) {
-        console.error('Error verifying match:', error);
+        console.error('Error recording interest:', error);
         return res.status(500).json({ error: 'Internal server error' });
     }
 });

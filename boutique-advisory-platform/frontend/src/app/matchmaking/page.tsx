@@ -26,39 +26,30 @@ import { useToast } from '../../contexts/ToastContext'
 import { API_URL } from '@/lib/api'
 
 interface Match {
+    id: string
     investor: {
         id: string
+        userId: string
         name: string
         type: string
     }
     sme: {
         id: string
+        userId: string
         name: string
         sector: string
         stage: string
     }
-    matchScore: number
-    factors: {
-        sector: { score: number; match: boolean; details: string }
-        stage: { score: number; match: boolean; details: string }
-        amount: { score: number; match: boolean; details: string }
-        geography: { score: number; match: boolean; details: string }
-        certification: { score: number; match: boolean; details: string }
-    }
-    interestStatus: {
-        investorExpressedInterest: boolean
-        smeExpressedInterest: boolean
-        mutualInterest: boolean
-    }
+    score: number
+    factors: any
+    interests: { userId: string; interest: boolean }[]
 }
 
 interface MatchStats {
     totalPossibleMatches: number
     highScoreMatches: number
     mediumScoreMatches: number
-    lowScoreMatches: number
     mutualInterests: number
-    pendingInterests: number
 }
 
 interface User {
@@ -74,106 +65,112 @@ export default function MatchmakingPage() {
     const [matches, setMatches] = useState<Match[]>([])
     const [stats, setStats] = useState<MatchStats | null>(null)
     const [isLoading, setIsLoading] = useState(true)
+    const [isRecomputing, setIsRecomputing] = useState(false)
     const [filter, setFilter] = useState<'all' | 'high' | 'medium' | 'mutual'>('all')
     const [searchQuery, setSearchQuery] = useState('')
-    const [selectedMatch, setSelectedMatch] = useState<Match | null>(null)
+
+    const fetchData = async () => {
+        try {
+            const token = localStorage.getItem('token')
+            const userData = localStorage.getItem('user')
+
+            if (!token || !userData) {
+                window.location.href = '/auth/login'
+                return
+            }
+
+            setUser(JSON.parse(userData))
+
+            const response = await fetch(`${API_URL}/api/matches`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            })
+
+            if (response.ok) {
+                const data = await response.json()
+                setMatches(data.matches || [])
+                setStats(data.stats || null)
+            } else {
+                addToast('error', 'Failed to fetch matches')
+            }
+        } catch (error) {
+            console.error('Error fetching matches:', error)
+            addToast('error', 'Error loading matchmaking data')
+        } finally {
+            setIsLoading(false)
+        }
+    }
 
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const token = localStorage.getItem('token')
-                const userData = localStorage.getItem('user')
-
-                if (!token || !userData) {
-                    window.location.href = '/auth/login'
-                    return
-                }
-
-                setUser(JSON.parse(userData))
-
-                // Fetch all matches
-                const response = await fetch(`${API_URL}/api/matches`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                })
-
-                if (response.ok) {
-                    const data = await response.json()
-                    setMatches(data.matches || [])
-                    setStats(data.stats || null)
-                } else {
-                    addToast('error', 'Failed to fetch matches')
-                }
-            } catch (error) {
-                console.error('Error fetching matches:', error)
-                addToast('error', 'Error loading matchmaking data')
-            } finally {
-                setIsLoading(false)
-            }
-        }
-
         fetchData()
     }, [addToast])
 
-    const handleExpressInterest = async (match: Match, type: 'INVESTOR_TO_SME' | 'SME_TO_INVESTOR') => {
+    const handleRecompute = async () => {
+        setIsRecomputing(true)
         try {
             const token = localStorage.getItem('token')
-            if (!token) return
+            const response = await fetch(`${API_URL}/api/matches/recompute`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            if (response.ok) {
+                addToast('success', 'Matches recomputed successfully!')
+                fetchData()
+            }
+        } catch (error) {
+            addToast('error', 'Failed to recompute matches')
+        } finally {
+            setIsRecomputing(false)
+        }
+    }
 
-            const response = await fetch(`${API_URL}/api/interests`, {
+    const handleInterest = async (matchId: string, interest: boolean) => {
+        try {
+            const token = localStorage.getItem('token')
+            const response = await fetch(`${API_URL}/api/matches/${matchId}/interest`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    investorId: match.investor.id,
-                    smeId: match.sme.id,
-                    type,
-                    message: `Interest expressed via matchmaking dashboard`
-                })
+                body: JSON.stringify({ interest })
             })
 
             if (response.ok) {
-                const data = await response.json()
-                if (data.mutualInterest) {
-                    addToast('success', '🎉 Mutual Interest! Both parties are interested!')
-                } else {
-                    addToast('success', 'Interest expressed successfully!')
-                }
-                // Refresh matches
-                window.location.reload()
-            } else {
-                const errorData = await response.json()
-                addToast('error', errorData.error || 'Failed to express interest')
+                addToast('success', interest ? 'Liked!' : 'Dismissed')
+                fetchData()
             }
         } catch (error) {
-            console.error('Error expressing interest:', error)
-            addToast('error', 'Error expressing interest')
+            addToast('error', 'Failed to record interest')
         }
     }
 
+    const checkMutualInterest = (m: Match) => {
+        if (!m.investor || !m.sme || !m.interests) return false
+        const investorLiked = m.interests.some(i => i.interest === true && i.userId === m.investor.userId)
+        const smeLiked = m.interests.some(i => i.interest === true && i.userId === m.sme.userId)
+        return investorLiked && smeLiked
+    }
+
     const getScoreColor = (score: number) => {
-        if (score >= 70) return 'text-green-400'
-        if (score >= 40) return 'text-yellow-400'
+        if (score >= 80) return 'text-green-400'
+        if (score >= 50) return 'text-yellow-400'
         return 'text-red-400'
     }
 
     const getScoreBgColor = (score: number) => {
-        if (score >= 70) return 'bg-green-500/20'
-        if (score >= 40) return 'bg-yellow-500/20'
+        if (score >= 80) return 'bg-green-500/20'
+        if (score >= 50) return 'bg-yellow-500/20'
         return 'bg-red-500/20'
     }
 
     const filteredMatches = (matches || []).filter(match => {
-        // Apply score filter
-        if (filter === 'high' && match.matchScore < 70) return false
-        if (filter === 'medium' && (match.matchScore < 40 || match.matchScore >= 70)) return false
-        if (filter === 'mutual' && !match.interestStatus?.mutualInterest) return false
+        if (filter === 'high' && match.score < 80) return false
+        if (filter === 'medium' && (match.score < 50 || match.score >= 80)) return false
+        if (filter === 'mutual' && !checkMutualInterest(match)) return false
 
-        // Apply search filter
         if (searchQuery) {
             const query = searchQuery.toLowerCase()
             return (
@@ -182,7 +179,6 @@ export default function MatchmakingPage() {
                 (match.sme?.sector?.toLowerCase() || '').includes(query)
             )
         }
-
         return true
     })
 
@@ -203,20 +199,22 @@ export default function MatchmakingPage() {
                 <div>
                     <h1 className="text-3xl font-bold text-white flex items-center gap-3">
                         <Sparkles className="w-8 h-8 text-purple-400" />
-                        Smart Matchmaking
+                        Refined Matchmaking
                     </h1>
-                    <p className="text-gray-400 mt-2">AI-powered SME and Investor matching based on preferences and compatibility</p>
+                    <p className="text-gray-400 mt-2">Persistence-backed scientific scoring for perfect SME-Investor alignment</p>
                 </div>
                 {(user?.role === 'ADMIN' || user?.role === 'ADVISOR') && (
                     <button
-                        onClick={() => {
-                            // In a real implementation, this would open a modal to select SME and Investor
-                            addToast('info', 'Opening manual match creator...')
-                        }}
-                        className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center transition-colors"
+                        onClick={handleRecompute}
+                        disabled={isRecomputing}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center transition-all disabled:opacity-50"
                     >
-                        <HeartHandshake className="w-4 h-4 mr-2" />
-                        Create Manual Match
+                        {isRecomputing ? (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                        ) : (
+                            <TrendingUp className="w-4 h-4 mr-2" />
+                        )}
+                        Recompute All Matches
                     </button>
                 )}
             </div>
@@ -224,240 +222,137 @@ export default function MatchmakingPage() {
             {/* Stats Cards */}
             {stats && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    <div className="bg-gradient-to-br from-purple-600/20 to-purple-800/20 rounded-xl p-6 border border-purple-500/30">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-purple-300 text-sm">Total Matches</p>
-                                <p className="text-3xl font-bold text-white">{stats.totalPossibleMatches}</p>
-                            </div>
-                            <div className="p-3 bg-purple-500/20 rounded-lg">
-                                <Target className="w-6 h-6 text-purple-400" />
-                            </div>
-                        </div>
+                    <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                        <p className="text-gray-400 text-sm">Total Opps</p>
+                        <p className="text-3xl font-bold text-white mt-1">{stats.totalPossibleMatches}</p>
                     </div>
-
-                    <div className="bg-gradient-to-br from-green-600/20 to-green-800/20 rounded-xl p-6 border border-green-500/30">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-green-300 text-sm">High Compatibility</p>
-                                <p className="text-3xl font-bold text-white">{stats.highScoreMatches}</p>
-                            </div>
-                            <div className="p-3 bg-green-500/20 rounded-lg">
-                                <TrendingUp className="w-6 h-6 text-green-400" />
-                            </div>
-                        </div>
+                    <div className="bg-green-500/10 rounded-xl p-6 border border-green-500/20">
+                        <p className="text-green-400 text-sm">High Match (80%+)</p>
+                        <p className="text-3xl font-bold text-white mt-1">{stats.highScoreMatches}</p>
                     </div>
-
-                    <div className="bg-gradient-to-br from-pink-600/20 to-pink-800/20 rounded-xl p-6 border border-pink-500/30">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-pink-300 text-sm">Mutual Interests</p>
-                                <p className="text-3xl font-bold text-white">{stats.mutualInterests}</p>
-                            </div>
-                            <div className="p-3 bg-pink-500/20 rounded-lg">
-                                <HeartHandshake className="w-6 h-6 text-pink-400" />
-                            </div>
-                        </div>
+                    <div className="bg-pink-500/10 rounded-xl p-6 border border-pink-500/20">
+                        <p className="text-pink-400 text-sm">Mutual Interests</p>
+                        <p className="text-3xl font-bold text-white mt-1">{stats.mutualInterests}</p>
                     </div>
-
-                    <div className="bg-gradient-to-br from-blue-600/20 to-blue-800/20 rounded-xl p-6 border border-blue-500/30">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-blue-300 text-sm">Pending Interests</p>
-                                <p className="text-3xl font-bold text-white">{stats.pendingInterests}</p>
-                            </div>
-                            <div className="p-3 bg-blue-500/20 rounded-lg">
-                                <Clock className="w-6 h-6 text-blue-400" />
-                            </div>
-                        </div>
+                    <div className="bg-blue-500/10 rounded-xl p-6 border border-blue-500/20">
+                        <p className="text-blue-400 text-sm">Medium Match</p>
+                        <p className="text-3xl font-bold text-white mt-1">{stats.mediumScoreMatches}</p>
                     </div>
                 </div>
             )}
 
-            {/* Search and Filter */}
-            <div className="bg-gray-800 rounded-lg p-6 mb-8 border border-gray-700">
-                <div className="flex flex-col md:flex-row gap-4">
-                    <div className="flex-1">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                            <input
-                                type="text"
-                                placeholder="Search by investor name, SME name, or sector..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-10 pr-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                            />
-                        </div>
-                    </div>
-                    <div className="flex gap-2">
+            {/* Filter Bar */}
+            <div className="bg-gray-800 rounded-xl p-4 mb-8 border border-gray-700 flex flex-wrap gap-4 items-center">
+                <div className="flex-1 min-w-[300px] relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <input
+                        type="text"
+                        placeholder="Search sectors, companies..."
+                        className="w-full bg-gray-700 border-none rounded-lg pl-10 pr-4 py-2 text-white focus:ring-2 focus:ring-purple-500"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                </div>
+                <div className="flex bg-gray-700 p-1 rounded-lg">
+                    {['all', 'high', 'mutual'].map((f) => (
                         <button
-                            onClick={() => setFilter('all')}
-                            className={`px-4 py-2 rounded-lg font-medium transition-colors ${filter === 'all'
-                                ? 'bg-purple-600 text-white'
-                                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                                }`}
+                            key={f}
+                            onClick={() => setFilter(f as any)}
+                            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${filter === f ? 'bg-purple-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
                         >
-                            All
+                            {f.charAt(0).toUpperCase() + f.slice(1)}
                         </button>
-                        <button
-                            onClick={() => setFilter('high')}
-                            className={`px-4 py-2 rounded-lg font-medium transition-colors ${filter === 'high'
-                                ? 'bg-green-600 text-white'
-                                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                                }`}
-                        >
-                            High Match
-                        </button>
-                        <button
-                            onClick={() => setFilter('medium')}
-                            className={`px-4 py-2 rounded-lg font-medium transition-colors ${filter === 'medium'
-                                ? 'bg-yellow-600 text-white'
-                                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                                }`}
-                        >
-                            Medium
-                        </button>
-                        <button
-                            onClick={() => setFilter('mutual')}
-                            className={`px-4 py-2 rounded-lg font-medium transition-colors ${filter === 'mutual'
-                                ? 'bg-pink-600 text-white'
-                                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                                }`}
-                        >
-                            <HeartHandshake className="w-4 h-4 inline mr-1" />
-                            Mutual
-                        </button>
-                    </div>
+                    ))}
                 </div>
             </div>
 
             {/* Matches Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                {filteredMatches.map((match, index) => (
-                    <div
-                        key={`${match.investor.id}-${match.sme.id}`}
-                        className={`bg-gray-800 rounded-xl p-6 border transition-all hover:shadow-lg ${match.interestStatus.mutualInterest
-                            ? 'border-pink-500/50 bg-gradient-to-br from-pink-900/10 to-gray-800'
-                            : 'border-gray-700 hover:border-purple-500/50'
-                            }`}
-                    >
-                        {/* Match Score Badge */}
-                        <div className="flex justify-between items-start mb-4">
-                            <div className={`px-3 py-1 rounded-full ${getScoreBgColor(match.matchScore)}`}>
-                                <span className={`font-bold ${getScoreColor(match.matchScore)}`}>
-                                    {match.matchScore}% Match
-                                </span>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {filteredMatches.map((match) => {
+                    const isMutual = checkMutualInterest(match)
+                    const userInterest = match.interests?.find(i => i.userId === user?.id)
+
+                    return (
+                        <div key={match.id} className={`bg-gray-800 rounded-2xl border transition-all hover:translate-y-[-4px] overflow-hidden ${isMutual ? 'border-pink-500 shadow-[0_0_20px_rgba(236,72,153,0.1)]' : 'border-gray-700'}`}>
+                            {/* Score Header */}
+                            <div className={`px-6 py-4 flex justify-between items-center ${getScoreBgColor(match.score)}`}>
+                                <div className="flex items-center gap-2">
+                                    <Star className={`w-4 h-4 ${getScoreColor(match.score)} fill-current`} />
+                                    <span className={`font-bold ${getScoreColor(match.score)}`}>{match.score}% Score</span>
+                                </div>
+                                {isMutual && <span className="bg-pink-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Mutual Interest</span>}
                             </div>
-                            {match.interestStatus.mutualInterest && (
-                                <div className="flex items-center gap-1 text-pink-400">
-                                    <HeartHandshake className="w-5 h-5" />
-                                    <span className="text-sm font-medium">Mutual</span>
-                                </div>
-                            )}
-                        </div>
 
-                        {/* Investor Info */}
-                        <div className="mb-4 p-3 bg-gray-700/50 rounded-lg">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-blue-500/20 rounded-lg">
-                                    <Users className="w-5 h-5 text-blue-400" />
-                                </div>
-                                <div>
-                                    <p className="text-white font-semibold">{match.investor.name}</p>
-                                    <p className="text-gray-400 text-sm">{match.investor.type}</p>
-                                </div>
-                            </div>
-                            {match.interestStatus.investorExpressedInterest && (
-                                <div className="mt-2 flex items-center gap-1 text-green-400 text-sm">
-                                    <Heart className="w-4 h-4 fill-current" />
-                                    Investor expressed interest
-                                </div>
-                            )}
-                        </div>
+                            <div className="p-6">
+                                {/* Connection Line */}
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center text-blue-400">
+                                            <Users className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <p className="text-white font-bold">{match.investor?.name}</p>
+                                            <p className="text-gray-400 text-xs">{match.investor?.type}</p>
+                                        </div>
+                                    </div>
 
-                        {/* Arrow */}
-                        <div className="flex justify-center my-2">
-                            <ArrowRight className="w-5 h-5 text-purple-400 rotate-90" />
-                        </div>
+                                    <div className="flex justify-center h-4 relative">
+                                        <div className="w-0.5 bg-gradient-to-b from-blue-500 to-green-500 absolute h-full top-0"></div>
+                                    </div>
 
-                        {/* SME Info */}
-                        <div className="mb-4 p-3 bg-gray-700/50 rounded-lg">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-green-500/20 rounded-lg">
-                                    <Building2 className="w-5 h-5 text-green-400" />
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-green-500/20 rounded-xl flex items-center justify-center text-green-400">
+                                            <Building2 className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <p className="text-white font-bold">{match.sme?.name}</p>
+                                            <p className="text-gray-400 text-xs">{match.sme?.sector} • {match.sme?.stage}</p>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-white font-semibold">{match.sme.name}</p>
-                                    <p className="text-gray-400 text-sm">{match.sme.sector} • {match.sme.stage}</p>
-                                </div>
-                            </div>
-                            {match.interestStatus.smeExpressedInterest && (
-                                <div className="mt-2 flex items-center gap-1 text-green-400 text-sm">
-                                    <Heart className="w-4 h-4 fill-current" />
-                                    SME expressed interest
-                                </div>
-                            )}
-                        </div>
 
-                        {/* Match Factors */}
-                        <div className="mb-4">
-                            <p className="text-gray-400 text-sm mb-2">Match Factors:</p>
-                            <div className="flex flex-wrap gap-2">
-                                {match.factors.sector.match && (
-                                    <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs">
-                                        ✓ Sector
-                                    </span>
-                                )}
-                                {match.factors.stage.match && (
-                                    <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs">
-                                        ✓ Stage
-                                    </span>
-                                )}
-                                {match.factors.amount.match && (
-                                    <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs">
-                                        ✓ Amount
-                                    </span>
-                                )}
-                                {match.factors.geography.match && (
-                                    <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs">
-                                        ✓ Location
-                                    </span>
-                                )}
-                                {match.factors.certification.match && (
-                                    <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs">
-                                        ✓ Certified
-                                    </span>
-                                )}
+                                {/* Factor Breakdown */}
+                                <div className="mt-6 pt-6 border-t border-gray-700/50">
+                                    <div className="flex flex-wrap gap-2">
+                                        {Object.entries(match.factors || {}).map(([key, val]: [string, any]) => (
+                                            <div key={key} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium ${val.score > 0 ? 'bg-green-500/10 text-green-400' : 'bg-gray-700 text-gray-500'}`} title={val.details}>
+                                                {val.score > 0 ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                                                {key.charAt(0).toUpperCase() + key.slice(1)}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Interest Actions */}
+                                <div className="mt-6 flex gap-3">
+                                    {userInterest ? (
+                                        <div className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border ${userInterest.interest ? 'bg-green-500/10 border-green-500 text-green-400' : 'bg-gray-700 border-gray-600 text-gray-400'}`}>
+                                            {userInterest.interest ? <Heart className="w-4 h-4 fill-current" /> : <XCircle className="w-4 h-4" />}
+                                            {userInterest.interest ? 'Liked' : 'Dismissed'}
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <button onClick={() => handleInterest(match.id, false)} className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 py-2.5 rounded-xl transition-all flex items-center justify-center">
+                                                <XCircle className="w-5 h-5" />
+                                            </button>
+                                            <button onClick={() => handleInterest(match.id, true)} className="flex-[2] bg-purple-600 hover:bg-purple-700 text-white py-2.5 rounded-xl transition-all shadow-lg shadow-purple-900/40 flex items-center justify-center gap-2 font-bold">
+                                                <Heart className="w-4 h-4" />
+                                                Interested
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+
+                                {/* Detail Links */}
+                                <div className="mt-4 flex gap-2 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                                    <Link href={`/smes/${match.sme?.id}`} className="hover:text-blue-400">View Proposal</Link>
+                                    <span>•</span>
+                                    <Link href={`/investors/${match.investor?.id}`} className="hover:text-blue-400">View Thesis</Link>
+                                </div>
                             </div>
                         </div>
-
-                        {/* Actions */}
-                        <div className="flex gap-2 mt-4 pt-4 border-t border-gray-700">
-                            <Link
-                                href={`/smes/${match.sme.id}`}
-                                className="flex-1 py-2 px-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm flex items-center justify-center gap-1 transition-colors"
-                            >
-                                <Eye className="w-4 h-4" />
-                                View SME
-                            </Link>
-                            <Link
-                                href={`/investors/${match.investor.id}`}
-                                className="flex-1 py-2 px-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm flex items-center justify-center gap-1 transition-colors"
-                            >
-                                <Eye className="w-4 h-4" />
-                                View Investor
-                            </Link>
-                            {(user?.role === 'ADMIN' || user?.role === 'ADVISOR') && !match.interestStatus.mutualInterest && (
-                                <button
-                                    onClick={() => setSelectedMatch(match)}
-                                    className="py-2 px-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm flex items-center justify-center gap-1 transition-colors"
-                                >
-                                    <Heart className="w-4 h-4" />
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                ))}
+                    )
+                })}
             </div>
 
             {filteredMatches.length === 0 && (
@@ -465,49 +360,6 @@ export default function MatchmakingPage() {
                     <Sparkles className="w-16 h-16 text-gray-600 mx-auto mb-4" />
                     <p className="text-gray-400 text-lg">No matches found for the selected filter.</p>
                     <p className="text-gray-500 text-sm mt-2">Try adjusting your search or filter criteria.</p>
-                </div>
-            )}
-
-            {/* Express Interest Modal */}
-            {selectedMatch && (
-                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-                    <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md border border-gray-700">
-                        <h3 className="text-xl font-semibold text-white mb-4">Express Interest</h3>
-                        <p className="text-gray-400 mb-6">
-                            Who is expressing interest in this match?
-                        </p>
-
-                        <div className="space-y-3">
-                            <button
-                                onClick={() => {
-                                    handleExpressInterest(selectedMatch, 'INVESTOR_TO_SME')
-                                    setSelectedMatch(null)
-                                }}
-                                className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center justify-center gap-2 transition-colors"
-                            >
-                                <Users className="w-5 h-5" />
-                                {selectedMatch.investor.name} → {selectedMatch.sme.name}
-                            </button>
-
-                            <button
-                                onClick={() => {
-                                    handleExpressInterest(selectedMatch, 'SME_TO_INVESTOR')
-                                    setSelectedMatch(null)
-                                }}
-                                className="w-full py-3 px-4 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center justify-center gap-2 transition-colors"
-                            >
-                                <Building2 className="w-5 h-5" />
-                                {selectedMatch.sme.name} → {selectedMatch.investor.name}
-                            </button>
-                        </div>
-
-                        <button
-                            onClick={() => setSelectedMatch(null)}
-                            className="w-full mt-4 py-2 px-4 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
-                        >
-                            Cancel
-                        </button>
-                    </div>
                 </div>
             )}
         </DashboardLayout>

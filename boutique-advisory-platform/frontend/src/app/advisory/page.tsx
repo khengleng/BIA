@@ -21,6 +21,7 @@ import {
   Award,
   BookOpen
 } from 'lucide-react'
+import StripePaymentModal from '@/components/advisory/StripePaymentModal'
 
 interface User {
   id: string
@@ -35,6 +36,13 @@ export default function AdvisoryPage() {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('services')
+  const [advisoryServices, setAdvisoryServices] = useState<any[]>([])
+  const [availableAdvisors, setAvailableAdvisors] = useState<any[]>([])
+  const [isDataLoading, setIsDataLoading] = useState(false)
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [paymentClientSecret, setPaymentClientSecret] = useState<string | null>(null)
+  const [paymentAmount, setPaymentAmount] = useState<number>(0)
+  const [pendingBookingData, setPendingBookingData] = useState<any>(null)
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -62,6 +70,28 @@ export default function AdvisoryPage() {
     fetchUser()
   }, [])
 
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsDataLoading(true)
+      try {
+        const token = localStorage.getItem('token')
+        const [servicesRes, advisorsRes] = await Promise.all([
+          fetch(`${API_URL}/api/advisory/services`, { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch(`${API_URL}/api/advisory/advisors`, { headers: { 'Authorization': `Bearer ${token}` } })
+        ])
+
+        if (servicesRes.ok) setAdvisoryServices(await servicesRes.json())
+        if (advisorsRes.ok) setAvailableAdvisors(await advisorsRes.json())
+      } catch (error) {
+        console.error('Error fetching advisory data:', error)
+      } finally {
+        setIsDataLoading(false)
+      }
+    }
+
+    if (user) fetchData()
+  }, [user])
+
   const handleLogout = () => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
@@ -77,29 +107,57 @@ export default function AdvisoryPage() {
         return
       }
 
-      const response = await fetch(`${API_URL}/api/advisory/book`, {
+      // Step 1: Create Payment Intent
+      const amount = typeof service.price === 'string'
+        ? parseFloat(service.price.replace(/[^0-9.]/g, '')) || 0
+        : service.price || 0;
+
+      const paymentRes = await fetch(`${API_URL}/api/payments/create-payment-intent`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
+        body: JSON.stringify({ amount, serviceId: service.id })
+      })
+
+      if (paymentRes.ok) {
+        const { clientSecret } = await paymentRes.json()
+        setPaymentClientSecret(clientSecret)
+        setPaymentAmount(amount)
+        setPendingBookingData({
           serviceId: service.id,
           serviceName: service.name,
           advisorName: service.advisor,
           preferredDate: new Date().toISOString().split('T')[0],
           notes: `Booking request for ${service.name}`
         })
+        setShowPaymentModal(true)
+      }
+    } catch (error) {
+      console.error('Error starting booking process:', error)
+    }
+  }
+
+  const handleBookingSuccess = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`${API_URL}/api/advisory/book`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(pendingBookingData)
       })
 
       if (response.ok) {
-        const result = await response.json()
-        console.log('Booking successful:', result)
-      } else {
-        console.error('Booking failed')
+        alert('Booking and Payment Successful!')
+        setShowPaymentModal(false)
+        setPaymentClientSecret(null)
       }
     } catch (error) {
-      console.error('Error booking service:', error)
+      console.error('Error finalizing booking:', error)
     }
   }
 
@@ -112,29 +170,34 @@ export default function AdvisoryPage() {
         return
       }
 
-      const response = await fetch(`${API_URL}/api/advisory/book`, {
+      const amount = typeof advisor.hourlyRate === 'string'
+        ? parseFloat(advisor.hourlyRate.replace(/[^0-9.]/g, '')) || 250
+        : 250;
+
+      const paymentRes = await fetch(`${API_URL}/api/payments/create-payment-intent`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
+        body: JSON.stringify({ amount, advisorId: advisor.id })
+      })
+
+      if (paymentRes.ok) {
+        const { clientSecret } = await paymentRes.json()
+        setPaymentClientSecret(clientSecret)
+        setPaymentAmount(amount)
+        setPendingBookingData({
           serviceId: 'advisor-session',
           serviceName: 'Advisor Consultation',
           advisorName: advisor.name,
           preferredDate: new Date().toISOString().split('T')[0],
           notes: `Booking session with ${advisor.name}`
         })
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        console.log('Advisor session booked successfully:', result)
-      } else {
-        console.error('Advisor session booking failed')
+        setShowPaymentModal(true)
       }
     } catch (error) {
-      console.error('Error booking advisor session:', error)
+      console.error('Error starting session booking:', error)
     }
   }
 
@@ -145,8 +208,7 @@ export default function AdvisoryPage() {
     // In a real implementation, you would navigate to a detailed advisor profile page
   }
 
-  // Mock Advisory Services data
-  const services = [
+  const servicesToDisplay = advisoryServices.length > 0 ? advisoryServices : [
     {
       id: 1,
       name: 'Business Strategy Consulting',
@@ -158,46 +220,10 @@ export default function AdvisoryPage() {
       rating: 4.8,
       reviews: 24,
       features: ['Market Analysis', 'Competitive Positioning', 'Growth Strategy', 'Implementation Plan']
-    },
-    {
-      id: 2,
-      name: 'Financial Planning & Analysis',
-      category: 'Finance',
-      description: 'Financial modeling, forecasting, and investment analysis',
-      duration: '1-3 weeks',
-      price: '$3,000 - $10,000',
-      advisor: 'Michael Chen',
-      rating: 4.9,
-      reviews: 31,
-      features: ['Financial Modeling', 'Cash Flow Analysis', 'Investment Planning', 'Risk Assessment']
-    },
-    {
-      id: 3,
-      name: 'Investment Due Diligence',
-      category: 'Investment',
-      description: 'Comprehensive due diligence for investment opportunities',
-      duration: '3-6 weeks',
-      price: '$8,000 - $25,000',
-      advisor: 'Emily Rodriguez',
-      rating: 4.7,
-      reviews: 18,
-      features: ['Market Research', 'Financial Analysis', 'Legal Review', 'Risk Assessment']
-    },
-    {
-      id: 4,
-      name: 'Digital Transformation',
-      category: 'Technology',
-      description: 'Technology strategy and digital transformation consulting',
-      duration: '4-8 weeks',
-      price: '$10,000 - $30,000',
-      advisor: 'David Kim',
-      rating: 4.6,
-      reviews: 22,
-      features: ['Technology Assessment', 'Digital Strategy', 'Implementation Roadmap', 'Change Management']
     }
   ]
 
-  const advisors = [
+  const advisorsToDisplay = availableAdvisors.length > 0 ? availableAdvisors : [
     {
       id: 1,
       name: 'Dr. Sarah Johnson',
@@ -210,32 +236,6 @@ export default function AdvisoryPage() {
       completedProjects: 127,
       availability: 'Available',
       hourlyRate: '$250'
-    },
-    {
-      id: 2,
-      name: 'Michael Chen',
-      title: 'Financial Advisor',
-      specialization: ['Financial Planning', 'Investment Analysis', 'Risk Management'],
-      experience: '12+ years',
-      education: 'MBA in Finance',
-      rating: 4.9,
-      reviews: 38,
-      completedProjects: 89,
-      availability: 'Available',
-      hourlyRate: '$200'
-    },
-    {
-      id: 3,
-      name: 'Emily Rodriguez',
-      title: 'Investment Specialist',
-      specialization: ['Due Diligence', 'Investment Strategy', 'Portfolio Management'],
-      experience: '10+ years',
-      education: 'CFA, MBA',
-      rating: 4.7,
-      reviews: 29,
-      completedProjects: 67,
-      availability: 'Limited',
-      hourlyRate: '$300'
     }
   ]
 
@@ -396,17 +396,6 @@ export default function AdvisoryPage() {
                   </button>
                 ))}
               </nav>
-
-              {/* Logout Button at Bottom of Sidebar */}
-              <div className="px-4 pb-8">
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center w-full px-4 py-2 text-red-400 hover:text-white hover:bg-red-600 rounded-lg transition-colors"
-                >
-                  <LogOut className="w-5 h-5 mr-3" />
-                  Logout
-                </button>
-              </div>
             </div>
 
             <div className="p-6">
@@ -430,7 +419,7 @@ export default function AdvisoryPage() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {services.map((service) => (
+                    {servicesToDisplay.map((service) => (
                       <div key={service.id} className="bg-gray-700 rounded-lg p-6 border border-gray-600">
                         <div className="flex justify-between items-start mb-4">
                           <div>
@@ -476,19 +465,22 @@ export default function AdvisoryPage() {
                           </span>
                         </div>
 
-                        <div className="mb-4">
-                          <h4 className="text-sm font-medium text-gray-300 mb-2">Features:</h4>
-                          <div className="flex flex-wrap gap-2">
-                            {service.features.map((feature, index) => (
-                              <span
-                                key={index}
-                                className="px-2 py-1 bg-gray-600 text-gray-300 text-xs rounded"
-                              >
-                                {feature}
-                              </span>
-                            ))}
+
+                        {service.features && service.features.length > 0 && (
+                          <div className="mb-4">
+                            <h4 className="text-sm font-medium text-gray-300 mb-2">Features:</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {service.features.map((feature: string, index: number) => (
+                                <span
+                                  key={index}
+                                  className="px-2 py-1 bg-gray-600 text-gray-300 text-xs rounded"
+                                >
+                                  {feature}
+                                </span>
+                              ))}
+                            </div>
                           </div>
-                        </div>
+                        )}
 
                         <div className="flex space-x-2">
                           <button
@@ -531,7 +523,7 @@ export default function AdvisoryPage() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {advisors.map((advisor) => (
+                    {advisorsToDisplay.map((advisor) => (
                       <div key={advisor.id} className="bg-gray-700 rounded-lg p-6 border border-gray-600">
                         <div className="flex justify-between items-start mb-4">
                           <div>
@@ -582,19 +574,22 @@ export default function AdvisoryPage() {
                           </span>
                         </div>
 
-                        <div className="mb-4">
-                          <h4 className="text-sm font-medium text-gray-300 mb-2">Specializations:</h4>
-                          <div className="flex flex-wrap gap-2">
-                            {advisor.specialization.map((spec, index) => (
-                              <span
-                                key={index}
-                                className="px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded"
-                              >
-                                {spec}
-                              </span>
-                            ))}
+
+                        {advisor.specialization && advisor.specialization.length > 0 && (
+                          <div className="mb-4">
+                            <h4 className="text-sm font-medium text-gray-300 mb-2">Specializations:</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {advisor.specialization.map((spec: string, index: number) => (
+                                <span
+                                  key={index}
+                                  className="px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded"
+                                >
+                                  {spec}
+                                </span>
+                              ))}
+                            </div>
                           </div>
-                        </div>
+                        )}
 
                         <div className="flex space-x-2">
                           <button
@@ -667,6 +662,14 @@ export default function AdvisoryPage() {
           </div>
         </main>
       </div>
+      {showPaymentModal && paymentClientSecret && (
+        <StripePaymentModal
+          amount={paymentAmount}
+          clientSecret={paymentClientSecret}
+          onSuccess={handleBookingSuccess}
+          onCancel={() => setShowPaymentModal(false)}
+        />
+      )}
     </div>
   )
 }

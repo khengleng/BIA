@@ -30,6 +30,8 @@ import {
   Upload
 } from 'lucide-react'
 import { useTranslations } from '@/hooks/useTranslations'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import { useToast } from '@/contexts/ToastContext'
 
 interface User {
   id: string
@@ -52,6 +54,9 @@ export default function SMEPage() {
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [uploadFile, setUploadFile] = useState<File | null>(null)
   const [uploadType, setUploadType] = useState('OTHER')
+  const [showCertifyDialog, setShowCertifyDialog] = useState(false)
+  const [showInterestDialog, setShowInterestDialog] = useState(false)
+  const { addToast } = useToast()
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -103,7 +108,7 @@ export default function SMEPage() {
         return
       }
 
-      const response = await fetch(`${API_URL} /api/documents / ${encodeURIComponent(docName)} `, {
+      const response = await fetch(`${API_URL}/api/documents/${encodeURIComponent(docName)}`, {
         headers: {
           'Authorization': `Bearer ${token} `
         }
@@ -111,7 +116,7 @@ export default function SMEPage() {
 
       if (response.ok) {
         // Open document in new tab
-        window.open(`${API_URL} /api/documents / ${encodeURIComponent(docName)} `, '_blank')
+        window.open(`${API_URL}/api/documents/${encodeURIComponent(docName)}`, '_blank')
       } else {
         console.error('Document not found')
       }
@@ -128,7 +133,7 @@ export default function SMEPage() {
         return
       }
 
-      const response = await fetch(`${API_URL} /api/documents / ${encodeURIComponent(docName)}/download`, {
+      const response = await fetch(`${API_URL}/api/documents/${encodeURIComponent(docName)}/download`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -169,6 +174,7 @@ export default function SMEPage() {
       const token = localStorage.getItem('token')
       const formData = new FormData()
       formData.append('file', uploadFile)
+      formData.append('name', uploadFile.name)
       formData.append('type', uploadType)
       formData.append('smeId', params.id as string)
 
@@ -210,7 +216,14 @@ export default function SMEPage() {
     fundingRequired: '',
     description: '',
     website: '',
-    location: ''
+    location: '',
+    currentAssets: '',
+    currentLiabilities: '',
+    totalRevenue: '',
+    netProfit: '',
+    customerRetention: '',
+    marketShare: '',
+    employeeSatisfaction: ''
   })
 
   // Mock SME data as initial state
@@ -306,7 +319,14 @@ export default function SMEPage() {
         fundingRequired: typeof sme.fundingRequired === 'number' ? sme.fundingRequired.toString() : sme.fundingRequired?.replace(/[^0-9.]/g, '') || '',
         description: sme.description || sme.businessDescription || '',
         website: sme.website || '',
-        location: sme.location || ''
+        location: sme.location || '',
+        currentAssets: sme.currentAssets || '',
+        currentLiabilities: sme.currentLiabilities || '',
+        totalRevenue: sme.totalRevenue || '',
+        netProfit: sme.netProfit || '',
+        customerRetention: sme.metrics?.customerRetention || '',
+        marketShare: sme.metrics?.marketShare || '',
+        employeeSatisfaction: sme.metrics?.employeeSatisfaction || ''
       })
     }
   }, [showEditModal, sme])
@@ -325,10 +345,19 @@ export default function SMEPage() {
         name: editFormData.name.trim(),
         sector: editFormData.sector.trim(),
         stage: editFormData.stage,
-        description: editFormData.description.trim() || undefined, // Send undefined if empty to skip validation/save
-        website: sanitizedWebsite || null, // nullable in backend
+        description: editFormData.description.trim() || undefined,
+        website: sanitizedWebsite || null,
         location: editFormData.location.trim(),
-        fundingRequired: editFormData.fundingRequired ? parseFloat(editFormData.fundingRequired) : undefined
+        fundingRequired: editFormData.fundingRequired ? parseFloat(editFormData.fundingRequired.replace(/,/g, '')) : undefined,
+        currentAssets: editFormData.currentAssets,
+        currentLiabilities: editFormData.currentLiabilities,
+        totalRevenue: editFormData.totalRevenue,
+        netProfit: editFormData.netProfit,
+        metrics: {
+          customerRetention: editFormData.customerRetention,
+          marketShare: editFormData.marketShare,
+          employeeSatisfaction: editFormData.employeeSatisfaction
+        }
       }
 
       const response = await fetch(`${API_URL}/api/smes/${params.id}`, {
@@ -367,6 +396,72 @@ export default function SMEPage() {
       alert('Connection Error: We experienced a hiccup connecting to the server. Please check your internet connection or try again later.')
     }
   }
+
+  const handleCertifySME = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`${API_URL}/api/smes/${params.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status: 'CERTIFIED' })
+      })
+
+      if (response.ok) {
+        addToast('success', 'SME certified successfully!', 10000)
+        setTimeout(() => window.location.reload(), 1000)
+      } else {
+        addToast('error', 'Failed to certify SME')
+      }
+    } catch (error) {
+      console.error('Error certifying SME:', error)
+      addToast('error', 'Error certifying SME')
+    } finally {
+      setShowCertifyDialog(false)
+    }
+  }
+
+  const handleExpressInterest = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) return
+
+      const recipientId = sme.userId || (sme.user && sme.user.id)
+      if (!recipientId) {
+        addToast('error', 'Cannot message this user: Recipient ID not found.')
+        setShowInterestDialog(false)
+        return
+      }
+
+      const response = await fetch(`${API_URL}/api/messages/start`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          recipientId: recipientId,
+          initialMessage: `Hi ${sme.name}, I'm interested in learning more about your business.`,
+          dealId: null
+        })
+      })
+
+      if (response.ok) {
+        addToast('success', '✅ Message sent! You can continue the conversation in the dashboard.', 10000)
+      } else {
+        const errorData = await response.json()
+        addToast('error', errorData.error || 'Failed to send message')
+      }
+    } catch (error) {
+      console.error('Error expressing interest:', error)
+      addToast('error', 'Connection error while sending message')
+    } finally {
+      setShowInterestDialog(false)
+    }
+  }
+
 
   const tabs = [
     { id: 'overview', name: t('common.overview'), icon: Eye },
@@ -531,29 +626,7 @@ export default function SMEPage() {
                 {/* Certify button for advisors */}
                 {(user?.role === 'ADMIN' || user?.role === 'ADVISOR') && sme.status !== 'CERTIFIED' && (
                   <button
-                    onClick={async () => {
-                      if (confirm(`Are you sure you want to certify ${sme.name}?`)) {
-                        try {
-                          const token = localStorage.getItem('token')
-                          const response = await fetch(`${API_URL}/api/smes/${params.id}`, {
-                            method: 'PUT',
-                            headers: {
-                              'Authorization': `Bearer ${token}`,
-                              'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({ status: 'CERTIFIED' })
-                          })
-                          if (response.ok) {
-                            alert('SME certified successfully!')
-                            window.location.reload()
-                          } else {
-                            alert('Failed to certify SME')
-                          }
-                        } catch (error) {
-                          console.error('Error certifying SME:', error)
-                        }
-                      }
-                    }}
+                    onClick={() => setShowCertifyDialog(true)}
                     className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center"
                   >
                     <Award className="w-4 h-4 mr-2" />
@@ -563,43 +636,7 @@ export default function SMEPage() {
                 {/* Express Interest button for investors */}
                 {(user?.role === 'INVESTOR' || user?.role === 'ADMIN' || user?.role === 'ADVISOR') && (
                   <button
-                    onClick={async () => {
-                      try {
-                        const token = localStorage.getItem('token')
-                        if (!token) return
-
-                        // Check if we have the recipient ID
-                        const recipientId = sme.userId || (sme.user && sme.user.id);
-                        if (!recipientId) {
-                          alert('Cannot message this user: Recipient ID not found.');
-                          return;
-                        }
-
-                        const response = await fetch(`${API_URL}/api/messages/start`, {
-                          method: 'POST',
-                          headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
-                          },
-                          body: JSON.stringify({
-                            recipientId: recipientId,
-                            initialMessage: `Hi ${sme.name}, I'm interested in learning more about your business.`,
-                            dealId: null
-                          })
-                        })
-
-                        if (response.ok) {
-                          alert('✅ Message sent! You can continue the conversation in the dashboard.')
-                          // Optional: router.push('/dashboard?tab=messages')
-                        } else {
-                          const errorData = await response.json()
-                          alert(errorData.error || 'Failed to send message')
-                        }
-                      } catch (error) {
-                        console.error('Error expressing interest:', error)
-                        alert('Connection error while sending message')
-                      }
-                    }}
+                    onClick={() => setShowInterestDialog(true)}
                     className="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-lg flex items-center"
                   >
                     <Heart className="w-4 h-4 mr-2" />
@@ -848,12 +885,14 @@ export default function SMEPage() {
                 <div className="space-y-6">
                   <div className="flex justify-between items-center">
                     <h3 className="text-lg font-semibold text-white">Active Deals</h3>
-                    <button
-                      onClick={handleCreateDeal}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
-                    >
-                      Create New Deal
-                    </button>
+                    {sme.deals.length === 0 && (
+                      <button
+                        onClick={handleCreateDeal}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+                      >
+                        {t('advisory.createDeal')}
+                      </button>
+                    )}
                   </div>
 
                   <div className="space-y-4">
@@ -891,7 +930,7 @@ export default function SMEPage() {
                             View Details
                           </button>
                           <button
-                            onClick={() => router.push(`/deals/${deal.id}/edit`)}
+                            onClick={() => router.push(`/deals/${deal.id}?edit=true`)}
                             className="bg-gray-600 hover:bg-gray-500 text-white px-3 py-2 rounded-lg text-sm"
                           >
                             Edit
@@ -1076,10 +1115,83 @@ export default function SMEPage() {
               <textarea
                 value={editFormData.description}
                 onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
-                rows={4}
+                rows={3}
                 className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
+
+            {/* Advisor Sections: Financials & Analytics */}
+            {(user?.role === 'ADMIN' || user?.role === 'ADVISOR') && (
+              <div className="mt-8 pt-8 border-t border-gray-700">
+                <h4 className="text-lg font-semibold text-blue-400 mb-4 flex items-center gap-2">
+                  <Award className="w-5 h-5" />
+                  Advisor Insights (Financials & Analytics)
+                </h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Current Assets</label>
+                    <input
+                      type="text"
+                      value={editFormData.currentAssets}
+                      placeholder="$200,000"
+                      onChange={(e) => setEditFormData({ ...editFormData, currentAssets: e.target.value })}
+                      className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Current Liabilities</label>
+                    <input
+                      type="text"
+                      value={editFormData.currentLiabilities}
+                      placeholder="$50,000"
+                      onChange={(e) => setEditFormData({ ...editFormData, currentLiabilities: e.target.value })}
+                      className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Total Revenue</label>
+                    <input
+                      type="text"
+                      value={editFormData.totalRevenue}
+                      placeholder="$500,000"
+                      onChange={(e) => setEditFormData({ ...editFormData, totalRevenue: e.target.value })}
+                      className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Net Profit</label>
+                    <input
+                      type="text"
+                      value={editFormData.netProfit}
+                      placeholder="$75,000"
+                      onChange={(e) => setEditFormData({ ...editFormData, netProfit: e.target.value })}
+                      className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Customer Retention (%)</label>
+                    <input
+                      type="text"
+                      value={editFormData.customerRetention}
+                      placeholder="85%"
+                      onChange={(e) => setEditFormData({ ...editFormData, customerRetention: e.target.value })}
+                      className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Market Share (%)</label>
+                    <input
+                      type="text"
+                      value={editFormData.marketShare}
+                      placeholder="12%"
+                      onChange={(e) => setEditFormData({ ...editFormData, marketShare: e.target.value })}
+                      className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="flex gap-4 mt-8">
               <button
@@ -1209,6 +1321,30 @@ export default function SMEPage() {
           </div>
         </div>
       )}
+
+      {/* Certify SME Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showCertifyDialog}
+        title="Certify SME"
+        message={`Are you sure you want to certify ${sme.name}? This action will update the SME status to CERTIFIED.`}
+        confirmText="Yes, Certify"
+        cancelText="Cancel"
+        type="success"
+        onConfirm={handleCertifySME}
+        onCancel={() => setShowCertifyDialog(false)}
+      />
+
+      {/* Express Interest Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showInterestDialog}
+        title="Express Interest"
+        message={`Send a message to ${sme.name} expressing your interest in their business?`}
+        confirmText="Yes, Send Message"
+        cancelText="Cancel"
+        type="info"
+        onConfirm={handleExpressInterest}
+        onCancel={() => setShowInterestDialog(false)}
+      />
     </div>
   )
 }

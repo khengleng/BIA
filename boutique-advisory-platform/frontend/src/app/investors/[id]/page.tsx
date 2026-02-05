@@ -33,6 +33,7 @@ import {
   Shield
 } from 'lucide-react'
 import { useTranslations } from '@/hooks/useTranslations'
+import AnalyticsDashboard from '@/components/analytics/AnalyticsDashboard'
 
 interface User {
   id: string
@@ -1353,51 +1354,7 @@ export default function InvestorProfilePage() {
 
               {activeTab === 'analytics' && (
                 <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-gray-700 rounded-lg p-6">
-                      <h3 className="text-lg font-semibold text-white mb-4">Investment Performance</h3>
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-400">Total Return</span>
-                          <span className="text-green-400">+18.5%</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-400">Annualized Return</span>
-                          <span className="text-blue-400">+22.3%</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-400">Best Investment</span>
-                          <span className="text-green-400">+45%</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-400">Worst Investment</span>
-                          <span className="text-red-400">-12%</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-gray-700 rounded-lg p-6">
-                      <h3 className="text-lg font-semibold text-white mb-4">Investment Activity</h3>
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-400">Deals Reviewed</span>
-                          <span className="text-white">24</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-400">Deals Invested</span>
-                          <span className="text-blue-400">8</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-400">Due Diligence Completed</span>
-                          <span className="text-green-400">12</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-400">Average Time to Decision</span>
-                          <span className="text-yellow-400">18 days</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <AnalyticsDashboard />
                 </div>
               )}
             </div>

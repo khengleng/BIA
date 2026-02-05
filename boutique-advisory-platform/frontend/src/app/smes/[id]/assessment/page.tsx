@@ -60,20 +60,22 @@ export default function AssessmentPage() {
 
                 if (ddRes.ok) {
                     const ddData = await ddRes.json()
-                    setScores({
-                        financialScore: ddData.financialScore,
-                        teamScore: ddData.teamScore,
-                        marketScore: ddData.marketScore,
-                        productScore: ddData.productScore,
-                        legalScore: ddData.legalScore,
-                        operationalScore: ddData.operationalScore
-                    })
-                    setNotes({
-                        strengths: ddData.strengths || [''],
-                        weaknesses: ddData.weaknesses || [''],
-                        recommendations: ddData.recommendations || [''],
-                        redFlags: ddData.redFlags || ['']
-                    })
+                    if (ddData) {
+                        setScores({
+                            financialScore: ddData.financialScore || 50,
+                            teamScore: ddData.teamScore || 50,
+                            marketScore: ddData.marketScore || 50,
+                            productScore: ddData.productScore || 50,
+                            legalScore: ddData.legalScore || 50,
+                            operationalScore: ddData.operationalScore || 50
+                        })
+                        setNotes({
+                            strengths: ddData.strengths || [''],
+                            weaknesses: ddData.weaknesses || [''],
+                            recommendations: ddData.recommendations || [''],
+                            redFlags: ddData.redFlags || ['']
+                        })
+                    }
                 }
             } catch (error) {
                 console.error('Error fetching assessment:', error)
@@ -120,9 +122,11 @@ export default function AssessmentPage() {
 
             if (ddCheckRes.ok) {
                 const existingDD = await ddCheckRes.json()
-                method = 'PUT'
-                url = `${API_URL}/api/duediligence/${existingDD.id}`
-                body = { ...scores, ...notes, status }
+                if (existingDD && existingDD.id) {
+                    method = 'PUT'
+                    url = `${API_URL}/api/duediligence/${existingDD.id}`
+                    body = { ...scores, ...notes, status }
+                }
             }
 
             const response = await fetch(url, {
