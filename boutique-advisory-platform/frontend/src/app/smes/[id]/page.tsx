@@ -28,6 +28,7 @@ import {
   Heart,
   Sparkles
 } from 'lucide-react'
+import { useTranslations } from '@/hooks/useTranslations'
 
 interface User {
   id: string
@@ -41,6 +42,7 @@ interface User {
 export default function SMEPage() {
   const params = useParams()
   const router = useRouter()
+  const { t } = useTranslations()
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
@@ -211,11 +213,11 @@ export default function SMEPage() {
   }
 
   const tabs = [
-    { id: 'overview', name: 'Overview', icon: Eye },
-    { id: 'financials', name: 'Financials', icon: DollarSign },
-    { id: 'deals', name: 'Deals', icon: Handshake },
-    { id: 'documents', name: 'Documents', icon: DocumentIcon },
-    { id: 'analytics', name: 'Analytics', icon: TrendingUp }
+    { id: 'overview', name: t('common.overview'), icon: Eye },
+    { id: 'financials', name: t('common.financials'), icon: DollarSign },
+    { id: 'deals', name: t('navigation.deals'), icon: Handshake },
+    { id: 'documents', name: t('common.documents'), icon: DocumentIcon },
+    { id: 'analytics', name: t('home.features.analytics.title'), icon: TrendingUp }
   ]
 
   if (isLoading) {
@@ -347,7 +349,7 @@ export default function SMEPage() {
                 className="flex items-center text-gray-400 hover:text-white"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to SMEs
+                {t('common.back')}
               </Link>
             </div>
             <div className="flex justify-between items-start">
@@ -368,7 +370,7 @@ export default function SMEPage() {
                   className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center"
                 >
                   <Handshake className="w-4 h-4 mr-2" />
-                  Create Deal
+                  {t('advisory.createDeal')}
                 </button>
                 {/* Certify button for advisors */}
                 {(user?.role === 'ADMIN' || user?.role === 'ADVISOR') && sme.status !== 'CERTIFIED' && (
@@ -399,7 +401,7 @@ export default function SMEPage() {
                     className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center"
                   >
                     <Award className="w-4 h-4 mr-2" />
-                    Certify SME
+                    {t('advisory.certifySME')}
                   </button>
                 )}
                 {/* Express Interest button for investors */}
@@ -437,7 +439,7 @@ export default function SMEPage() {
                     className="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-lg flex items-center"
                   >
                     <Heart className="w-4 h-4 mr-2" />
-                    Express Interest
+                    {t('advisory.expressInterest')}
                   </button>
                 )}
               </div>
@@ -480,7 +482,7 @@ export default function SMEPage() {
                     <div className="p-6 border-b border-gray-700 flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <Award className="w-6 h-6 text-yellow-500" />
-                        <h3 className="text-xl font-bold text-white">Boutique Advisory Scorecard</h3>
+                        <h3 className="text-xl font-bold text-white">{t('advisory.scorecard')}</h3>
                       </div>
                       <div className="flex items-center gap-4">
                         {(user?.role === 'ADMIN' || user?.role === 'ADVISOR') && (
@@ -488,11 +490,11 @@ export default function SMEPage() {
                             href={`/smes/${params.id}/assessment`}
                             className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
                           >
-                            MANAGE ASSESSMENT
+                            {t('advisory.manageAssessment')}
                           </Link>
                         )}
                         <div className="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-xs font-bold border border-green-500/30">
-                          {sme.status === 'CERTIFIED' ? 'CERTIFIED' : 'PENDING CERTIFICATION'}
+                          {sme.status === 'CERTIFIED' ? t('advisory.certified') : t('advisory.pending')}
                         </div>
                       </div>
                     </div>

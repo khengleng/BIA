@@ -24,7 +24,10 @@ const translations = {
       actions: "Actions",
       status: "Status",
       createdAt: "Created At",
-      updatedAt: "Updated At"
+      updatedAt: "Updated At",
+      overview: "Overview",
+      financials: "Financials",
+      documents: "Documents"
     },
     navigation: {
       dashboard: "Dashboard",
@@ -84,6 +87,22 @@ const translations = {
           description: "Comprehensive dashboards and performance tracking"
         }
       }
+    },
+    advisory: {
+      scorecard: "Boutique Advisory Scorecard",
+      assessment: "Due Diligence Assessment",
+      finalize: "FINALIZE & CERTIFY",
+      saveDraft: "SAVE DRAFT",
+      manageAssessment: "MANAGE ASSESSMENT",
+      certified: "CERTIFIED",
+      pending: "PENDING CERTIFICATION",
+      pipeline: "SME Pipeline",
+      manualMatch: "Create Manual Match",
+      kycVerified: "KYC VERIFIED",
+      kycPending: "KYC PENDING",
+      expressInterest: "Express Interest",
+      certifySME: "Certify SME",
+      createDeal: "Create Deal"
     }
   },
   km: {
@@ -106,7 +125,10 @@ const translations = {
       actions: "សកម្មភាព",
       status: "ស្ថានភាព",
       createdAt: "បង្កើតនៅថ្ងៃទី",
-      updatedAt: "ធ្វើបច្ចុប្បន្នភាពនៅថ្ងៃទី"
+      updatedAt: "ធ្វើបច្ចុប្បន្នភាពនៅថ្ងៃទី",
+      overview: "ទិដ្ឋភាពទូទៅ",
+      financials: "ហិរញ្ញវត្ថុ",
+      documents: "ឯកសារ"
     },
     navigation: {
       dashboard: "ផ្ទាំងគ្រប់គ្រង",
@@ -166,6 +188,22 @@ const translations = {
           description: "ផ្ទាំងគ្រប់គ្រងប្រកបដោយភាពទូលំទូល និងការតាមដានដំណើរការ"
         }
       }
+    },
+    advisory: {
+      scorecard: "តារាងពិន្ទុប្រឹក្សាយោបល់",
+      assessment: "ការវាយតម្លៃ Due Diligence",
+      finalize: "បញ្ចប់ និងបញ្ជាក់",
+      saveDraft: "រក្សាទុកព្រាង",
+      manageAssessment: "គ្រប់គ្រងការវាយតម្លៃ",
+      certified: "បានបញ្ជាក់",
+      pending: "កំពុងរង់ចាំការបញ្ជាក់",
+      pipeline: "បញ្ជីសហគ្រាស",
+      manualMatch: "បង្កើតការផ្គូផ្គងដោយដៃ",
+      kycVerified: "KYC បានផ្ទៀងផ្ទាត់",
+      kycPending: "KYC កំពុងរង់ចាំ",
+      expressInterest: "បង្ហាញការចាប់អារម្មណ៍",
+      certifySME: "បញ្ជាក់សហគ្រាស",
+      createDeal: "បង្កើតកិច្ចព្រមព្រៀង"
     }
   },
   zh: {
@@ -188,7 +226,10 @@ const translations = {
       actions: "操作",
       status: "状态",
       createdAt: "创建时间",
-      updatedAt: "更新时间"
+      updatedAt: "更新时间",
+      overview: "概览",
+      financials: "财务",
+      documents: "文档"
     },
     navigation: {
       dashboard: "仪表板",
@@ -248,6 +289,22 @@ const translations = {
           description: "综合仪表板和性能跟踪"
         }
       }
+    },
+    advisory: {
+      scorecard: "咨询评分卡",
+      assessment: "尽职调查评估",
+      finalize: "完成并认证",
+      saveDraft: "保存草稿",
+      manageAssessment: "管理评估",
+      certified: "已认证",
+      pending: "待认证",
+      pipeline: "中小企业渠道",
+      manualMatch: "创建手动匹配",
+      kycVerified: "KYC 已验证",
+      kycPending: "KYC 待处理",
+      expressInterest: "表达兴趣",
+      certifySME: "认证中小企业",
+      createDeal: "创建交易"
     }
   }
 }

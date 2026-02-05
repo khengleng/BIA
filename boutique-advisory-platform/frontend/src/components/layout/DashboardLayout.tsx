@@ -27,9 +27,11 @@ import {
     MessagesSquare,
     ArrowLeftRight
 } from 'lucide-react'
+import { useTranslations } from '../../hooks/useTranslations'
 import { User } from '../../types'
 import { API_URL, authorizedRequest } from '@/lib/api'
 import NotificationCenter from '../NotificationCenter'
+import LanguageSwitcher from '../LanguageSwitcher'
 
 interface DashboardLayoutProps {
     children: React.ReactNode
@@ -38,6 +40,7 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
     const router = useRouter()
     const pathname = usePathname()
+    const { t } = useTranslations()
     const [user, setUser] = useState<User | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -99,26 +102,26 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
 
     const navItems = [
-        { href: '/dashboard', label: 'Dashboard', icon: BarChart3, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
-        { href: '/analytics', label: 'Analytics', icon: TrendingUp, roles: ['ADMIN', 'ADVISOR', 'INVESTOR'] },
-        { href: '/smes', label: 'SMEs', icon: Building2, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
-        { href: '/investors', label: 'Investors', icon: Users, roles: ['ADMIN', 'ADVISOR', 'SME'] },
-        { href: '/sme-pipeline', label: 'SME Pipeline', icon: ClipboardCheck, roles: ['ADMIN', 'ADVISOR'] },
-        { href: '/pipeline', label: 'Deals Pipeline', icon: KanbanSquare, roles: ['ADMIN', 'ADVISOR'] },
-        { href: '/matchmaking', label: 'Matchmaking', icon: Sparkles, roles: ['ADMIN', 'ADVISOR'] },
+        { href: '/dashboard', label: t('navigation.dashboard'), icon: BarChart3, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
+        { href: '/analytics', label: t('home.features.analytics.title'), icon: TrendingUp, roles: ['ADMIN', 'ADVISOR', 'INVESTOR'] },
+        { href: '/smes', label: t('navigation.smes'), icon: Building2, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
+        { href: '/investors', label: t('navigation.investors'), icon: Users, roles: ['ADMIN', 'ADVISOR', 'SME'] },
+        { href: '/sme-pipeline', label: t('advisory.pipeline'), icon: ClipboardCheck, roles: ['ADMIN', 'ADVISOR'] },
+        { href: '/pipeline', label: t('navigation.deals'), icon: KanbanSquare, roles: ['ADMIN', 'ADVISOR'] },
+        { href: '/matchmaking', label: t('navigation.advisory'), icon: Sparkles, roles: ['ADMIN', 'ADVISOR'] },
         { href: '/messages', label: 'Messages', icon: MessageSquare, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
         { href: '/calendar', label: 'Calendar', icon: Calendar, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
         { href: '/dataroom', label: 'Data Room', icon: FolderLock, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
-        { href: '/advisory', label: 'Advisory', icon: Award, roles: ['ADMIN', 'ADVISOR'] },
-        { href: '/reports', label: 'Reports', icon: FileText, roles: ['ADMIN', 'ADVISOR'] },
+        { href: '/advisory', label: t('navigation.advisory'), icon: Award, roles: ['ADMIN', 'ADVISOR'] },
+        { href: '/reports', label: t('navigation.reports'), icon: FileText, roles: ['ADMIN', 'ADVISOR'] },
         // New Features Section
         { href: '', label: '― New Features ―', icon: null, divider: true, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
         { href: '/syndicates', label: 'Syndicates', icon: UsersRound, isNew: true, roles: ['ADMIN', 'ADVISOR', 'INVESTOR'] },
-        { href: '/due-diligence', label: 'Due Diligence', icon: Shield, isNew: true, roles: ['ADMIN', 'ADVISOR'] },
+        { href: '/due-diligence', label: t('advisory.assessment'), icon: Shield, isNew: true, roles: ['ADMIN', 'ADVISOR'] },
         { href: '/community', label: 'Community', icon: MessagesSquare, isNew: true, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
         { href: '/secondary-trading', label: 'Trading', icon: ArrowLeftRight, isNew: true, roles: ['ADMIN', 'ADVISOR', 'INVESTOR'] },
         // Settings at the end
-        { href: '/settings', label: 'Settings', icon: Settings, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
+        { href: '/settings', label: t('navigation.settings'), icon: Settings, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
     ]
 
     // Filter nav items based on user role
@@ -145,12 +148,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     </div>
                     <span className="font-bold text-white">Boutique Advisory</span>
                 </div>
-                <button
-                    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                    className="text-gray-400 hover:text-white"
-                >
-                    {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-                </button>
+                <div className="flex items-center space-x-2">
+                    <LanguageSwitcher />
+                    <button
+                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                        className="text-gray-400 hover:text-white"
+                    >
+                        {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                    </button>
+                </div>
             </div>
 
             {/* Sidebar */}
@@ -160,11 +166,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
             >
-                <div className="hidden md:flex items-center space-x-4 p-6 border-b border-gray-700">
-                    <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                        <Building2 className="w-6 h-6 text-white" />
+                <div className="hidden md:flex items-center justify-between p-6 border-b border-gray-700">
+                    <div className="flex items-center space-x-4">
+                        <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                            <Building2 className="w-6 h-6 text-white" />
+                        </div>
+                        <h1 className="text-xl font-bold text-white">Boutique Advisory</h1>
                     </div>
-                    <h1 className="text-xl font-bold text-white">Boutique Advisory</h1>
+                    <LanguageSwitcher />
                 </div>
 
                 <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
@@ -221,7 +230,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                         className="flex items-center w-full px-4 py-2 text-red-400 hover:text-white hover:bg-red-600 rounded-lg transition-colors"
                     >
                         <LogOut className="w-5 h-5 mr-3" />
-                        Logout
+                        {t('navigation.logout')}
                     </button>
                 </div>
             </aside>

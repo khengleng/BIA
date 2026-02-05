@@ -12,6 +12,7 @@ import {
   Trash2,
   X
 } from 'lucide-react'
+import { useTranslations } from '@/hooks/useTranslations'
 import DashboardLayout from '../../components/layout/DashboardLayout'
 import { useToast } from '../../contexts/ToastContext'
 import { authorizedRequest } from '../../lib/api'
@@ -23,6 +24,7 @@ import { User, Investor } from '../../types'
 export default function InvestorsPage() {
   const router = useRouter()
   const { addToast } = useToast()
+  const { t } = useTranslations()
 
   const [user, setUser] = useState<User | null>(null)
   const [investors, setInvestors] = useState<Investor[]>([])
@@ -249,7 +251,7 @@ export default function InvestorsPage() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
                 type="text"
-                placeholder="Search Investors by name, type, or location..."
+                placeholder={t('common.search')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
@@ -258,256 +260,262 @@ export default function InvestorsPage() {
           </div>
           <button className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center transition-colors">
             <Filter className="w-4 h-4 mr-2" />
-            Filter
+            {t('common.filter')}
           </button>
         </div>
       </div>
 
       {/* Investors Grid */}
-      {filteredInvestors.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredInvestors.map((investor) => (
-            <div key={investor.id} className="bg-gray-800 rounded-lg p-6 border border-gray-700 hover:border-gray-500 transition-colors shadow-lg">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-xl font-semibold text-white truncate">{investor.name}</h3>
-                  <p className="text-gray-400 text-sm">{investor.type}</p>
+      {
+        filteredInvestors.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredInvestors.map((investor) => (
+              <div key={investor.id} className="bg-gray-800 rounded-lg p-6 border border-gray-700 hover:border-gray-500 transition-colors shadow-lg">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="text-xl font-semibold text-white truncate">{investor.name}</h3>
+                    <p className="text-gray-400 text-sm">{investor.type}</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${investor.kycStatus === 'VERIFIED' ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-500/20 text-gray-400'
+                      }`}>
+                      {investor.kycStatus === 'VERIFIED' ? `✅ ${t('advisory.kycVerified')}` : `⏳ ${t('advisory.kycPending')}`}
+                    </span>
+                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${investor.preferences?.status === 'Active' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
+                      }`}>
+                      {investor.preferences?.status || 'Active'}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex flex-col items-end gap-1">
-                  <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${investor.kycStatus === 'VERIFIED' ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-500/20 text-gray-400'
-                    }`}>
-                    {investor.kycStatus === 'VERIFIED' ? '✅ KYC VERIFIED' : '⏳ KYC PENDING'}
-                  </span>
-                  <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${investor.preferences?.status === 'Active' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
-                    }`}>
-                    {investor.preferences?.status || 'Active'}
-                  </span>
+
+                <div className="space-y-2 mb-4">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Portfolio Value:</span>
+                    <span className="text-white">{investor.preferences?.portfolioValue || '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Active Investments:</span>
+                    <span className="text-white">{investor.preferences?.activeInvestments || '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Total Returns:</span>
+                    <span className="text-green-400">{investor.preferences?.totalReturns || '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Location:</span>
+                    <span className="text-white">{investor.preferences?.location || '-'}</span>
+                  </div>
+                </div>
+
+                <p className="text-gray-300 text-sm mb-4 line-clamp-2 h-10">{investor.preferences?.description || 'No description available'}</p>
+
+                <div className="flex space-x-2">
+                  <Link href={`/investors/${investor.id}`} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm flex items-center justify-center transition-colors">
+                    <Eye className="w-4 h-4 mr-1" />
+                    View
+                  </Link>
+                  {(user?.role === 'ADMIN' || user?.role === 'ADVISOR') && (
+                    <>
+                      <button
+                        onClick={() => handleEdit(investor)}
+                        className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-sm flex items-center justify-center transition-colors"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(investor)}
+                        className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm flex items-center justify-center transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
-
-              <div className="space-y-2 mb-4">
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Portfolio Value:</span>
-                  <span className="text-white">{investor.preferences?.portfolioValue || '-'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Active Investments:</span>
-                  <span className="text-white">{investor.preferences?.activeInvestments || '-'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Total Returns:</span>
-                  <span className="text-green-400">{investor.preferences?.totalReturns || '-'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Location:</span>
-                  <span className="text-white">{investor.preferences?.location || '-'}</span>
-                </div>
-              </div>
-
-              <p className="text-gray-300 text-sm mb-4 line-clamp-2 h-10">{investor.preferences?.description || 'No description available'}</p>
-
-              <div className="flex space-x-2">
-                <Link href={`/investors/${investor.id}`} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm flex items-center justify-center transition-colors">
-                  <Eye className="w-4 h-4 mr-1" />
-                  View
-                </Link>
-                {(user?.role === 'ADMIN' || user?.role === 'ADVISOR') && (
-                  <>
-                    <button
-                      onClick={() => handleEdit(investor)}
-                      className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-sm flex items-center justify-center transition-colors"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(investor)}
-                      className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm flex items-center justify-center transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-12">
-          <p className="text-gray-400 text-lg">No investors found matching your search.</p>
-        </div>
-      )}
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <p className="text-gray-400 text-lg">No investors found matching your search.</p>
+          </div>
+        )
+      }
 
       {/* Edit Modal */}
-      {showEditModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-700 shadow-xl">
-            <div className="flex justify-between items-center mb-6 border-b border-gray-700 pb-4">
-              <h3 className="text-xl font-semibold text-white">Edit Investor</h3>
-              <button
-                onClick={() => setShowEditModal(false)}
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
+      {
+        showEditModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-700 shadow-xl">
+              <div className="flex justify-between items-center mb-6 border-b border-gray-700 pb-4">
+                <h3 className="text-xl font-semibold text-white">Edit Investor</h3>
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
 
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Investor Name</label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={editForm.name}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Investor Type</label>
+                    <select
+                      name="type"
+                      value={editForm.type}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Select Type</option>
+                      <option value="Angel Investor">Angel Investor</option>
+                      <option value="Venture Capital">Venture Capital</option>
+                      <option value="Private Equity">Private Equity</option>
+                      <option value="Institutional">Institutional</option>
+                      <option value="Corporate">Corporate</option>
+                      <option value="Family Office">Family Office</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Portfolio Value</label>
+                    <input
+                      type="text"
+                      name="portfolioValue"
+                      value={editForm.portfolioValue}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="$1M"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Active Investments</label>
+                    <input
+                      type="text"
+                      name="activeInvestments"
+                      value={editForm.activeInvestments}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="5"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Total Returns</label>
+                    <input
+                      type="text"
+                      name="totalReturns"
+                      value={editForm.totalReturns}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="+15%"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Location</label>
+                    <input
+                      type="text"
+                      name="location"
+                      value={editForm.location}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="City, Country"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Status</label>
+                    <select
+                      name="status"
+                      value={editForm.status}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Select Status</option>
+                      <option value="Active">Active</option>
+                      <option value="Inactive">Inactive</option>
+                      <option value="Suspended">Suspended</option>
+                      <option value="Pending">Pending</option>
+                    </select>
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Investor Name</label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={editForm.name}
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Description</label>
+                  <textarea
+                    name="description"
+                    value={editForm.description}
                     onChange={handleInputChange}
+                    rows={4}
                     className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Describe the investor's background and focus..."
                   />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Investor Type</label>
-                  <select
-                    name="type"
-                    value={editForm.type}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Select Type</option>
-                    <option value="Angel Investor">Angel Investor</option>
-                    <option value="Venture Capital">Venture Capital</option>
-                    <option value="Private Equity">Private Equity</option>
-                    <option value="Institutional">Institutional</option>
-                    <option value="Corporate">Corporate</option>
-                    <option value="Family Office">Family Office</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Portfolio Value</label>
-                  <input
-                    type="text"
-                    name="portfolioValue"
-                    value={editForm.portfolioValue}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="$1M"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Active Investments</label>
-                  <input
-                    type="text"
-                    name="activeInvestments"
-                    value={editForm.activeInvestments}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="5"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Total Returns</label>
-                  <input
-                    type="text"
-                    name="totalReturns"
-                    value={editForm.totalReturns}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="+15%"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Location</label>
-                  <input
-                    type="text"
-                    name="location"
-                    value={editForm.location}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="City, Country"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Status</label>
-                  <select
-                    name="status"
-                    value={editForm.status}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Select Status</option>
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                    <option value="Suspended">Suspended</option>
-                    <option value="Pending">Pending</option>
-                  </select>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Description</label>
-                <textarea
-                  name="description"
-                  value={editForm.description}
-                  onChange={handleInputChange}
-                  rows={4}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Describe the investor's background and focus..."
-                />
+              <div className="flex space-x-3 mt-8">
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="flex-1 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2.5 rounded-lg transition-colors border border-gray-600"
+                  disabled={isSaving}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveEdit}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg transition-colors flex justify-center items-center"
+                  disabled={isSaving}
+                >
+                  {isSaving ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div> : 'Save Changes'}
+                </button>
               </div>
-            </div>
-
-            <div className="flex space-x-3 mt-8">
-              <button
-                onClick={() => setShowEditModal(false)}
-                className="flex-1 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2.5 rounded-lg transition-colors border border-gray-600"
-                disabled={isSaving}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveEdit}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg transition-colors flex justify-center items-center"
-                disabled={isSaving}
-              >
-                {isSaving ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div> : 'Save Changes'}
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Delete Modal */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md border border-red-900/50 shadow-xl">
-            <h3 className="text-lg font-semibold text-white mb-4">Delete Investor</h3>
-            <p className="text-gray-400 mb-6">
-              Are you sure you want to delete <strong className="text-white">{deletingInvestor?.name}</strong>?
-              This action cannot be undone and will permanently remove all associated data.
-            </p>
-            <div className="flex space-x-3">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className="flex-1 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2.5 rounded-lg transition-colors border border-gray-600"
-                disabled={isSaving}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmDelete}
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-lg transition-colors flex justify-center items-center"
-                disabled={isSaving}
-              >
-                {isSaving ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div> : 'Delete'}
-              </button>
+      {
+        showDeleteModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md border border-red-900/50 shadow-xl">
+              <h3 className="text-lg font-semibold text-white mb-4">Delete Investor</h3>
+              <p className="text-gray-400 mb-6">
+                Are you sure you want to delete <strong className="text-white">{deletingInvestor?.name}</strong>?
+                This action cannot be undone and will permanently remove all associated data.
+              </p>
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  className="flex-1 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2.5 rounded-lg transition-colors border border-gray-600"
+                  disabled={isSaving}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmDelete}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-lg transition-colors flex justify-center items-center"
+                  disabled={isSaving}
+                >
+                  {isSaving ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div> : 'Delete'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </DashboardLayout>
+        )
+      }
+    </DashboardLayout >
   )
 }

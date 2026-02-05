@@ -19,6 +19,7 @@ import {
 import DashboardLayout from '../../components/layout/DashboardLayout'
 import { useToast } from '../../contexts/ToastContext'
 import { API_URL } from '@/lib/api'
+import { useTranslations } from '@/hooks/useTranslations'
 
 interface SME {
     id: string
@@ -39,6 +40,7 @@ interface Column {
 
 export default function SMEPipelinePage() {
     const { addToast } = useToast()
+    const { t } = useTranslations()
     const [smes, setSmes] = useState<SME[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [searchQuery, setSearchQuery] = useState('')
@@ -136,16 +138,16 @@ export default function SMEPipelinePage() {
                 <div>
                     <h1 className="text-3xl font-bold text-white flex items-center gap-3">
                         <ClipboardCheck className="w-8 h-8 text-blue-400" />
-                        SME Onboarding Pipeline
+                        {t('advisory.pipeline')}
                     </h1>
-                    <p className="text-gray-400 mt-1">Manage SME certification workflow and due diligence</p>
+                    <p className="text-gray-400 mt-1">{t('home.features.advisory.description')}</p>
                 </div>
                 <div className="flex gap-4">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4" />
                         <input
                             type="text"
-                            placeholder="Search SMEs..."
+                            placeholder={t('common.search')}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
@@ -212,7 +214,7 @@ export default function SMEPipelinePage() {
                                             href={`/smes/${sme.id}/assessment`}
                                             className="text-[10px] font-bold text-blue-400 hover:text-blue-300 flex items-center gap-1"
                                         >
-                                            ASSESSMENT <ArrowRight className="w-2.5 h-2.5" />
+                                            {t('advisory.assessment')} <ArrowRight className="w-2.5 h-2.5" />
                                         </Link>
                                     </div>
                                 </div>
