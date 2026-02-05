@@ -25,7 +25,6 @@ FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PORT=3001
 
 # Create non-root user for security
 RUN addgroup --system --gid 1001 nodejs
@@ -39,11 +38,7 @@ COPY --from=builder --chown=expressjs:nodejs /app/package*.json ./
 
 USER expressjs
 
-EXPOSE 3001
+EXPOSE 3000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD wget -qO- http://localhost:3001/health || exit 1
-
-# Start command - run migrations then start server
-CMD ["sh", "-c", "npx prisma migrate deploy 2>/dev/null || npx prisma db push && node dist/index.js"]
+# Start command - Railway provides PORT via env variable
+CMD npx prisma migrate deploy && node dist/index.js
