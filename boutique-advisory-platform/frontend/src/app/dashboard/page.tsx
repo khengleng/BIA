@@ -15,6 +15,7 @@ import {
   AlertCircle,
   Clock
 } from 'lucide-react'
+import { useTranslations } from '../../hooks/useTranslations'
 
 interface User {
   id: string
@@ -26,7 +27,7 @@ interface User {
 }
 
 export default function DashboardPage() {
-
+  const { t } = useTranslations()
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -55,13 +56,13 @@ export default function DashboardPage() {
 
     switch (user.role) {
       case 'SME':
-        return <SMEDashboard user={user} />
+        return <SMEDashboard user={user} t={t} />
       case 'INVESTOR':
-        return <InvestorDashboard />
+        return <InvestorDashboard t={t} />
       case 'ADVISOR':
-        return <AdvisorDashboard />
+        return <AdvisorDashboard t={t} />
       case 'ADMIN':
-        return <AdminDashboard />
+        return <AdminDashboard t={t} />
       default:
         return <div>Unknown role</div>
     }
@@ -83,17 +84,17 @@ export default function DashboardPage() {
 }
 
 // SME Dashboard Component
-function SMEDashboard({ user }: { user: User }) {
+function SMEDashboard({ user, t }: { user: User; t: any }) {
   const stats = [
-    { label: 'Profile Completion', value: '85%', icon: Target, color: 'text-blue-500' },
-    { label: 'Funding Required', value: '$500K', icon: DollarSign, color: 'text-green-500' },
-    { label: 'Certification Status', value: 'Pending', icon: CheckCircle, color: 'text-yellow-500' },
-    { label: 'Active Deals', value: '2', icon: TrendingUp, color: 'text-purple-500' }
+    { label: t('navigation.profile'), value: '85%', icon: Target, color: 'text-blue-500' },
+    { label: t('advisory.fundingRequired'), value: '$500K', icon: DollarSign, color: 'text-green-500' },
+    { label: t('advisory.certified'), value: 'Pending', icon: CheckCircle, color: 'text-yellow-500' },
+    { label: t('navigation.deals'), value: '2', icon: TrendingUp, color: 'text-purple-500' }
   ]
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-white mb-8">Welcome back, {user.firstName}!</h1>
+      <h1 className="text-3xl font-bold text-white mb-8">{t('dashboard.welcome')}, {user.firstName}!</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {stats.map((stat, index) => (
@@ -113,7 +114,7 @@ function SMEDashboard({ user }: { user: User }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-gray-800 rounded-lg p-6">
-          <h2 className="text-xl font-semibold text-white mb-4">Recent Activity</h2>
+          <h2 className="text-xl font-semibold text-white mb-4">{t('dashboard.recentActivity')}</h2>
           <div className="space-y-4">
             <div className="flex items-center space-x-3">
               <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
@@ -133,7 +134,7 @@ function SMEDashboard({ user }: { user: User }) {
         </div>
 
         <div className="bg-gray-800 rounded-lg p-6">
-          <h2 className="text-xl font-semibold text-white mb-4">Next Steps</h2>
+          <h2 className="text-xl font-semibold text-white mb-4">{t('dashboard.nextSteps')}</h2>
           <div className="space-y-4">
             <div className="flex items-center space-x-3">
               <Clock className="w-5 h-5 text-yellow-500" />
@@ -157,17 +158,17 @@ function SMEDashboard({ user }: { user: User }) {
 }
 
 // Investor Dashboard Component
-function InvestorDashboard() {
+function InvestorDashboard({ t }: { t: any }) {
   const stats = [
-    { label: 'Portfolio Value', value: '$2.5M', icon: DollarSign, color: 'text-green-500' },
-    { label: 'Active Investments', value: '8', icon: TrendingUp, color: 'text-blue-500' },
-    { label: 'Total Returns', value: '+15.2%', icon: BarChart3, color: 'text-purple-500' },
-    { label: 'Pending Deals', value: '3', icon: Clock, color: 'text-yellow-500' }
+    { label: t('dashboard.portfolioValue'), value: '$2.5M', icon: DollarSign, color: 'text-green-500' },
+    { label: t('dashboard.activeInvestments'), value: '8', icon: TrendingUp, color: 'text-blue-500' },
+    { label: t('dashboard.totalReturns'), value: '+15.2%', icon: BarChart3, color: 'text-purple-500' },
+    { label: t('dashboard.pendingDeals'), value: '3', icon: Clock, color: 'text-yellow-500' }
   ]
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-white mb-8">Investment Dashboard</h1>
+      <h1 className="text-3xl font-bold text-white mb-8">{t('dashboard.investorTitle')}</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {stats.map((stat, index) => (
@@ -187,7 +188,7 @@ function InvestorDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-gray-800 rounded-lg p-6">
-          <h2 className="text-xl font-semibold text-white mb-4">Recent Investments</h2>
+          <h2 className="text-xl font-semibold text-white mb-4">{t('dashboard.recentActivity')}</h2>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
@@ -225,17 +226,17 @@ function InvestorDashboard() {
 }
 
 // Advisor Dashboard Component
-function AdvisorDashboard() {
+function AdvisorDashboard({ t }: { t: any }) {
   const stats = [
-    { label: 'Active Cases', value: '12', icon: FileText, color: 'text-blue-500' },
-    { label: 'SMEs Certified', value: '45', icon: CheckCircle, color: 'text-green-500' },
-    { label: 'Pending Reviews', value: '5', icon: Clock, color: 'text-yellow-500' },
-    { label: 'Success Rate', value: '92%', icon: TrendingUp, color: 'text-purple-500' }
+    { label: t('dashboard.activeCases'), value: '12', icon: FileText, color: 'text-blue-500' },
+    { label: t('dashboard.smesCertified'), value: '45', icon: CheckCircle, color: 'text-green-500' },
+    { label: t('dashboard.pendingReviews'), value: '5', icon: Clock, color: 'text-yellow-500' },
+    { label: t('dashboard.successRate'), value: '92%', icon: TrendingUp, color: 'text-purple-500' }
   ]
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-white mb-8">Advisor Dashboard</h1>
+      <h1 className="text-3xl font-bold text-white mb-8">{t('dashboard.advisorTitle')}</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {stats.map((stat, index) => (
@@ -255,7 +256,7 @@ function AdvisorDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-gray-800 rounded-lg p-6">
-          <h2 className="text-xl font-semibold text-white mb-4">Recent Certifications</h2>
+          <h2 className="text-xl font-semibold text-white mb-4">{t('dashboard.recentActivity')}</h2>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
@@ -275,7 +276,7 @@ function AdvisorDashboard() {
         </div>
 
         <div className="bg-gray-800 rounded-lg p-6">
-          <h2 className="text-xl font-semibold text-white mb-4">Pending Reviews</h2>
+          <h2 className="text-xl font-semibold text-white mb-4">{t('dashboard.pendingReviews')}</h2>
           <div className="space-y-4">
             <div className="border-l-4 border-yellow-500 pl-4">
               <p className="text-white font-medium">Manufacturing SME</p>
@@ -293,7 +294,7 @@ function AdvisorDashboard() {
 }
 
 // Admin Dashboard Component
-function AdminDashboard() {
+function AdminDashboard({ t }: { t: any }) {
   const stats = [
     { label: 'Total Users', value: '1,234', icon: Users, color: 'text-blue-500' },
     { label: 'Active Tenants', value: '45', icon: Building2, color: 'text-green-500' },
@@ -303,7 +304,7 @@ function AdminDashboard() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-white mb-8">Admin Dashboard</h1>
+      <h1 className="text-3xl font-bold text-white mb-8">{t('dashboard.adminTitle')}</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {stats.map((stat, index) => (
@@ -350,7 +351,7 @@ function AdminDashboard() {
         </div>
 
         <div className="bg-gray-800 rounded-lg p-6">
-          <h2 className="text-xl font-semibold text-white mb-4">Recent Activity</h2>
+          <h2 className="text-xl font-semibold text-white mb-4">{t('dashboard.recentActivity')}</h2>
           <div className="space-y-4">
             <div className="flex items-center space-x-3">
               <div className="w-2 h-2 bg-blue-500 rounded-full"></div>

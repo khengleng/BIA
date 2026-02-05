@@ -32,6 +32,7 @@ import {
   Plus,
   Shield
 } from 'lucide-react'
+import { useTranslations } from '@/hooks/useTranslations'
 
 interface User {
   id: string
@@ -58,6 +59,7 @@ interface Investor {
   preferredSectors: string[]
   investmentRange: string
   netWorth: string
+  kycStatus?: 'PENDING' | 'VERIFIED' | 'REJECTED'
   annualIncome: string
   liquidAssets: string
   investmentPortfolio: string
@@ -87,6 +89,7 @@ interface Investor {
 export default function InvestorProfilePage() {
   const params = useParams()
   const router = useRouter()
+  const { t } = useTranslations()
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
@@ -455,6 +458,7 @@ export default function InvestorProfilePage() {
         riskTolerance: 'Moderate',
         investmentGoals: 'Diversified portfolio with focus on high-growth technology companies in emerging markets.',
         status: 'Active',
+        kycStatus: 'VERIFIED',
         rating: 4.8,
         reviews: 12,
         completedInvestments: 8,
@@ -549,6 +553,7 @@ export default function InvestorProfilePage() {
         riskTolerance: 'Aggressive',
         investmentGoals: 'Focus on Series A and B investments in high-growth technology companies across Southeast Asia.',
         status: 'Active',
+        kycStatus: 'VERIFIED',
         rating: 4.9,
         reviews: 18,
         completedInvestments: 12,
@@ -643,6 +648,7 @@ export default function InvestorProfilePage() {
         riskTolerance: 'Moderate',
         investmentGoals: 'Growth-stage investments in established companies with strong fundamentals and expansion potential.',
         status: 'Active',
+        kycStatus: 'PENDING',
         rating: 4.7,
         reviews: 15,
         completedInvestments: 5,
@@ -720,12 +726,12 @@ export default function InvestorProfilePage() {
   const investor = getInvestorData(params.id as string)
 
   const tabs = [
-    { id: 'overview', name: 'Overview', icon: Eye },
-    { id: 'portfolio', name: 'Portfolio', icon: PieChart },
-    { id: 'investments', name: 'Investments', icon: DollarSign },
+    { id: 'overview', name: t('common.overview'), icon: Eye },
+    { id: 'portfolio', name: t('common.portfolio'), icon: PieChart },
+    { id: 'investments', name: t('navigation.investors'), icon: DollarSign },
     { id: 'timeline', name: 'Timeline', icon: Calendar },
-    { id: 'documents', name: 'Documents', icon: DocumentIcon },
-    { id: 'analytics', name: 'Analytics', icon: TrendingUp }
+    { id: 'documents', name: t('common.documents'), icon: DocumentIcon },
+    { id: 'analytics', name: t('home.features.analytics.title'), icon: TrendingUp }
   ]
 
   if (isLoading) {
@@ -925,6 +931,10 @@ export default function InvestorProfilePage() {
             <span className={`px-3 py-1 rounded-full text-sm font-medium ${investor.status === 'Active' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
               }`}>
               {investor.status}
+            </span>
+            <span className={`px-3 py-1 rounded-full text-sm font-medium ${investor.kycStatus === 'VERIFIED' ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-500/20 text-gray-400'
+              }`}>
+              {investor.kycStatus === 'VERIFIED' ? `✅ ${t('advisory.kycVerified')}` : `⏳ ${t('advisory.kycPending')}`}
             </span>
             <div className="flex items-center">
               {[...Array(5)].map((_, i) => (

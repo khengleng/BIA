@@ -290,16 +290,16 @@ export default function InvestorsPage() {
 
                 <div className="space-y-2 mb-4">
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Portfolio Value:</span>
+                    <span className="text-gray-400">{t('dashboard.portfolioValue')}:</span>
                     <span className="text-white">{investor.preferences?.portfolioValue || '-'}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Active Investments:</span>
+                    <span className="text-gray-400">{t('dashboard.activeInvestments')}:</span>
                     <span className="text-white">{investor.preferences?.activeInvestments || '-'}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Total Returns:</span>
-                    <span className="text-green-400">{investor.preferences?.totalReturns || '-'}</span>
+                    <span className="text-gray-400">{t('dashboard.totalReturns')}:</span>
+                    <span className="text-white text-green-400">{investor.preferences?.totalReturns || '-'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-400">Location:</span>
@@ -312,7 +312,7 @@ export default function InvestorsPage() {
                 <div className="flex space-x-2">
                   <Link href={`/investors/${investor.id}`} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm flex items-center justify-center transition-colors">
                     <Eye className="w-4 h-4 mr-1" />
-                    View
+                    {t('common.view')}
                   </Link>
                   {(user?.role === 'ADMIN' || user?.role === 'ADVISOR') && (
                     <>

@@ -500,9 +500,9 @@ export default function SMEPage() {
                     </div>
                     <div className="p-8 grid grid-cols-2 md:grid-cols-6 gap-6">
                       {[
-                        { label: 'Financial', score: sme.score ? Math.round(sme.score * 0.9) : 85, color: 'blue' },
+                        { label: t('common.financials'), score: sme.score ? Math.round(sme.score * 0.9) : 85, color: 'blue' },
                         { label: 'Team', score: sme.score ? Math.round(sme.score * 1.05) : 92, color: 'purple' },
-                        { label: 'Market', score: sme.score ? Math.round(sme.score * 0.8) : 78, color: 'green' },
+                        { label: t('home.features.investor.title'), score: sme.score ? Math.round(sme.score * 0.8) : 78, color: 'green' },
                         { label: 'Product', score: sme.score ? Math.round(sme.score * 0.95) : 90, color: 'yellow' },
                         { label: 'Legal', score: sme.score ? Math.round(sme.score * 0.7) : 95, color: 'red' },
                         { label: 'Overall', score: Math.round(sme.score || 88), color: 'blue' }
@@ -530,37 +530,37 @@ export default function SMEPage() {
                   {/* Basic Information */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="bg-gray-700 rounded-lg p-6">
-                      <h3 className="text-lg font-semibold text-white mb-4">Basic Information</h3>
+                      <h3 className="text-lg font-semibold text-white mb-4">{t('smeProfile.basicInfo')}</h3>
                       <div className="space-y-3">
                         <div className="flex justify-between">
-                          <span className="text-gray-400">Registration Number:</span>
+                          <span className="text-gray-400">{t('smeProfile.registrationNumber')}:</span>
                           <span className="text-white">{sme.registrationNumber}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-400">Tax ID:</span>
+                          <span className="text-gray-400">{t('smeProfile.taxId')}:</span>
                           <span className="text-white">{sme.taxId}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-400">Founded:</span>
+                          <span className="text-gray-400">{t('smeProfile.founded')}:</span>
                           <span className="text-white">{sme.foundedDate}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-400">Employees:</span>
+                          <span className="text-gray-400">{t('smeProfile.employees')}:</span>
                           <span className="text-white">{sme.employeeCount}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-400">Annual Revenue:</span>
+                          <span className="text-gray-400">{t('smeProfile.annualRevenue')}:</span>
                           <span className="text-white">{sme.annualRevenue}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-400">Funding Required:</span>
+                          <span className="text-gray-400">{t('smeProfile.fundingRequired')}:</span>
                           <span className="text-white font-semibold text-blue-400">{sme.fundingRequired}</span>
                         </div>
                       </div>
                     </div>
 
                     <div className="bg-gray-700 rounded-lg p-6">
-                      <h3 className="text-lg font-semibold text-white mb-4">Contact Information</h3>
+                      <h3 className="text-lg font-semibold text-white mb-4">{t('smeProfile.contactInfo')}</h3>
                       <div className="space-y-3">
                         <div className="flex items-center">
                           <MapPin className="w-4 h-4 text-gray-400 mr-3" />
@@ -586,20 +586,20 @@ export default function SMEPage() {
 
                   {/* Business Description */}
                   <div className="bg-gray-700 rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-white mb-4">Business Description</h3>
+                    <h3 className="text-lg font-semibold text-white mb-4">{t('smeProfile.businessDescription')}</h3>
                     <p className="text-gray-300 mb-4">{sme.businessDescription}</p>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
-                        <h4 className="text-sm font-medium text-gray-400 mb-2">Value Proposition</h4>
+                        <h4 className="text-sm font-medium text-gray-400 mb-2">{t('smeProfile.valueProposition')}</h4>
                         <p className="text-gray-300 text-sm">{sme.valueProposition}</p>
                       </div>
                       <div>
-                        <h4 className="text-sm font-medium text-gray-400 mb-2">Target Market</h4>
+                        <h4 className="text-sm font-medium text-gray-400 mb-2">{t('smeProfile.targetMarket')}</h4>
                         <p className="text-gray-300 text-sm">{sme.targetMarket}</p>
                       </div>
                       <div>
-                        <h4 className="text-sm font-medium text-gray-400 mb-2">Competitive Advantage</h4>
+                        <h4 className="text-sm font-medium text-gray-400 mb-2">{t('smeProfile.competitiveAdvantage')}</h4>
                         <p className="text-gray-300 text-sm">{sme.competitiveAdvantage}</p>
                       </div>
                     </div>

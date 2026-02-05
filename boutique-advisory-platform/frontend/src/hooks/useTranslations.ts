@@ -27,7 +27,8 @@ const translations = {
       updatedAt: "Updated At",
       overview: "Overview",
       financials: "Financials",
-      documents: "Documents"
+      documents: "Documents",
+      portfolio: "Portfolio"
     },
     navigation: {
       dashboard: "Dashboard",
@@ -88,6 +89,23 @@ const translations = {
         }
       }
     },
+    dashboard: {
+      welcome: "Welcome back",
+      smeTitle: "SME Dashboard",
+      investorTitle: "Investment Dashboard",
+      advisorTitle: "Advisor Dashboard",
+      adminTitle: "Admin Dashboard",
+      recentActivity: "Recent Activity",
+      nextSteps: "Next Steps",
+      portfolioValue: "Portfolio Value",
+      activeInvestments: "Active Investments",
+      totalReturns: "Total Returns",
+      pendingDeals: "Pending Deals",
+      activeCases: "Active Cases",
+      smesCertified: "SMEs Certified",
+      pendingReviews: "Pending Reviews",
+      successRate: "Success Rate"
+    },
     advisory: {
       scorecard: "Boutique Advisory Scorecard",
       assessment: "Due Diligence Assessment",
@@ -103,6 +121,20 @@ const translations = {
       expressInterest: "Express Interest",
       certifySME: "Certify SME",
       createDeal: "Create Deal"
+    },
+    smeProfile: {
+      basicInfo: "Basic Information",
+      contactInfo: "Contact Information",
+      businessDescription: "Business Description",
+      registrationNumber: "Registration Number",
+      taxId: "Tax ID",
+      founded: "Founded",
+      employees: "Employees",
+      annualRevenue: "Annual Revenue",
+      fundingRequired: "Funding Required",
+      valueProposition: "Value Proposition",
+      targetMarket: "Target Market",
+      competitiveAdvantage: "Competitive Advantage"
     }
   },
   km: {
@@ -128,7 +160,8 @@ const translations = {
       updatedAt: "ធ្វើបច្ចុប្បន្នភាពនៅថ្ងៃទី",
       overview: "ទិដ្ឋភាពទូទៅ",
       financials: "ហិរញ្ញវត្ថុ",
-      documents: "ឯកសារ"
+      documents: "ឯកសារ",
+      portfolio: "ផលប័ត្រ"
     },
     navigation: {
       dashboard: "ផ្ទាំងគ្រប់គ្រង",
@@ -164,7 +197,7 @@ const translations = {
         investors: "អ្នកវិនិយោគ",
         description: "វេទិកាប្រកបដោយភាពទូលំទូលសម្រាប់ភ្ជាប់សហគ្រាសតូចនិងមធ្យមជាមួយអ្នកវិនិយោគដែលមានលក្ខណៈសម្បត្តិ ដែលមានការតភ្ជាប់ DID កម្រិតខ្ពស់ នីតិវិធីអតិថិជនច្រើន និងសេវាកម្មណែនាំវិជ្ជាជីវៈ។",
         getStarted: "ចាប់ផ្តើម",
-        viewDemo: "មើលឧទាហរណ៍"
+        viewDemo: "មើលឧទារហរណ៍"
       },
       features: {
         sme: {
@@ -189,6 +222,23 @@ const translations = {
         }
       }
     },
+    dashboard: {
+      welcome: "សូមស្វាគមន៍មកវិញ",
+      smeTitle: "ផ្ទាំងគ្រប់គ្រងសហគ្រាស",
+      investorTitle: "ផ្ទាំងគ្រប់គ្រងការវិនិយោគ",
+      advisorTitle: "ផ្ទាំងគ្រប់គ្រងអ្នកប្រឹក្សា",
+      adminTitle: "ផ្ទាំងគ្រប់គ្រងអ្នកគ្រប់គ្រង",
+      recentActivity: "សកម្មភាពថ្មីៗ",
+      nextSteps: "ជំហានបន្ទាប់",
+      portfolioValue: "តម្លៃផលប័ត្រ",
+      activeInvestments: "ការវិនិយោគសកម្ម",
+      totalReturns: "ប្រាក់ចំណេញសរុប",
+      pendingDeals: "កិច្ចព្រមព្រៀងកំពុងរង់ចាំ",
+      activeCases: "ករណីសកម្ម",
+      smesCertified: "សហគ្រាសដែលបានបញ្ជាក់",
+      pendingReviews: "ការពិនិត្យឡើងវិញកំពុងរង់ចាំ",
+      successRate: "អត្រាជោគជ័យ"
+    },
     advisory: {
       scorecard: "តារាងពិន្ទុប្រឹក្សាយោបល់",
       assessment: "ការវាយតម្លៃ Due Diligence",
@@ -204,6 +254,20 @@ const translations = {
       expressInterest: "បង្ហាញការចាប់អារម្មណ៍",
       certifySME: "បញ្ជាក់សហគ្រាស",
       createDeal: "បង្កើតកិច្ចព្រមព្រៀង"
+    },
+    smeProfile: {
+      basicInfo: "ព័ត៌មានមូលដ្ឋាន",
+      contactInfo: "ព័ត៌មានទំនាក់ទំនង",
+      businessDescription: "ការពិពណ៌នាអំពីអាជីវកម្ម",
+      registrationNumber: "លេខចុះបញ្ជី",
+      taxId: "លេខអត្តសញ្ញាណកម្មពន្ធ",
+      founded: "បង្កើតឡើងនៅ",
+      employees: "បុគ្គលិក",
+      annualRevenue: "ចំណូលប្រចាំឆ្នាំ",
+      fundingRequired: "តម្រូវការហិរញ្ញប្បទាន",
+      valueProposition: "គុណតម្លៃនៃអាជីវកម្ម",
+      targetMarket: "ទីផ្សារគោលដៅ",
+      competitiveAdvantage: "គុណសម្បត្តិប្រកួតប្រជែង"
     }
   },
   zh: {
@@ -229,7 +293,8 @@ const translations = {
       updatedAt: "更新时间",
       overview: "概览",
       financials: "财务",
-      documents: "文档"
+      documents: "文档",
+      portfolio: "投资组合"
     },
     navigation: {
       dashboard: "仪表板",
@@ -290,6 +355,23 @@ const translations = {
         }
       }
     },
+    dashboard: {
+      welcome: "欢迎回来",
+      smeTitle: "中小企业仪表板",
+      investorTitle: "投资仪表板",
+      advisorTitle: "顾问仪表板",
+      adminTitle: "管理员仪表板",
+      recentActivity: "最近活动",
+      nextSteps: "下一步",
+      portfolioValue: "投资组合价值",
+      activeInvestments: "活跃投资",
+      totalReturns: "总回报",
+      pendingDeals: "待处理交易",
+      activeCases: "活跃案例",
+      smesCertified: "已认证中小企业",
+      pendingReviews: "待处理评估",
+      successRate: "成功率"
+    },
     advisory: {
       scorecard: "咨询评分卡",
       assessment: "尽职调查评估",
@@ -305,6 +387,20 @@ const translations = {
       expressInterest: "表达兴趣",
       certifySME: "认证中小企业",
       createDeal: "创建交易"
+    },
+    smeProfile: {
+      basicInfo: "基本信息",
+      contactInfo: "联系信息",
+      businessDescription: "业务描述",
+      registrationNumber: "注册号",
+      taxId: "税务识别号",
+      founded: "成立日期",
+      employees: "员工人数",
+      annualRevenue: "年收入",
+      fundingRequired: "所需资金",
+      valueProposition: "价值主张",
+      targetMarket: "目标市场",
+      competitiveAdvantage: "竞争优势"
     }
   }
 }
