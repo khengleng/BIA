@@ -26,8 +26,8 @@ router.get('/', async (req: any, res: Response) => {
     if (userRole === 'SME') {
       query.where.userId = userId;
     } else if (userRole === 'INVESTOR') {
-      // Investors only see certified SMEs
-      query.where.status = 'CERTIFIED';
+      // Investors can see pending SMEs too (for visibility/transparency)
+      query.where.status = { in: ['CERTIFIED', 'SUBMITTED', 'UNDER_REVIEW'] };
     }
     // ADVISOR, ADMIN can see all within tenant
 

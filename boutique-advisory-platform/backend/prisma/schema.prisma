@@ -29,6 +29,7 @@ model Tenant {
   workflows   Workflow[]
   documents   Document[]
   notifications Notification[]
+  conversations Conversation[]
 
   @@map("tenants")
 }
@@ -54,6 +55,8 @@ model User {
   investor    Investor? @relation("InvestorUser")
   advisor     Advisor? @relation("AdvisorUser")
   notifications Notification[]
+  messageParticipants ConversationParticipant[]
+  sentMessages      Message[]
 
   @@unique([tenantId, email])
   @@map("users")
@@ -159,6 +162,7 @@ model Deal {
   documents       Document[]
   workflows       Workflow[]
   syndicates      Syndicate[]  // New: Syndicates for this deal
+  conversations   Conversation[]
 
   @@map("deals")
 }
@@ -624,4 +628,53 @@ enum NotificationType {
   DOCUMENT_UPLOADED
   MESSAGE_RECEIVED
   MEETING_REMINDER
+}
+
+// ==================== MESSAGING SYSTEM ====================
+
+model Conversation {
+  id        String   @id @default(cuid())
+  tenantId  String
+  dealId    String?
+  
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  deal      Deal?    @relation(fields: [dealId], references: [id])
+  messages  Message[]
+  participants ConversationParticipant[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  id             String       @id @default(cuid())
+  conversationId String
+  userId         String
+  
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  lastReadAt     DateTime     @default(now())
+  joinedAt       DateTime     @default(now())
+
+  @@unique([conversationId, userId])
+  @@map("conversation_participants")
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  senderId       String
+  content        String
+  read           Boolean      @default(false) // Simple read status (refine with participants if needed)
+  
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@map("messages")
 }

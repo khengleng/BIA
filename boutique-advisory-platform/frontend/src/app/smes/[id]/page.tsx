@@ -314,36 +314,57 @@ export default function SMEPage() {
   const handleSaveSme = async () => {
     try {
       const token = localStorage.getItem('token')
+
+      // Sanitize inputs
+      let sanitizedWebsite = editFormData.website.trim()
+      if (sanitizedWebsite && !/^https?:\/\//i.test(sanitizedWebsite)) {
+        sanitizedWebsite = `https://${sanitizedWebsite}`
+      }
+
+      const payload = {
+        name: editFormData.name.trim(),
+        sector: editFormData.sector.trim(),
+        stage: editFormData.stage,
+        description: editFormData.description.trim() || undefined, // Send undefined if empty to skip validation/save
+        website: sanitizedWebsite || null, // nullable in backend
+        location: editFormData.location.trim(),
+        fundingRequired: editFormData.fundingRequired ? parseFloat(editFormData.fundingRequired) : undefined
+      }
+
       const response = await fetch(`${API_URL}/api/smes/${params.id}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          ...editFormData,
-          fundingRequired: editFormData.fundingRequired ? parseFloat(editFormData.fundingRequired) : undefined
-        })
+        body: JSON.stringify(payload)
       })
 
+      const data = await response.json()
+
       if (response.ok) {
-        const updatedSme = await response.json()
         setSme((prev: any) => ({
           ...prev,
-          ...updatedSme,
-          businessStage: updatedSme.stage,
-          businessDescription: updatedSme.description,
-          fundingRequired: updatedSme.fundingRequired ? `$${updatedSme.fundingRequired.toLocaleString()}` : prev.fundingRequired
+          ...data,
+          businessStage: data.stage,
+          businessDescription: data.description,
+          fundingRequired: data.fundingRequired ? `$${data.fundingRequired.toLocaleString()}` : prev.fundingRequired
         }))
         setShowEditModal(false)
-        alert('SME updated successfully!')
+        alert('✨ Success! Your company profile has been updated.')
       } else {
-        console.error('Failed to update SME')
-        alert('Failed to update SME')
+        // Handle Validation Errors Friendly
+        if (data.details && Array.isArray(data.details)) {
+          const messages = data.details.map((err: any) => `• ${err.field}: ${err.message}`).join('\n')
+          alert(`Please check the following fields:\n${messages}`)
+        } else {
+          console.error('Update failed:', data)
+          alert(data.error || 'Msg: We couldn\'t update your profile at this time. Please try again.')
+        }
       }
     } catch (error) {
       console.error('Error updating SME:', error)
-      alert('Error updating SME')
+      alert('Connection Error: We experienced a hiccup connecting to the server. Please check your internet connection or try again later.')
     }
   }
 
@@ -547,28 +568,36 @@ export default function SMEPage() {
                         const token = localStorage.getItem('token')
                         if (!token) return
 
-                        const response = await fetch(`${API_URL}/api/interests`, {
+                        // Check if we have the recipient ID
+                        const recipientId = sme.userId || (sme.user && sme.user.id);
+                        if (!recipientId) {
+                          alert('Cannot message this user: Recipient ID not found.');
+                          return;
+                        }
+
+                        const response = await fetch(`${API_URL}/api/messages/start`, {
                           method: 'POST',
                           headers: {
                             'Authorization': `Bearer ${token}`,
                             'Content-Type': 'application/json'
                           },
                           body: JSON.stringify({
-                            investorId: 'investor_1',
-                            smeId: params.id,
-                            type: 'INVESTOR_TO_SME',
-                            message: 'Interested in learning more about this SME.'
+                            recipientId: recipientId,
+                            initialMessage: `Hi ${sme.name}, I'm interested in learning more about your business.`,
+                            dealId: null
                           })
                         })
 
                         if (response.ok) {
-                          alert('✅ Interest expressed successfully!')
+                          alert('✅ Message sent! You can continue the conversation in the dashboard.')
+                          // Optional: router.push('/dashboard?tab=messages')
                         } else {
                           const errorData = await response.json()
-                          alert(errorData.error || 'Failed to express interest')
+                          alert(errorData.error || 'Failed to send message')
                         }
                       } catch (error) {
                         console.error('Error expressing interest:', error)
+                        alert('Connection error while sending message')
                       }
                     }}
                     className="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-lg flex items-center"

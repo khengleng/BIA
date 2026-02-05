@@ -4,150 +4,187 @@ import { prisma } from '../database';
 
 const router = Router();
 
-// Get conversations
-router.get('/conversations', async (req: AuthenticatedRequest, res: Response) => {
+// Start a conversation (Idempotent)
+router.post('/start', async (req: AuthenticatedRequest, res: Response) => {
     try {
+        const { recipientId, initialMessage, dealId } = req.body;
         const userId = req.user?.id;
-        const userRole = req.user?.role;
-        const userName = `${req.user?.firstName} ${req.user?.lastName}`;
+        const tenantId = req.user?.tenantId;
 
-        // Mock conversations matching frontend interface
-        // We tailor these based on who is logged in
-        const conversations = [];
+        if (!userId || !recipientId) {
+            return res.status(400).json({ error: 'Recipient ID is required' });
+        }
 
-        if (userRole === 'SME') {
-            conversations.push({
-                id: 'conv-1',
-                participants: [userId, 'investor_1'],
-                participantDetails: [
-                    { id: userId, type: 'SME', name: userName },
-                    { id: 'investor_1', type: 'INVESTOR', name: 'John Smith' }
-                ],
-                dealId: 'deal_1',
-                lastMessage: 'I am interested in your Series A proposal.',
-                lastMessageAt: new Date().toISOString(),
-                unreadCount: { [userId || '']: 2 },
-                createdAt: new Date(Date.now() - 86400000).toISOString()
-            });
-            conversations.push({
-                id: 'conv-2',
-                participants: [userId, 'advisor_1'],
-                participantDetails: [
-                    { id: userId, type: 'SME', name: userName },
-                    { id: 'advisor_1', type: 'ADVISOR', name: 'Sarah Johnson' }
-                ],
-                dealId: null,
-                lastMessage: 'The financial statements have been uploaded.',
-                lastMessageAt: new Date(Date.now() - 3600000).toISOString(),
-                unreadCount: { [userId || '']: 0 },
-                createdAt: new Date(Date.now() - 172800000).toISOString()
-            });
-        } else if (userRole === 'INVESTOR') {
-            conversations.push({
-                id: 'conv-1',
-                participants: [userId, 'sme_1'],
-                participantDetails: [
-                    { id: userId, type: 'INVESTOR', name: userName },
-                    { id: 'sme_1', type: 'SME', name: 'Tech Startup' }
-                ],
-                dealId: 'deal_1',
-                lastMessage: 'I am interested in your Series A proposal.',
-                lastMessageAt: new Date().toISOString(),
-                unreadCount: { [userId || '']: 2 },
-                createdAt: new Date(Date.now() - 86400000).toISOString()
-            });
-        } else if (userRole === 'ADVISOR') {
-            conversations.push({
-                id: 'conv-2',
-                participants: [userId, 'sme_1'],
-                participantDetails: [
-                    { id: userId, type: 'ADVISOR', name: userName },
-                    { id: 'sme_1', type: 'SME', name: 'Tech Startup' }
-                ],
-                dealId: null,
-                lastMessage: 'The financial statements have been uploaded.',
-                lastMessageAt: new Date(Date.now() - 3600000).toISOString(),
-                unreadCount: { [userId || '']: 0 },
-                createdAt: new Date(Date.now() - 172800000).toISOString()
+        // Check if conversation already exists between these two
+        // This is a simplified check; for multi-party, logic would differ
+        const existingConv = await (prisma as any).conversation.findFirst({
+            where: {
+                tenantId,
+                AND: [
+                    { participants: { some: { userId: userId } } },
+                    { participants: { some: { userId: recipientId } } }
+                ]
+            },
+            include: {
+                participants: {
+                    include: { user: true }
+                }
+            }
+        });
+
+        if (existingConv) {
+            // specific logic: if initialMessage provided, send it
+            if (initialMessage) {
+                await (prisma as any).message.create({
+                    data: {
+                        conversationId: existingConv.id,
+                        senderId: userId,
+                        content: initialMessage,
+                        read: false
+                    }
+                });
+            }
+            return res.json(existingConv);
+        }
+
+        // Create new conversation
+        const newConv = await (prisma as any).conversation.create({
+            data: {
+                tenantId,
+                dealId: dealId || undefined,
+                participants: {
+                    create: [
+                        { userId: userId },
+                        { userId: recipientId }
+                    ]
+                }
+            },
+            include: {
+                participants: {
+                    include: { user: true }
+                }
+            }
+        });
+
+        // Send initial message if provided
+        if (initialMessage) {
+            await (prisma as any).message.create({
+                data: {
+                    conversationId: newConv.id,
+                    senderId: userId,
+                    content: initialMessage,
+                    read: false
+                }
             });
         }
 
-        res.json(conversations);
+        res.status(201).json(newConv);
+    } catch (error) {
+        console.error('Error starting conversation:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Get conversations for current user
+router.get('/conversations', async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        const tenantId = req.user?.tenantId;
+
+        const conversations = await (prisma as any).conversation.findMany({
+            where: {
+                tenantId,
+                participants: {
+                    some: { userId }
+                }
+            },
+            include: {
+                participants: {
+                    include: {
+                        user: {
+                            select: { id: true, firstName: true, lastName: true, role: true, email: true }
+                        }
+                    }
+                },
+                messages: {
+                    orderBy: { createdAt: 'desc' },
+                    take: 1
+                }
+            },
+            orderBy: { updatedAt: 'desc' }
+        });
+
+        // Format for frontend
+        const formatted = conversations.map((c: any) => {
+            const lastMsg = c.messages[0];
+            const otherParticipants = c.participants.filter((p: any) => p.userId !== userId);
+
+            // Basic mock of "participantDetails" structure expected by frontend
+            const participantDetails = c.participants.map((p: any) => ({
+                id: p.userId,
+                name: `${p.user.firstName} ${p.user.lastName}`,
+                type: p.user.role
+            }));
+
+            return {
+                id: c.id,
+                participants: c.participants.map((p: any) => p.userId),
+                participantDetails,
+                dealId: c.dealId,
+                lastMessage: lastMsg ? lastMsg.content : '',
+                lastMessageAt: lastMsg ? lastMsg.createdAt : c.createdAt,
+                unreadCount: { [userId || '']: 0 }, // TODO: Implement real unread count
+                createdAt: c.createdAt
+            };
+        });
+
+        res.json(formatted);
     } catch (error) {
         console.error('Error fetching conversations:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
 
-// Get messages for a conversation
+// Get messages for a specific conversation
 router.get('/conversations/:id', async (req: AuthenticatedRequest, res: Response) => {
     try {
         const { id } = req.params;
         const userId = req.user?.id;
-        const userRole = req.user?.role;
-        const userName = `${req.user?.firstName} ${req.user?.lastName}`;
 
-        // Determine the other participant based on conversation ID and user role
-        let otherId = 'system';
-        let otherName = 'System';
-        let otherType = 'ADMIN';
+        // Verify participation
+        const conversation = await (prisma as any).conversation.findUnique({
+            where: { id },
+            include: {
+                participants: true
+            }
+        });
 
-        if (id === 'conv-1') {
-            if (userRole === 'SME') {
-                otherId = 'investor_1';
-                otherName = 'John Smith';
-                otherType = 'INVESTOR';
-            } else {
-                otherId = 'sme_1';
-                otherName = 'Tech Startup';
-                otherType = 'SME';
-            }
-        } else if (id === 'conv-2') {
-            if (userRole === 'SME') {
-                otherId = 'advisor_1';
-                otherName = 'Sarah Johnson';
-                otherType = 'ADVISOR';
-            } else {
-                otherId = 'sme_1';
-                otherName = 'Tech Startup';
-                otherType = 'SME';
-            }
+        if (!conversation || !conversation.participants.some((p: any) => p.userId === userId)) {
+            return res.status(403).json({ error: 'Access denied' });
         }
 
-        const messages = [
-            {
-                id: 'm1',
-                conversationId: id,
-                senderId: otherId,
-                senderName: otherName,
-                senderType: otherType,
-                content: 'Hello! I am reviewing the project details.',
-                read: true,
-                createdAt: new Date(Date.now() - 7200000).toISOString()
-            },
-            {
-                id: 'm2',
-                conversationId: id,
-                senderId: userId,
-                senderName: userName,
-                senderType: userRole,
-                content: 'Hi, thank you for your time. Let me know if you have any questions.',
-                read: true,
-                createdAt: new Date(Date.now() - 3600000).toISOString()
-            },
-            {
-                id: 'm3',
-                conversationId: id,
-                senderId: otherId,
-                senderName: otherName,
-                senderType: otherType,
-                content: id === 'conv-1' ? 'I am interested in your Series A proposal.' : 'The financial statements have been uploaded.',
-                read: false,
-                createdAt: new Date().toISOString()
+        const messages = await (prisma as any).message.findMany({
+            where: { conversationId: id },
+            orderBy: { createdAt: 'asc' },
+            include: {
+                sender: {
+                    select: { id: true, firstName: true, lastName: true, role: true }
+                }
             }
-        ];
+        });
 
-        res.json({ messages });
+        const formatted = messages.map((m: any) => ({
+            id: m.id,
+            conversationId: m.conversationId,
+            senderId: m.senderId,
+            senderName: `${m.sender.firstName} ${m.sender.lastName}`,
+            senderType: m.sender.role,
+            content: m.content,
+            read: m.read,
+            createdAt: m.createdAt
+        }));
+
+        res.json({ messages: formatted });
     } catch (error) {
         console.error('Error fetching messages:', error);
         res.status(500).json({ error: 'Internal server error' });
@@ -159,21 +196,45 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
     try {
         const { conversationId, content } = req.body;
         const userId = req.user?.id;
-        const userRole = req.user?.role;
-        const userName = `${req.user?.firstName} ${req.user?.lastName}`;
 
-        const newMessage = {
-            id: `m-${Date.now()}`,
-            conversationId,
-            senderId: userId,
-            senderName: userName,
-            senderType: userRole,
-            content,
-            read: false,
-            createdAt: new Date().toISOString()
-        };
+        // Verify participation first
+        const conversation = await (prisma as any).conversation.findUnique({
+            where: { id: conversationId },
+            include: { participants: true }
+        });
 
-        res.json(newMessage);
+        if (!conversation || !conversation.participants.some((p: any) => p.userId === userId)) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        const newMessage = await (prisma as any).message.create({
+            data: {
+                conversationId,
+                senderId: userId,
+                content,
+                read: false
+            },
+            include: {
+                sender: true
+            }
+        });
+
+        // Update conversation timestamp
+        await (prisma as any).conversation.update({
+            where: { id: conversationId },
+            data: { updatedAt: new Date() }
+        });
+
+        res.json({
+            id: newMessage.id,
+            conversationId: newMessage.conversationId,
+            senderId: newMessage.senderId,
+            senderName: `${newMessage.sender.firstName} ${newMessage.sender.lastName}`,
+            senderType: newMessage.sender.role,
+            content: newMessage.content,
+            read: newMessage.read,
+            createdAt: newMessage.createdAt
+        });
     } catch (error) {
         console.error('Error sending message:', error);
         res.status(500).json({ error: 'Internal server error' });
