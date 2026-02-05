@@ -107,10 +107,10 @@ export default function DealsPage() {
     // Filter Deals
     const lowerQuery = searchQuery.toLowerCase()
     const filtered = deals.filter(deal =>
-      deal.title.toLowerCase().includes(lowerQuery) ||
-      deal.sme?.name.toLowerCase().includes(lowerQuery) ||
-      deal.stage.toLowerCase().includes(lowerQuery) ||
-      deal.status.toLowerCase().includes(lowerQuery)
+      (deal.title?.toLowerCase() || '').includes(lowerQuery) ||
+      (deal.sme?.name?.toLowerCase() || '').includes(lowerQuery) ||
+      (deal.stage?.toLowerCase() || '').includes(lowerQuery) ||
+      (deal.status?.toLowerCase() || '').includes(lowerQuery)
     )
     setFilteredDeals(filtered)
   }, [searchQuery, deals])

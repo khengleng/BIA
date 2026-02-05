@@ -192,8 +192,8 @@ export default function SecondaryTradingPage() {
     }
 
     const filteredListings = listings.filter(l =>
-        l.deal.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        l.deal.sme.name.toLowerCase().includes(searchQuery.toLowerCase())
+        (l.deal?.title?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+        (l.deal?.sme?.name?.toLowerCase() || '').includes(searchQuery.toLowerCase())
     )
 
     if (isLoading) {

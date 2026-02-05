@@ -8,36 +8,69 @@ const router = Router();
 router.get('/conversations', async (req: AuthenticatedRequest, res: Response) => {
     try {
         const userId = req.user?.id;
+        const userRole = req.user?.role;
+        const userName = `${req.user?.firstName} ${req.user?.lastName}`;
 
         // Mock conversations matching frontend interface
-        const conversations = [
-            {
-                id: '1',
-                participants: [userId || 'current-user', 'investor-1'],
+        // We tailor these based on who is logged in
+        const conversations = [];
+
+        if (userRole === 'SME') {
+            conversations.push({
+                id: 'conv-1',
+                participants: [userId, 'investor_1'],
                 participantDetails: [
-                    { id: userId || 'current-user', type: 'SME', name: 'My Company' },
-                    { id: 'investor-1', type: 'INVESTOR', name: 'Alice Johnson' }
+                    { id: userId, type: 'SME', name: userName },
+                    { id: 'investor_1', type: 'INVESTOR', name: 'John Smith' }
                 ],
-                dealId: 'deal-123',
+                dealId: 'deal_1',
                 lastMessage: 'I am interested in your Series A proposal.',
                 lastMessageAt: new Date().toISOString(),
-                unreadCount: { [userId || 'current-user']: 2 },
+                unreadCount: { [userId || '']: 2 },
                 createdAt: new Date(Date.now() - 86400000).toISOString()
-            },
-            {
-                id: '2',
-                participants: [userId || 'current-user', 'sme-2'],
+            });
+            conversations.push({
+                id: 'conv-2',
+                participants: [userId, 'advisor_1'],
                 participantDetails: [
-                    { id: userId || 'current-user', type: 'ADVISOR', name: 'My Advisor Account' },
-                    { id: 'sme-2', type: 'SME', name: 'TechCorp Solutions' }
+                    { id: userId, type: 'SME', name: userName },
+                    { id: 'advisor_1', type: 'ADVISOR', name: 'Sarah Johnson' }
                 ],
                 dealId: null,
                 lastMessage: 'The financial statements have been uploaded.',
                 lastMessageAt: new Date(Date.now() - 3600000).toISOString(),
-                unreadCount: { [userId || 'current-user']: 0 },
+                unreadCount: { [userId || '']: 0 },
                 createdAt: new Date(Date.now() - 172800000).toISOString()
-            }
-        ];
+            });
+        } else if (userRole === 'INVESTOR') {
+            conversations.push({
+                id: 'conv-1',
+                participants: [userId, 'sme_1'],
+                participantDetails: [
+                    { id: userId, type: 'INVESTOR', name: userName },
+                    { id: 'sme_1', type: 'SME', name: 'Tech Startup' }
+                ],
+                dealId: 'deal_1',
+                lastMessage: 'I am interested in your Series A proposal.',
+                lastMessageAt: new Date().toISOString(),
+                unreadCount: { [userId || '']: 2 },
+                createdAt: new Date(Date.now() - 86400000).toISOString()
+            });
+        } else if (userRole === 'ADVISOR') {
+            conversations.push({
+                id: 'conv-2',
+                participants: [userId, 'sme_1'],
+                participantDetails: [
+                    { id: userId, type: 'ADVISOR', name: userName },
+                    { id: 'sme_1', type: 'SME', name: 'Tech Startup' }
+                ],
+                dealId: null,
+                lastMessage: 'The financial statements have been uploaded.',
+                lastMessageAt: new Date(Date.now() - 3600000).toISOString(),
+                unreadCount: { [userId || '']: 0 },
+                createdAt: new Date(Date.now() - 172800000).toISOString()
+            });
+        }
 
         res.json(conversations);
     } catch (error) {
@@ -51,35 +84,64 @@ router.get('/conversations/:id', async (req: AuthenticatedRequest, res: Response
     try {
         const { id } = req.params;
         const userId = req.user?.id;
+        const userRole = req.user?.role;
+        const userName = `${req.user?.firstName} ${req.user?.lastName}`;
+
+        // Determine the other participant based on conversation ID and user role
+        let otherId = 'system';
+        let otherName = 'System';
+        let otherType = 'ADMIN';
+
+        if (id === 'conv-1') {
+            if (userRole === 'SME') {
+                otherId = 'investor_1';
+                otherName = 'John Smith';
+                otherType = 'INVESTOR';
+            } else {
+                otherId = 'sme_1';
+                otherName = 'Tech Startup';
+                otherType = 'SME';
+            }
+        } else if (id === 'conv-2') {
+            if (userRole === 'SME') {
+                otherId = 'advisor_1';
+                otherName = 'Sarah Johnson';
+                otherType = 'ADVISOR';
+            } else {
+                otherId = 'sme_1';
+                otherName = 'Tech Startup';
+                otherType = 'SME';
+            }
+        }
 
         const messages = [
             {
                 id: 'm1',
                 conversationId: id,
-                senderId: 'investor-1',
-                senderName: 'Alice Johnson',
-                senderType: 'INVESTOR',
-                content: 'Hello! I saw your recent pitch and I am very interested.',
+                senderId: otherId,
+                senderName: otherName,
+                senderType: otherType,
+                content: 'Hello! I am reviewing the project details.',
                 read: true,
                 createdAt: new Date(Date.now() - 7200000).toISOString()
             },
             {
                 id: 'm2',
                 conversationId: id,
-                senderId: userId || 'current-user',
-                senderName: 'You',
-                senderType: req.user?.role || 'SME',
-                content: 'Hi Alice, thanks for reaching out. Let me know if you need more details.',
+                senderId: userId,
+                senderName: userName,
+                senderType: userRole,
+                content: 'Hi, thank you for your time. Let me know if you have any questions.',
                 read: true,
                 createdAt: new Date(Date.now() - 3600000).toISOString()
             },
             {
                 id: 'm3',
                 conversationId: id,
-                senderId: 'investor-1',
-                senderName: 'Alice Johnson',
-                senderType: 'INVESTOR',
-                content: 'I am interested in your Series A proposal.',
+                senderId: otherId,
+                senderName: otherName,
+                senderType: otherType,
+                content: id === 'conv-1' ? 'I am interested in your Series A proposal.' : 'The financial statements have been uploaded.',
                 read: false,
                 createdAt: new Date().toISOString()
             }
@@ -97,13 +159,15 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
     try {
         const { conversationId, content } = req.body;
         const userId = req.user?.id;
+        const userRole = req.user?.role;
+        const userName = `${req.user?.firstName} ${req.user?.lastName}`;
 
         const newMessage = {
             id: `m-${Date.now()}`,
             conversationId,
-            senderId: userId || 'current-user',
-            senderName: 'You',
-            senderType: req.user?.role || 'SME',
+            senderId: userId,
+            senderName: userName,
+            senderType: userRole,
             content,
             read: false,
             createdAt: new Date().toISOString()

@@ -87,9 +87,9 @@ export default function SMEsPage() {
     // Filter SMEs based on search query
     const lowerQuery = searchQuery.toLowerCase()
     const filtered = smes.filter(sme =>
-      sme.name.toLowerCase().includes(lowerQuery) ||
-      sme.sector.toLowerCase().includes(lowerQuery) ||
-      sme.location.toLowerCase().includes(lowerQuery)
+      (sme.name?.toLowerCase() || '').includes(lowerQuery) ||
+      (sme.sector?.toLowerCase() || '').includes(lowerQuery) ||
+      (sme.location?.toLowerCase() || '').includes(lowerQuery)
     )
     setFilteredSmes(filtered)
   }, [searchQuery, smes])

@@ -101,10 +101,10 @@ export default function InvestorsPage() {
     // Filter Investors based on search query
     const lowerQuery = searchQuery.toLowerCase()
     const filtered = investors.filter(inv =>
-      inv.name.toLowerCase().includes(lowerQuery) ||
-      inv.type.toLowerCase().includes(lowerQuery) ||
-      inv.preferences?.location?.toLowerCase().includes(lowerQuery) ||
-      inv.preferences?.description?.toLowerCase().includes(lowerQuery)
+      (inv.name?.toLowerCase() || '').includes(lowerQuery) ||
+      (inv.type?.toLowerCase() || '').includes(lowerQuery) ||
+      (inv.preferences?.location?.toLowerCase() || '').includes(lowerQuery) ||
+      (inv.preferences?.description?.toLowerCase() || '').includes(lowerQuery)
     )
     setFilteredInvestors(filtered)
   }, [searchQuery, investors])

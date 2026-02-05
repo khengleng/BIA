@@ -193,14 +193,14 @@ export default function DataRoomPage() {
     }
 
     const getFileIcon = (name: string) => {
-        const ext = name.split('.').pop()?.toLowerCase()
+        const ext = name?.split('.').pop()?.toLowerCase()
         if (ext === 'pdf') return <File className="w-8 h-8 text-red-400" />
         if (['xlsx', 'xls', 'csv'].includes(ext || '')) return <FileSpreadsheet className="w-8 h-8 text-green-400" />
         return <FileText className="w-8 h-8 text-blue-400" />
     }
 
     const filteredDocuments = selectedRoom?.documents.filter(doc => {
-        const matchesSearch = doc.name.toLowerCase().includes(searchQuery.toLowerCase())
+        const matchesSearch = (doc.name?.toLowerCase() || '').includes(searchQuery.toLowerCase())
         const matchesCategory = selectedCategory === 'all' || doc.category === selectedCategory
         return matchesSearch && matchesCategory
     }) || []
@@ -423,7 +423,7 @@ export default function DataRoomPage() {
                                                     )}
                                                 </div>
                                                 <span className="text-gray-300">
-                                                    {log.action.charAt(0) + log.action.slice(1).toLowerCase()} document
+                                                    {(log.action || '').charAt(0) + (log.action || '').slice(1).toLowerCase()} document
                                                 </span>
                                                 <span className="text-gray-500">•</span>
                                                 <span className="text-gray-400">

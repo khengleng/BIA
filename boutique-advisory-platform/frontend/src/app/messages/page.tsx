@@ -192,7 +192,7 @@ export default function MessagesPage() {
         if (!conv) return false
         if (!searchQuery) return true
         const other = getOtherParticipant(conv)
-        return other.name.toLowerCase().includes(searchQuery.toLowerCase())
+        return (other.name?.toLowerCase() || '').includes(searchQuery.toLowerCase())
     })
 
     if (isLoading) {

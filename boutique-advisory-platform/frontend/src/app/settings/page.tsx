@@ -130,7 +130,7 @@ export default function SettingsPage() {
                     {user?.firstName} {user?.lastName}
                   </p>
                   <p className="text-xs text-gray-400 capitalize">
-                    {user?.role.toLowerCase()}
+                    {user?.role?.toLowerCase()}
                   </p>
                 </div>
                 <button

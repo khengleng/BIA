@@ -177,9 +177,9 @@ export default function MatchmakingPage() {
         if (searchQuery) {
             const query = searchQuery.toLowerCase()
             return (
-                match.investor.name.toLowerCase().includes(query) ||
-                match.sme.name.toLowerCase().includes(query) ||
-                match.sme.sector.toLowerCase().includes(query)
+                (match.investor?.name?.toLowerCase() || '').includes(query) ||
+                (match.sme?.name?.toLowerCase() || '').includes(query) ||
+                (match.sme?.sector?.toLowerCase() || '').includes(query)
             )
         }
 
