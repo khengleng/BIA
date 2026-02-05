@@ -147,6 +147,8 @@ model Deal {
   equity          Float?
   status          DealStatus @default(DRAFT)
   successFee      Float?
+  terms           String?
+  isDocumentLocked Boolean    @default(false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

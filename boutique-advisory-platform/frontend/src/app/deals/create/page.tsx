@@ -16,7 +16,9 @@ import {
   DollarSign,
   Calendar,
   TrendingUp,
-  FileText as DocumentIcon
+  FileText as DocumentIcon,
+  Shield,
+  Lock
 } from 'lucide-react'
 
 export default function CreateDealPage() {
@@ -44,6 +46,8 @@ export default function CreateDealPage() {
     expectedReturn: '',
     investmentTerm: '',
     exitStrategy: '',
+    terms: '',
+    isDocumentLocked: false,
 
     // Deal Timeline
     closingDate: '',
@@ -317,6 +321,13 @@ export default function CreateDealPage() {
                   </select>
                 </div>
               </div>
+
+              <div className="mt-6">
+                <label className="block text-sm font-medium text-gray-300 mb-2">Key Terms & Conditions</label>
+                <textarea name="terms" value={formData.terms} onChange={handleInputChange} rows={4}
+                  placeholder="Outline key terms, rights, and conditions..."
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
             </div>
 
             {/* Deal Timeline */}
@@ -433,9 +444,28 @@ export default function CreateDealPage() {
 
             {/* Documents */}
             <div className="bg-gray-800 rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-white mb-6 flex items-center">
-                <DocumentIcon className="w-5 h-5 mr-2" />Documents
-              </h2>
+              <div className="flex justify-between items-start mb-6">
+                <h2 className="text-xl font-semibold text-white flex items-center">
+                  <DocumentIcon className="w-5 h-5 mr-2" />Documents
+                </h2>
+                <div className="flex items-center">
+                  <label className="flex items-center cursor-pointer relative">
+                    <input
+                      type="checkbox"
+                      id="isDocumentLocked"
+                      checked={formData.isDocumentLocked}
+                      onChange={(e) => setFormData(prev => ({ ...prev, isDocumentLocked: e.target.checked }))}
+                      className="sr-only"
+                    />
+                    <div className={`w-11 h-6 bg-gray-700 rounded-full border border-gray-600 transition-colors ${formData.isDocumentLocked ? 'bg-blue-600 border-blue-500' : ''}`}></div>
+                    <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${formData.isDocumentLocked ? 'translate-x-5' : ''}`}></div>
+                    <span className="ml-3 text-sm text-gray-300 flex items-center">
+                      <Shield className="w-4 h-4 mr-1 text-blue-400" />
+                      Confidential (Lock Documents)
+                    </span>
+                  </label>
+                </div>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">Pitch Deck</label>
@@ -494,6 +524,6 @@ export default function CreateDealPage() {
           </form>
         </main>
       </div>
-    </div>
+    </div >
   )
 }

@@ -78,7 +78,7 @@ router.get('/:id', async (req: Request, res: Response) => {
 // Create new deal - with input validation
 router.post('/', validateBody(createDealSchema), async (req: Request, res: Response) => {
   try {
-    const { smeId, title, description, amount, equity, successFee } = req.body;
+    const { smeId, title, description, amount, equity, successFee, terms, isDocumentLocked } = req.body;
 
     // Verify SME exists
     const sme = await prisma.sME.findUnique({ where: { id: smeId } });
@@ -94,6 +94,8 @@ router.post('/', validateBody(createDealSchema), async (req: Request, res: Respo
         amount,
         equity: equity ?? null,
         successFee: successFee ?? null,
+        terms,
+        isDocumentLocked: isDocumentLocked || false,
         status: 'DRAFT',
         tenantId: sme.tenantId
       },

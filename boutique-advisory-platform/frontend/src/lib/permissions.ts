@@ -25,7 +25,8 @@ export type Resource =
     | 'report'
     | 'settings'
     | 'audit_log'
-    | 'matchmaking';
+    | 'matchmaking'
+    | 'syndicate';
 
 /**
  * Centralized Permission Definitions
@@ -89,6 +90,14 @@ export const PERMISSIONS: Record<string, string[]> = {
     'matchmaking.read': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
     'matchmaking.express_interest': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
     'matchmaking.create_match': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
+
+    // Syndicate Permissions
+    'syndicate.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR', 'SME'],
+    'syndicate.read': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR', 'SME'],
+    'syndicate.create': ['SUPER_ADMIN', 'ADMIN', 'INVESTOR'],
+    'syndicate.update': ['SUPER_ADMIN', 'ADMIN', 'INVESTOR:owner'],
+    'syndicate.join': ['INVESTOR'],
+    'syndicate.approve': ['SUPER_ADMIN', 'ADMIN', 'INVESTOR:owner'],
 };
 
 /**
