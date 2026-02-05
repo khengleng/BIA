@@ -26,7 +26,8 @@ import {
   Bell,
   FileText,
   Heart,
-  Sparkles
+  Sparkles,
+  Upload
 } from 'lucide-react'
 import { useTranslations } from '@/hooks/useTranslations'
 
@@ -48,6 +49,9 @@ export default function SMEPage() {
   const [activeTab, setActiveTab] = useState('overview')
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showUploadModal, setShowUploadModal] = useState(false)
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [uploadType, setUploadType] = useState('OTHER')
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -148,24 +152,69 @@ export default function SMEPage() {
     }
   }
 
-  const handleUploadDocument = async () => {
-    try {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        window.location.href = '/auth/login'
-        return
-      }
+  const handleUploadDocument = () => {
+    setShowUploadModal(true)
+  }
 
-      // In a real implementation, this would open a file upload modal
-      console.log('Upload document functionality')
-      // You would typically open a modal with file input and upload form
-    } catch (error) {
-      console.error('Error uploading document:', error)
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setUploadFile(e.target.files[0])
     }
   }
 
-  // Mock SME data
-  const sme = {
+  const performUpload = async () => {
+    if (!uploadFile) return
+
+    try {
+      const token = localStorage.getItem('token')
+      const formData = new FormData()
+      formData.append('file', uploadFile)
+      formData.append('type', uploadType)
+      formData.append('smeId', params.id as string)
+
+      const response = await fetch(`${API_URL}/api/documents/upload`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      })
+
+      if (response.ok) {
+        const newDoc = await response.json()
+        setSme((prev: any) => ({
+          ...prev,
+          documents: [...prev.documents, {
+            name: newDoc.name,
+            type: newDoc.type,
+            size: `${(newDoc.size / 1024 / 1024).toFixed(2)} MB`,
+            uploaded: new Date(newDoc.createdAt).toISOString().split('T')[0]
+          }]
+        }))
+        setShowUploadModal(false)
+        setUploadFile(null)
+        alert('Document uploaded successfully!')
+      } else {
+        alert('Failed to upload document')
+      }
+    } catch (error) {
+      console.error('Error uploading document:', error)
+      alert('Error uploading document')
+    }
+  }
+
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    sector: '',
+    stage: 'SEED',
+    fundingRequired: '',
+    description: '',
+    website: '',
+    location: ''
+  })
+
+  // Mock SME data as initial state
+  const initialSme = {
     id: params.id,
     name: 'Tech Startup A',
     registrationNumber: 'REG-2024-001',
@@ -192,7 +241,7 @@ export default function SMEPage() {
     valueProposition: 'Secure, fast, and affordable digital payment solutions for SMEs and individuals.',
     targetMarket: 'Small and medium enterprises, individual consumers, and financial institutions in Cambodia.',
     competitiveAdvantage: 'First-mover advantage in the Cambodian fintech market, strong local partnerships, and regulatory compliance.',
-    status: 'CERTIFIED',
+    status: 'Active',
     score: 88,
     location: 'Phnom Penh, Cambodia',
     documents: [
@@ -209,6 +258,92 @@ export default function SMEPage() {
       customerRetention: '92%',
       marketShare: '8%',
       employeeSatisfaction: '4.5/5'
+    }
+  }
+
+  const [sme, setSme] = useState<any>(initialSme)
+
+  useEffect(() => {
+    const fetchSME = async () => {
+      if (!params.id) return
+
+      try {
+        const token = localStorage.getItem('token')
+        const response = await fetch(`${API_URL}/api/smes/${params.id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          // Merge API data with mock data to preserve UI structure for missing fields
+          setSme((prev: any) => ({
+            ...prev,
+            ...data,
+            // Map API fields to UI fields if different
+            businessStage: data.stage,
+            businessDescription: data.description,
+            fundingRequired: data.fundingRequired ? `$${data.fundingRequired.toLocaleString()}` : prev.fundingRequired,
+            // Ensure lists exist
+            documents: data.documents || prev.documents,
+            deals: data.deals || prev.deals,
+          }))
+        }
+      } catch (error) {
+        console.error('Error fetching SME details:', error)
+      }
+    }
+
+    fetchSME()
+  }, [params.id])
+
+  // Update handleEdit to populate form with current data
+  useEffect(() => {
+    if (showEditModal && sme) {
+      setEditFormData({
+        name: sme.name || '',
+        sector: sme.sector || '',
+        stage: sme.stage || 'SEED',
+        fundingRequired: typeof sme.fundingRequired === 'number' ? sme.fundingRequired.toString() : sme.fundingRequired?.replace(/[^0-9.]/g, '') || '',
+        description: sme.description || sme.businessDescription || '',
+        website: sme.website || '',
+        location: sme.location || ''
+      })
+    }
+  }, [showEditModal, sme])
+
+  const handleSaveSme = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`${API_URL}/api/smes/${params.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ...editFormData,
+          fundingRequired: editFormData.fundingRequired ? parseFloat(editFormData.fundingRequired) : undefined
+        })
+      })
+
+      if (response.ok) {
+        const updatedSme = await response.json()
+        setSme((prev: any) => ({
+          ...prev,
+          ...updatedSme,
+          businessStage: updatedSme.stage,
+          businessDescription: updatedSme.description,
+          fundingRequired: updatedSme.fundingRequired ? `$${updatedSme.fundingRequired.toLocaleString()}` : prev.fundingRequired
+        }))
+        setShowEditModal(false)
+        alert('SME updated successfully!')
+      } else {
+        console.error('Failed to update SME')
+        alert('Failed to update SME')
+      }
+    } catch (error) {
+      console.error('Error updating SME:', error)
+      alert('Error updating SME')
     }
   }
 
@@ -693,7 +828,7 @@ export default function SMEPage() {
                   </div>
 
                   <div className="space-y-4">
-                    {sme.deals.map((deal) => (
+                    {sme.deals.map((deal: any) => (
                       <div key={deal.id} className="bg-gray-700 rounded-lg p-6">
                         <div className="flex justify-between items-start mb-4">
                           <div>
@@ -752,7 +887,7 @@ export default function SMEPage() {
                   </div>
 
                   <div className="space-y-4">
-                    {sme.documents.map((doc, index) => (
+                    {sme.documents.map((doc: any, index: number) => (
                       <div key={index} className="bg-gray-700 rounded-lg p-4 flex items-center justify-between">
                         <div className="flex items-center space-x-4">
                           <DocumentIcon className="w-8 h-8 text-blue-400" />
@@ -837,34 +972,96 @@ export default function SMEPage() {
 
       {/* Edit Modal */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-white mb-4">Edit SME</h3>
-            <p className="text-gray-400 mb-4">Edit functionality would be implemented here.</p>
-            <div className="flex space-x-3">
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-gray-800 rounded-xl p-6 w-full max-w-2xl border border-gray-700 my-8">
+            <h3 className="text-xl font-bold text-white mb-6">Edit SME Profile</h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Company Name</label>
+                <input
+                  type="text"
+                  value={editFormData.name}
+                  onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Sector</label>
+                <input
+                  type="text"
+                  value={editFormData.sector}
+                  onChange={(e) => setEditFormData({ ...editFormData, sector: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Business Stage</label>
+                <select
+                  value={editFormData.stage}
+                  onChange={(e) => setEditFormData({ ...editFormData, stage: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="SEED">Seed</option>
+                  <option value="GROWTH">Growth</option>
+                  <option value="EXPANSION">Expansion</option>
+                  <option value="MATURE">Mature</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Funding Required ($)</label>
+                <input
+                  type="number"
+                  value={editFormData.fundingRequired}
+                  onChange={(e) => setEditFormData({ ...editFormData, fundingRequired: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Location</label>
+                <input
+                  type="text"
+                  value={editFormData.location}
+                  onChange={(e) => setEditFormData({ ...editFormData, location: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Website</label>
+                <input
+                  type="url"
+                  value={editFormData.website}
+                  onChange={(e) => setEditFormData({ ...editFormData, website: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <label className="block text-sm font-medium text-gray-300 mb-2">Business Description</label>
+              <textarea
+                value={editFormData.description}
+                onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                rows={4}
+                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="flex gap-4 mt-8">
               <button
                 onClick={() => setShowEditModal(false)}
-                className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-lg"
+                className="flex-1 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors font-semibold"
               >
                 Cancel
               </button>
               <button
-                onClick={async () => {
-                  try {
-                    const token = localStorage.getItem('token')
-                    if (!token) {
-                      window.location.href = '/auth/login'
-                      return
-                    }
-
-                    // In a real implementation, this would update the SME
-                    console.log('SME updated successfully!')
-                    setShowEditModal(false)
-                  } catch (error) {
-                    console.error('Error updating SME:', error)
-                  }
-                }}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+                onClick={handleSaveSme}
+                className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-semibold"
               >
                 Save Changes
               </button>
@@ -916,6 +1113,68 @@ export default function SMEPage() {
                 className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg"
               >
                 Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Upload Modal */}
+      {showUploadModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md border border-gray-700">
+            <h3 className="text-xl font-bold text-white mb-6">Upload Document</h3>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Document Type</label>
+                <select
+                  value={uploadType}
+                  onChange={(e) => setUploadType(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="PITCH_DECK">Pitch Deck</option>
+                  <option value="FINANCIAL_STATEMENT">Financial Statement</option>
+                  <option value="BUSINESS_PLAN">Business Plan</option>
+                  <option value="LEGAL_DOCUMENT">Legal Document</option>
+                  <option value="OTHER">Other</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">File</label>
+                <div className="flex items-center justify-center w-full">
+                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-600 border-dashed rounded-lg cursor-pointer bg-gray-700 hover:bg-gray-600 hover:border-gray-500">
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      <Upload className="w-8 h-8 mb-4 text-gray-400" />
+                      <p className="mb-2 text-sm text-gray-400">
+                        <span className="font-semibold">Click to upload</span> or drag and drop
+                      </p>
+                      <p className="text-xs text-gray-500">PDF, DOCX, XLSX (MAX. 10MB)</p>
+                    </div>
+                    <input type="file" className="hidden" onChange={handleFileChange} />
+                  </label>
+                </div>
+                {uploadFile && (
+                  <p className="mt-2 text-sm text-green-400">
+                    Selected: {uploadFile.name}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-4 mt-8">
+              <button
+                onClick={() => setShowUploadModal(false)}
+                className="flex-1 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={performUpload}
+                disabled={!uploadFile}
+                className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Upload
               </button>
             </div>
           </div>
