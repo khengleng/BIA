@@ -273,10 +273,16 @@ export default function InvestorsPage() {
                   <h3 className="text-xl font-semibold text-white truncate">{investor.name}</h3>
                   <p className="text-gray-400 text-sm">{investor.type}</p>
                 </div>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${investor.preferences?.status === 'Active' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
-                  }`}>
-                  {investor.preferences?.status || 'Active'}
-                </span>
+                <div className="flex flex-col items-end gap-1">
+                  <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${investor.kycStatus === 'VERIFIED' ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-500/20 text-gray-400'
+                    }`}>
+                    {investor.kycStatus === 'VERIFIED' ? '✅ KYC VERIFIED' : '⏳ KYC PENDING'}
+                  </span>
+                  <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${investor.preferences?.status === 'Active' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
+                    }`}>
+                    {investor.preferences?.status || 'Active'}
+                  </span>
+                </div>
               </div>
 
               <div className="space-y-2 mb-4">

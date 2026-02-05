@@ -53,7 +53,31 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
         const mockMatches = [];
         for (const sme of matchSmes) {
             for (const investor of matchInvestors) {
-                const matchScore = Math.floor(Math.random() * 40) + 60;
+                // Calculate real-ish compatibility
+                let baseScore = 60;
+                const factors: any = {
+                    sector: { score: 0, match: false, details: 'Sector mismatch' },
+                    stage: { score: 0, match: false, details: 'Stage mismatch' },
+                    certification: { score: sme.status === 'CERTIFIED' ? 100 : 0, match: sme.status === 'CERTIFIED', details: sme.status === 'CERTIFIED' ? 'Advisor Certified' : 'Pending Review' }
+                };
+
+                // Sector match
+                // Note: assuming investor.preferences might contain preferred sectors
+                const preferredSectors = (investor.preferences as any)?.preferredSectors || [];
+                if (preferredSectors.includes(sme.sector)) {
+                    baseScore += 15;
+                    factors.sector = { score: 100, match: true, details: 'Perfect sector alignment' };
+                }
+
+                // Stage match
+                if (sme.stage === 'GROWTH' || sme.stage === 'EXPANSION') {
+                    baseScore += 10;
+                    factors.stage = { score: 90, match: true, details: 'High-growth stage' };
+                }
+
+                // Random jitter
+                const matchScore = Math.min(Math.max(baseScore + Math.floor(Math.random() * 10), 0), 99);
+
                 mockMatches.push({
                     investor: {
                         id: investor.id,
@@ -64,19 +88,15 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
                         id: sme.id,
                         name: sme.name,
                         sector: sme.sector,
-                        stage: sme.stage
+                        stage: sme.stage,
+                        status: sme.status,
+                        score: sme.score
                     },
                     matchScore,
-                    factors: {
-                        sector: { score: 90, match: true, details: 'Highly aligned with investor focus' },
-                        stage: { score: 85, match: true, details: 'Target stage for investor portfolio' },
-                        amount: { score: 70, match: true, details: 'Within investment range' },
-                        geography: { score: 100, match: true, details: 'Local market proximity' },
-                        certification: { score: 80, match: true, details: 'Passed initial advisory review' }
-                    },
+                    factors,
                     interestStatus: {
-                        investorExpressedInterest: Math.random() > 0.7,
-                        smeExpressedInterest: Math.random() > 0.7,
+                        investorExpressedInterest: Math.random() > 0.8,
+                        smeExpressedInterest: Math.random() > 0.8,
                         mutualInterest: false
                     }
                 });

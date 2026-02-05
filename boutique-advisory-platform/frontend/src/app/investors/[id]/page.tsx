@@ -29,7 +29,8 @@ import {
   Star,
   Briefcase,
   X,
-  Plus
+  Plus,
+  Shield
 } from 'lucide-react'
 
 interface User {
@@ -880,6 +881,34 @@ export default function InvestorProfilePage() {
                     </button>
                   );
                 })()}
+                {/* KYC Verification Button for Advisors */}
+                {(user?.role === 'ADMIN' || user?.role === 'ADVISOR') && (
+                  <button
+                    onClick={async () => {
+                      if (confirm('Verify this investor\'s KYC and accreditation?')) {
+                        try {
+                          const token = localStorage.getItem('token')
+                          const response = await fetch(`${API_URL}/api/investors/${params.id}/kyc`, {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${token}` }
+                          })
+                          if (response.ok) {
+                            alert('Investor KYC Verified Successfully!')
+                            window.location.reload()
+                          } else {
+                            alert('Failed to verify KYC')
+                          }
+                        } catch (error) {
+                          console.error('KYC Error:', error)
+                        }
+                      }
+                    }}
+                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center transition-colors shadow-lg shadow-green-900/20"
+                  >
+                    <Shield className="w-4 h-4 mr-2" />
+                    Verify KYC
+                  </button>
+                )}
                 <button
                   onClick={() => router.push('/deals/create')}
                   className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center"

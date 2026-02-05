@@ -314,6 +314,15 @@ router.put('/:id', async (req: AuthenticatedRequest, res: Response): Promise<voi
             const expiryDate = new Date();
             expiryDate.setFullYear(expiryDate.getFullYear() + 1);
             updateData.expiresAt = expiryDate;
+
+            // Update SME score and status
+            await prisma.sME.update({
+                where: { id: existing.smeId },
+                data: {
+                    score: overallScore,
+                    status: 'UNDER_REVIEW' // Move to reviewing status
+                }
+            });
         } else if (status) {
             updateData.status = status;
         }

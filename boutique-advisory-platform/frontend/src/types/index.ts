@@ -18,6 +18,8 @@ export interface SME {
     status?: string
     description: string
     website?: string
+    score?: number
+    certified?: boolean
     industry?: string
     employeeCount?: number
     annualRevenue?: number
@@ -32,8 +34,10 @@ export interface SME {
 
 export interface Investor {
     id: string
+    userId?: string
     name: string
     type: string
+    kycStatus?: 'PENDING' | 'VERIFIED' | 'REJECTED'
     preferences: {
         portfolioValue?: string
         activeInvestments?: string

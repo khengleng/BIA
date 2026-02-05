@@ -31,6 +31,7 @@ import communityRoutes from './routes/community';
 import secondaryTradingRoutes from './routes/secondary-trading';
 import notificationRoutes from './routes/notifications';
 import dashboardRoutes from './routes/dashboard';
+import auditRoutes from './routes/audit';
 
 // Core Feature Routes
 import authRoutes from './routes/auth';
@@ -262,8 +263,9 @@ app.use('/api/pipeline', authenticateToken, pipelineRoutes);
 app.use('/api/matches', authenticateToken, matchesRoutes);
 app.use('/api/messages', authenticateToken, messagesRoutes);
 app.use('/api/calendar', authenticateToken, calendarRoutes);
-app.use('/api/reports', authenticateToken, reportRoutes);
+app.use('/api/report', authenticateToken, reportRoutes);
 app.use('/api/dataroom', authenticateToken, dataroomRoutes);
+app.use('/api/audit', authenticateToken, auditRoutes);
 
 // Migration endpoints - PROTECTED: Only available in development or with SUPER_ADMIN role (Fix #2)
 const migrationAuthMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {

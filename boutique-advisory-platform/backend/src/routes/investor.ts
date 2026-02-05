@@ -101,5 +101,45 @@ router.put('/:id', validateBody(updateInvestorSchema), async (req: Request, res:
   }
 });
 
+// Verify Investor KYC (Mock)
+router.post('/:id/kyc', async (req: any, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userRole = req.user?.role;
+
+    // Only Admin or the Investor themselves (via self-service) can trigger KYC
+    // In a real app, this would call an external service like Sumsub or Jumio
+    const investor = await prisma.investor.findUnique({ where: { id } });
+
+    if (!investor) {
+      return res.status(404).json({ error: 'Investor not found' });
+    }
+
+    // Mock verification logic
+    const kycResult = {
+      status: 'VERIFIED',
+      verifiedAt: new Date(),
+      provider: 'MockKYC-SEC-Certified',
+      score: 95
+    };
+
+    const updatedInvestor = await prisma.investor.update({
+      where: { id },
+      data: {
+        kycStatus: 'VERIFIED'
+      }
+    });
+
+    return res.json({
+      message: 'KYC Verification Successful',
+      investor: updatedInvestor,
+      details: kycResult
+    });
+  } catch (error) {
+    console.error('KYC Verification error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
 

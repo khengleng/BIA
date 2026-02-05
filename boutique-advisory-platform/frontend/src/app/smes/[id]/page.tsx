@@ -190,7 +190,8 @@ export default function SMEPage() {
     valueProposition: 'Secure, fast, and affordable digital payment solutions for SMEs and individuals.',
     targetMarket: 'Small and medium enterprises, individual consumers, and financial institutions in Cambodia.',
     competitiveAdvantage: 'First-mover advantage in the Cambodian fintech market, strong local partnerships, and regulatory compliance.',
-    status: 'Active',
+    status: 'CERTIFIED',
+    score: 88,
     location: 'Phnom Penh, Cambodia',
     documents: [
       { name: 'Business Plan', type: 'PDF', size: '2.3 MB', uploaded: '2024-01-15' },
@@ -474,6 +475,56 @@ export default function SMEPage() {
             <div className="p-6">
               {activeTab === 'overview' && (
                 <div className="space-y-6">
+                  {/* Advisory Scorecard - NEW FEATURE */}
+                  <div className="bg-gradient-to-r from-gray-800 to-gray-850 rounded-xl overflow-hidden border border-gray-700 shadow-xl">
+                    <div className="p-6 border-b border-gray-700 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Award className="w-6 h-6 text-yellow-500" />
+                        <h3 className="text-xl font-bold text-white">Boutique Advisory Scorecard</h3>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        {(user?.role === 'ADMIN' || user?.role === 'ADVISOR') && (
+                          <Link
+                            href={`/smes/${params.id}/assessment`}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                          >
+                            MANAGE ASSESSMENT
+                          </Link>
+                        )}
+                        <div className="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-xs font-bold border border-green-500/30">
+                          {sme.status === 'CERTIFIED' ? 'CERTIFIED' : 'PENDING CERTIFICATION'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="p-8 grid grid-cols-2 md:grid-cols-6 gap-6">
+                      {[
+                        { label: 'Financial', score: sme.score ? Math.round(sme.score * 0.9) : 85, color: 'blue' },
+                        { label: 'Team', score: sme.score ? Math.round(sme.score * 1.05) : 92, color: 'purple' },
+                        { label: 'Market', score: sme.score ? Math.round(sme.score * 0.8) : 78, color: 'green' },
+                        { label: 'Product', score: sme.score ? Math.round(sme.score * 0.95) : 90, color: 'yellow' },
+                        { label: 'Legal', score: sme.score ? Math.round(sme.score * 0.7) : 95, color: 'red' },
+                        { label: 'Overall', score: Math.round(sme.score || 88), color: 'blue' }
+                      ].map((stat, idx) => (
+                        <div key={idx} className="text-center space-y-2">
+                          <div className="relative w-16 h-16 mx-auto">
+                            <svg className="w-16 h-16 transform -rotate-90">
+                              <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-gray-700" />
+                              <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="4" fill="transparent"
+                                className={`text-${stat.color}-500`}
+                                strokeDasharray={175.9}
+                                strokeDashoffset={175.9 - (175.9 * Math.min(stat.score, 100)) / 100}
+                              />
+                            </svg>
+                            <div className="absolute inset-0 flex items-center justify-center text-sm font-bold text-white">
+                              {Math.min(stat.score, 100)}
+                            </div>
+                          </div>
+                          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{stat.label}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Basic Information */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="bg-gray-700 rounded-lg p-6">
