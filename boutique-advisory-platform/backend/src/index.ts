@@ -110,7 +110,7 @@ declare global {
 }
 
 const app = express();
-const PORT = process.env.PORT || 3003;
+const PORT = process.env.PORT || 3000;
 const isProduction = process.env.NODE_ENV === 'production';
 
 // Trust proxy (required for rate limiting and secure cookies on most cloud platforms)
