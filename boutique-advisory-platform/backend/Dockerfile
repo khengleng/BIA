@@ -25,6 +25,7 @@ FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
+ENV PORT=3000
 
 # Create non-root user for security
 RUN addgroup --system --gid 1001 nodejs
@@ -35,10 +36,14 @@ COPY --from=builder --chown=expressjs:nodejs /app/dist ./dist
 COPY --from=builder --chown=expressjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=expressjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=expressjs:nodejs /app/package*.json ./
+COPY --from=builder --chown=expressjs:nodejs /app/start.sh ./start.sh
+
+# Make startup script executable
+RUN chmod +x ./start.sh
 
 USER expressjs
 
 EXPOSE 3000
 
-# Start command - Railway provides PORT via env variable
-CMD npx prisma migrate deploy && node dist/index.js
+# Start command with better error handling
+CMD ["./start.sh"]
