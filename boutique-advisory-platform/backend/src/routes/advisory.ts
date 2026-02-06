@@ -69,21 +69,48 @@ router.get('/advisors', async (req: AuthenticatedRequest, res: Response) => {
 // Book a service or session
 router.post('/book', async (req: AuthenticatedRequest, res: Response) => {
     try {
-        const { serviceId, advisorId, preferredDate, notes, amount } = req.body;
+        const { serviceId, serviceName, advisorId, preferredDate, notes, amount } = req.body;
         const userId = req.user?.id;
 
         if (!userId) {
             return res.status(401).json({ error: 'User not authenticated' });
         }
 
+        // Check if service exists in DB, if not, create booking without foreign key
+        let actualServiceId = null;
+        let actualAdvisorId = null;
+
+        if (serviceId) {
+            const serviceExists = await prisma.advisoryService.findUnique({
+                where: { id: serviceId }
+            });
+            if (serviceExists) {
+                actualServiceId = serviceId;
+            }
+        }
+
+        if (advisorId) {
+            const advisorExists = await prisma.advisor.findUnique({
+                where: { id: advisorId }
+            });
+            if (advisorExists) {
+                actualAdvisorId = advisorId;
+            }
+        }
+
+        // Enhanced notes with service info if using mock data
+        const enhancedNotes = actualServiceId
+            ? notes
+            : `Service: ${serviceName || 'Consultation'}\n${notes || ''}`;
+
         const booking = await prisma.booking.create({
             data: {
                 userId,
-                tenantId: 'default', // Using default tenant for now
-                serviceId: serviceId || null,
-                advisorId: advisorId || null,
+                tenantId: 'default',
+                serviceId: actualServiceId,
+                advisorId: actualAdvisorId,
                 preferredDate: new Date(preferredDate),
-                notes,
+                notes: enhancedNotes,
                 amount: amount ? parseFloat(amount) : null,
                 status: 'PENDING'
             },
@@ -119,6 +146,187 @@ router.get('/my-bookings', async (req: AuthenticatedRequest, res: Response) => {
     } catch (error) {
         console.error('Error fetching bookings:', error);
         return res.status(500).json({ error: 'Failed to fetch bookings' });
+    }
+});
+
+// ==================== SERVICE MANAGEMENT (For Advisors/Admins) ====================
+
+// Create a new advisory service (Advisor/Admin only)
+router.post('/services', async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        const userRole = req.user?.role;
+
+        if (!userId || !['ADVISOR', 'ADMIN'].includes(userRole || '')) {
+            return res.status(403).json({ error: 'Only advisors and admins can create services' });
+        }
+
+        const { name, category, description, price, duration, features } = req.body;
+
+        // Get advisor profile
+        const advisor = await prisma.advisor.findUnique({
+            where: { userId }
+        });
+
+        if (!advisor && userRole !== 'ADMIN') {
+            return res.status(404).json({ error: 'Advisor profile not found' });
+        }
+
+        // If admin, they can specify advisorId, otherwise use their own
+        const advisorId = userRole === 'ADMIN' && req.body.advisorId
+            ? req.body.advisorId
+            : advisor?.id;
+
+        if (!advisorId) {
+            return res.status(400).json({ error: 'Advisor ID is required' });
+        }
+
+        const service = await prisma.advisoryService.create({
+            data: {
+                tenantId: 'default',
+                advisorId,
+                name,
+                category,
+                description,
+                price: parseFloat(price),
+                duration,
+                features: Array.isArray(features) ? features : [features],
+                status: 'ACTIVE'
+            },
+            include: {
+                advisor: {
+                    select: {
+                        id: true,
+                        name: true,
+                        specialization: true
+                    }
+                }
+            }
+        });
+
+        return res.status(201).json({
+            message: 'Service created successfully',
+            service
+        });
+    } catch (error) {
+        console.error('Error creating service:', error);
+        return res.status(500).json({ error: 'Failed to create service' });
+    }
+});
+
+// Update an advisory service
+router.put('/services/:id', async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        const userRole = req.user?.role;
+        const { id } = req.params;
+
+        // Get the service to check ownership
+        const existingService = await prisma.advisoryService.findUnique({
+            where: { id },
+            include: { advisor: true }
+        });
+
+        if (!existingService) {
+            return res.status(404).json({ error: 'Service not found' });
+        }
+
+        // Check if user owns this service or is admin
+        if (userRole !== 'ADMIN' && existingService.advisor.userId !== userId) {
+            return res.status(403).json({ error: 'Not authorized to update this service' });
+        }
+
+        const { name, category, description, price, duration, features, status } = req.body;
+
+        const service = await prisma.advisoryService.update({
+            where: { id },
+            data: {
+                ...(name && { name }),
+                ...(category && { category }),
+                ...(description && { description }),
+                ...(price && { price: parseFloat(price) }),
+                ...(duration && { duration }),
+                ...(features && { features: Array.isArray(features) ? features : [features] }),
+                ...(status && { status })
+            },
+            include: {
+                advisor: {
+                    select: {
+                        id: true,
+                        name: true,
+                        specialization: true
+                    }
+                }
+            }
+        });
+
+        return res.json({
+            message: 'Service updated successfully',
+            service
+        });
+    } catch (error) {
+        console.error('Error updating service:', error);
+        return res.status(500).json({ error: 'Failed to update service' });
+    }
+});
+
+// Delete an advisory service
+router.delete('/services/:id', async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        const userRole = req.user?.role;
+        const { id } = req.params;
+
+        // Get the service to check ownership
+        const existingService = await prisma.advisoryService.findUnique({
+            where: { id },
+            include: { advisor: true }
+        });
+
+        if (!existingService) {
+            return res.status(404).json({ error: 'Service not found' });
+        }
+
+        // Check if user owns this service or is admin
+        if (userRole !== 'ADMIN' && existingService.advisor.userId !== userId) {
+            return res.status(403).json({ error: 'Not authorized to delete this service' });
+        }
+
+        // Soft delete by setting status to INACTIVE
+        await prisma.advisoryService.update({
+            where: { id },
+            data: { status: 'INACTIVE' }
+        });
+
+        return res.json({ message: 'Service deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting service:', error);
+        return res.status(500).json({ error: 'Failed to delete service' });
+    }
+});
+
+// Get my services (for advisors)
+router.get('/my-services', async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const userId = req.user?.id;
+
+        const advisor = await prisma.advisor.findUnique({
+            where: { userId }
+        });
+
+        if (!advisor) {
+            return res.status(404).json({ error: 'Advisor profile not found' });
+        }
+
+        const services = await prisma.advisoryService.findMany({
+            where: { advisorId: advisor.id },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        return res.json(services);
+    } catch (error) {
+        console.error('Error fetching my services:', error);
+        return res.status(500).json({ error: 'Failed to fetch services' });
     }
 });
 

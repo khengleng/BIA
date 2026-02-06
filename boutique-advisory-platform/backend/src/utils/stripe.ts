@@ -6,6 +6,13 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_mock', {
 
 export async function createPaymentIntent(amount: number, currency: string = 'usd') {
     try {
+        // Check if Stripe is properly configured
+        if (!process.env.STRIPE_SECRET_KEY ||
+            process.env.STRIPE_SECRET_KEY === 'sk_test_...' ||
+            process.env.STRIPE_SECRET_KEY === 'sk_test_mock') {
+            throw new Error('Stripe is not configured. Please add a valid STRIPE_SECRET_KEY to your .env file. Get your key from https://dashboard.stripe.com/test/apikeys');
+        }
+
         const paymentIntent = await stripe.paymentIntents.create({
             amount: Math.round(amount * 100), // Stripe expects cents
             currency,
@@ -14,9 +21,13 @@ export async function createPaymentIntent(amount: number, currency: string = 'us
             },
         });
         return paymentIntent;
-    } catch (error) {
+    } catch (error: any) {
         console.error('Stripe error:', error);
-        throw error;
+        // Provide helpful error message
+        if (error.message && error.message.includes('not configured')) {
+            throw error; // Re-throw our custom error
+        }
+        throw new Error('Payment processing failed. Please contact support.');
     }
 }
 

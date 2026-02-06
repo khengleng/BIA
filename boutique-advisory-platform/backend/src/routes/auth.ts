@@ -12,6 +12,7 @@ import {
   clearFailedAttempts,
   sanitizeEmail
 } from '../utils/security';
+import { sendWelcomeEmail, sendPasswordResetEmail } from '../utils/email';
 
 const router = Router();
 
@@ -133,6 +134,10 @@ router.post('/register', async (req: Request, res: Response) => {
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
+
+    // Send welcome email (don't block registration if email fails)
+    sendWelcomeEmail(user.email, `${user.firstName} ${user.lastName}`, user.role)
+      .catch(error => console.error('Failed to send welcome email:', error));
 
     return res.status(201).json({
       message: 'User registered successfully',
@@ -390,10 +395,9 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
         success: true
       });
 
-      // In production: Send email with reset link containing the unhashed token
-      // For demo: Token is generated but not logged for security
-      // In a real implementation, this would send an email
-      console.log(`[DEMO] Password reset requested for user (email not logged for security)`);
+      // Send password reset email (don't block response if email fails)
+      sendPasswordResetEmail(user.email, resetToken)
+        .catch(error => console.error('Failed to send password reset email:', error));
     } else {
       // Log attempt for non-existent user (for security monitoring)
       await logAuditEvent({

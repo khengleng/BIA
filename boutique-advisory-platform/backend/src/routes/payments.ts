@@ -12,9 +12,26 @@ router.post('/create-payment-intent', async (req: AuthenticatedRequest, res: Res
             return res.status(400).json({ error: 'Amount is required' });
         }
 
-        const paymentIntent = await createPaymentIntent(amount);
+        // Check if Stripe is configured
+        const isStripeConfigured = process.env.STRIPE_SECRET_KEY &&
+            process.env.STRIPE_SECRET_KEY !== 'sk_test_...' &&
+            process.env.STRIPE_SECRET_KEY !== 'sk_test_mock';
 
-        // Here we would typically record the pending payment in the DB
+        if (!isStripeConfigured) {
+            // Mock payment for testing
+            console.log('⚠️  Using MOCK payment (Stripe not configured)');
+            console.log('💰 Mock payment:', { amount, bookingId, serviceId });
+
+            return res.json({
+                clientSecret: 'mock_client_secret_' + Date.now(),
+                paymentIntentId: 'mock_pi_' + Date.now(),
+                mock: true,
+                message: 'Using mock payment. Configure STRIPE_SECRET_KEY for real payments.'
+            });
+        }
+
+        // Real Stripe payment
+        const paymentIntent = await createPaymentIntent(amount);
 
         return res.json({
             clientSecret: paymentIntent.client_secret,

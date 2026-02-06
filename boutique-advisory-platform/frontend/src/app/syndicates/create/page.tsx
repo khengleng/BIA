@@ -50,7 +50,7 @@ export default function CreateSyndicatePage() {
     const fetchDeals = async () => {
         try {
             const token = localStorage.getItem('token')
-            const response = await fetch(`${API_URL}/api/deal`, {
+            const response = await fetch(`${API_URL}/api/deals`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
             if (response.ok) {

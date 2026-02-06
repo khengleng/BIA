@@ -3,6 +3,9 @@
 import { useEffect } from 'react'
 import ErrorBoundary from './ErrorBoundary'
 import { ToastProvider } from '../contexts/ToastContext'
+import PWAInstallPrompt from './PWAInstallPrompt'
+import BottomNavigation from './BottomNavigation'
+import PushNotifications from './PushNotifications'
 
 interface Props {
     children: React.ReactNode
@@ -28,6 +31,9 @@ export default function ClientProviders({ children }: Props) {
         <ErrorBoundary>
             <ToastProvider>
                 {children}
+                <PWAInstallPrompt />
+                <PushNotifications />
+                <BottomNavigation />
             </ToastProvider>
         </ErrorBoundary>
     )

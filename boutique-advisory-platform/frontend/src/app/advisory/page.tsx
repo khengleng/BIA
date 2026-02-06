@@ -148,7 +148,10 @@ export default function AdvisoryPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(pendingBookingData)
+        body: JSON.stringify({
+          ...pendingBookingData,
+          amount: paymentAmount
+        })
       })
 
       if (response.ok) {
@@ -372,7 +375,10 @@ export default function AdvisoryPage() {
         <main className="flex-1 p-8">
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-3xl font-bold text-white">Advisory Services</h1>
-            <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center">
+            <button
+              onClick={() => setActiveTab('services')}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center"
+            >
               <Plus className="w-4 h-4 mr-2" />
               Book Consultation
             </button>

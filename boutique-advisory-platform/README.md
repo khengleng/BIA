@@ -62,6 +62,9 @@ After deployment, the database is automatically seeded. All initial accounts use
 - Role-based access control (6 roles)
 - Multi-language support (EN, KM, ZH)
 - PWA support (Service Workers & Offline access)
+- **Cloud File Storage** - S3/R2 integration for documents
+- **Secure Downloads** - Presigned URLs with access control
+- **Email Notifications** - Automated emails via Resend (welcome, password reset, notifications)
 
 ## 📁 Project Structure
 
@@ -90,6 +93,13 @@ boutique-advisory-platform/
 | `JWT_REFRESH_SECRET` | Yes | Refresh token key |
 | `FRONTEND_URL` | Yes | Frontend URL for CORS |
 | `INITIAL_ADMIN_PASSWORD` | Yes | Password for local admin creation |
+| `S3_ENDPOINT` | Optional | S3/R2 endpoint URL for file storage |
+| `S3_REGION` | Optional | S3 region (use 'auto' for Cloudflare R2) |
+| `S3_ACCESS_KEY_ID` | Optional | S3/R2 access key |
+| `S3_SECRET_ACCESS_KEY` | Optional | S3/R2 secret key |
+| `S3_BUCKET_NAME` | Optional | S3/R2 bucket name |
+| `RESEND_API_KEY` | Optional | Resend API key for email notifications |
+| `EMAIL_FROM` | Optional | Sender email address (default: contact@cambobia.com) |
 
 ### Frontend
 
