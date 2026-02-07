@@ -30,6 +30,50 @@ export default function SettingsPage() {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('profile')
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+
+  const handleUpdatePassword = async () => {
+    if (newPassword !== confirmPassword) {
+      alert('New passwords do not match')
+      return
+    }
+
+    if (newPassword.length < 12) {
+      alert('Password must be at least 12 characters long')
+      return
+    }
+
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          currentPassword,
+          newPassword
+        })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        alert('Password updated successfully!')
+        setCurrentPassword('')
+        setNewPassword('')
+        setConfirmPassword('')
+      } else {
+        alert(data.error || 'Failed to update password')
+      }
+    } catch (error) {
+      console.error('Error updating password:', error)
+      alert('An error occurred while updating password')
+    }
+  }
 
   useEffect(() => {
     // Get user data from localStorage
@@ -299,6 +343,8 @@ export default function SettingsPage() {
                 </div>
               )}
 
+
+
               {activeTab === 'security' && (
                 <div className="space-y-6">
                   <h2 className="text-xl font-semibold text-white">Security Settings</h2>
@@ -307,6 +353,8 @@ export default function SettingsPage() {
                       <label className="block text-sm font-medium text-gray-300 mb-2">Current Password</label>
                       <input
                         type="password"
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
                         className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
@@ -314,6 +362,8 @@ export default function SettingsPage() {
                       <label className="block text-sm font-medium text-gray-300 mb-2">New Password</label>
                       <input
                         type="password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
                         className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
@@ -321,12 +371,14 @@ export default function SettingsPage() {
                       <label className="block text-sm font-medium text-gray-300 mb-2">Confirm New Password</label>
                       <input
                         type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
                         className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
                   </div>
                   <button
-                    onClick={() => alert('Password updated successfully!')}
+                    onClick={handleUpdatePassword}
                     className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
                   >
                     Update Password
