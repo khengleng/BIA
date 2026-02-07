@@ -1,20 +1,20 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../database';
 import { validateBody, updateSMESchema, idParamSchema, validateParams } from '../middleware/validation';
+import { authorize, AuthenticatedRequest } from '../middleware/authorize';
 
 const router = Router();
 
 // Get all SMEs
-router.get('/', async (req: any, res: Response) => {
+router.get('/', authorize('sme.list'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user?.id;
     const userRole = req.user?.role;
-
     const tenantId = req.user?.tenantId;
 
     let query: any = {
       where: {
-        tenantId: tenantId // Enforce multi-tenant isolation
+        tenantId: tenantId
       },
       include: {
         user: true,
@@ -26,10 +26,8 @@ router.get('/', async (req: any, res: Response) => {
     if (userRole === 'SME') {
       query.where.userId = userId;
     } else if (userRole === 'INVESTOR') {
-      // Investors can see pending SMEs too (for visibility/transparency)
       query.where.status = { in: ['CERTIFIED', 'SUBMITTED', 'UNDER_REVIEW'] };
     }
-    // ADVISOR, ADMIN can see all within tenant
 
     const smes = await prisma.sME.findMany(query);
     return res.json(smes);
@@ -40,7 +38,7 @@ router.get('/', async (req: any, res: Response) => {
 });
 
 // Get SME by ID
-router.get('/:id', async (req: any, res: Response) => {
+router.get('/:id', authorize('sme.read'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
     const userId = req.user?.id;
@@ -59,7 +57,7 @@ router.get('/:id', async (req: any, res: Response) => {
       return res.status(404).json({ error: 'SME not found' });
     }
 
-    // RBAC: SME only see their own profile
+    // Explicit ownership check since authorize() level check for ':owner' might need pre-fetching
     if (userRole === 'SME' && sme.userId !== userId) {
       return res.status(403).json({ error: 'Access denied: You can only view your own SME profile' });
     }
@@ -72,16 +70,21 @@ router.get('/:id', async (req: any, res: Response) => {
 });
 
 // Update SME - with input validation
-router.put('/:id', validateBody(updateSMESchema), async (req: Request, res: Response) => {
+router.put('/:id', authorize('sme.update'), validateBody(updateSMESchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
+    const userId = req.user?.id;
+    const userRole = req.user?.role;
     const updateData = req.body;
-    console.log(`[SME Update] Updating SME ${id} with data:`, JSON.stringify(updateData, null, 2));
 
-    // Check if SME exists
+    // Check if SME exists and ownership
     const existingSme = await prisma.sME.findUnique({ where: { id } });
     if (!existingSme) {
       return res.status(404).json({ error: 'SME not found' });
+    }
+
+    if (userRole === 'SME' && existingSme.userId !== userId) {
+      return res.status(403).json({ error: 'Access denied: You can only update your own SME profile' });
     }
 
     const sme = await prisma.sME.update({

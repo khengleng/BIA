@@ -5,7 +5,7 @@
  */
 
 import { Router, Response } from 'express';
-import { AuthenticatedRequest } from '../middleware/auth';
+import { AuthenticatedRequest, authorize } from '../middleware/authorize';
 import { prisma, prismaReplica } from '../database';
 import { shouldUseDatabase } from '../migration-manager';
 
@@ -15,7 +15,7 @@ const router = Router();
 const PLATFORM_FEE = 0.01; // 1%
 
 // Get all active listings
-router.get('/listings', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get('/listings', authorize('secondary_trading.list'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
             res.json([]);
@@ -67,7 +67,7 @@ router.get('/listings', async (req: AuthenticatedRequest, res: Response): Promis
 });
 
 // Get listing by ID
-router.get('/listings/:id', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get('/listings/:id', authorize('secondary_trading.read'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
             res.status(404).json({ error: 'Listing not found' });
@@ -96,7 +96,7 @@ router.get('/listings/:id', async (req: AuthenticatedRequest, res: Response): Pr
 });
 
 // Create listing
-router.post('/listings', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.post('/listings', authorize('secondary_trading.create_listing'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
             res.status(503).json({ error: 'Database not available' });
@@ -152,7 +152,7 @@ router.post('/listings', async (req: AuthenticatedRequest, res: Response): Promi
 });
 
 // Update listing
-router.put('/listings/:id', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.put('/listings/:id', authorize('secondary_trading.update_listing'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
             res.status(503).json({ error: 'Database not available' });
@@ -202,7 +202,7 @@ router.put('/listings/:id', async (req: AuthenticatedRequest, res: Response): Pr
 });
 
 // Buy shares (create trade)
-router.post('/listings/:id/buy', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.post('/listings/:id/buy', authorize('secondary_trading.buy'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
             res.status(503).json({ error: 'Database not available' });
@@ -289,7 +289,7 @@ router.post('/listings/:id/buy', async (req: AuthenticatedRequest, res: Response
 });
 
 // Get trades for current user
-router.get('/trades/my', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get('/trades/my', authorize('secondary_trading.read'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
             res.json({ asBuyer: [], asSeller: [] });
@@ -358,15 +358,10 @@ router.get('/trades/my', async (req: AuthenticatedRequest, res: Response): Promi
 });
 
 // Execute trade (admin only)
-router.post('/trades/:id/execute', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.post('/trades/:id/execute', authorize('secondary_trading.execute'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
             res.status(503).json({ error: 'Database not available' });
-            return;
-        }
-
-        if (req.user?.role !== 'ADMIN' && req.user?.role !== 'SUPER_ADMIN') {
-            res.status(403).json({ error: 'Admin access required' });
             return;
         }
 

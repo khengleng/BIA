@@ -6,19 +6,10 @@
 
 import { Router, Request, Response } from 'express';
 import { prisma, prismaReplica } from '../database';
+import { AuthenticatedRequest, authorize } from '../middleware/authorize';
 import { shouldUseDatabase } from '../migration-manager';
 import { NotificationType } from '@prisma/client';
 import webpush from 'web-push';
-
-// Extended request interface for authenticated requests
-interface AuthenticatedRequest extends Request {
-    user?: {
-        id: string;
-        email: string;
-        role: string;
-        tenantId?: string;
-    };
-}
 
 const router = Router();
 
@@ -86,13 +77,7 @@ async function sendPushToUser(userId: string, title: string, body: string, url?:
 }
 
 // Create notification (Admin/Advisor only)
-router.post('/', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-    // SECURITY: Role-based authorization
-    const userRole = req.user?.role;
-    if (userRole !== 'ADMIN' && userRole !== 'ADVISOR' && userRole !== 'SUPER_ADMIN') {
-        res.status(403).json({ error: 'Only admins and advisors can create notifications' });
-        return;
-    }
+router.post('/', authorize('notification.broadcast'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         const { userId, type, title, message, actionUrl } = req.body;
 
@@ -141,7 +126,7 @@ router.post('/', async (req: AuthenticatedRequest, res: Response): Promise<void>
 });
 
 // Get user notifications
-router.get('/', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get('/', authorize('notification.list'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
             // For now, return sample notifications
@@ -194,7 +179,7 @@ router.get('/', async (req: AuthenticatedRequest, res: Response): Promise<void> 
 });
 
 // Mark notification as read
-router.put('/:id/read', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.put('/:id/read', authorize('notification.update'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
             res.json({ success: true, message: 'Notification marked as read (mock)' });
@@ -222,7 +207,7 @@ router.put('/:id/read', async (req: AuthenticatedRequest, res: Response): Promis
 });
 
 // Mark all as read
-router.put('/read-all', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.put('/read-all', authorize('notification.update'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
             res.json({ success: true, message: 'All notifications marked as read (mock)' });
@@ -249,7 +234,7 @@ router.put('/read-all', async (req: AuthenticatedRequest, res: Response): Promis
 });
 
 // Web Push Subscription
-router.post('/subscribe', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.post('/subscribe', authorize('notification.read'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         const subscription = req.body;
 

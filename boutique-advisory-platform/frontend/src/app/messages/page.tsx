@@ -19,7 +19,8 @@ import {
 } from 'lucide-react'
 import DashboardLayout from '../../components/layout/DashboardLayout'
 import { useToast } from '../../contexts/ToastContext'
-import { API_URL } from '@/lib/api'
+import { apiRequest, authorizedRequest } from '../../lib/api'
+import { useSocket } from '../../hooks/useSocket'
 
 interface Message {
     id: string
@@ -54,6 +55,7 @@ interface User {
 export default function MessagesPage() {
     const { addToast } = useToast()
     const [user, setUser] = useState<User | null>(null)
+    const [token, setToken] = useState<string | null>(null)
     const [conversations, setConversations] = useState<Conversation[]>([])
     const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null)
     const [messages, setMessages] = useState<Message[]>([])
@@ -63,25 +65,27 @@ export default function MessagesPage() {
     const [searchQuery, setSearchQuery] = useState('')
     const messagesEndRef = useRef<HTMLDivElement>(null)
 
+    const { socket, joinConversation, leaveConversation, sendMessage: socketSendMessage } = useSocket(token)
+
     useEffect(() => {
+        const storedToken = localStorage.getItem('token')
+        const userData = localStorage.getItem('user')
+
+        if (!storedToken || !userData) {
+            window.location.href = '/auth/login'
+            return
+        }
+
+        setToken(storedToken)
+        setUser(JSON.parse(userData))
+    }, [])
+
+    useEffect(() => {
+        if (!token) return
+
         const fetchConversations = async () => {
             try {
-                const token = localStorage.getItem('token')
-                const userData = localStorage.getItem('user')
-
-                if (!token || !userData) {
-                    window.location.href = '/auth/login'
-                    return
-                }
-
-                setUser(JSON.parse(userData))
-
-                const response = await fetch(`${API_URL}/api/messages/conversations`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                })
+                const response = await authorizedRequest('/api/messages/conversations')
 
                 if (response.ok) {
                     const data = await response.json()
@@ -99,20 +103,14 @@ export default function MessagesPage() {
         }
 
         fetchConversations()
-    }, [addToast])
+    }, [token, addToast])
 
     useEffect(() => {
-        const fetchMessages = async () => {
-            if (!selectedConversation) return
+        if (!selectedConversation) return
 
+        const fetchMessages = async () => {
             try {
-                const token = localStorage.getItem('token')
-                const response = await fetch(`${API_URL}/api/messages/conversations/${selectedConversation.id}`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                })
+                const response = await authorizedRequest(`/api/messages/conversations/${selectedConversation.id}`)
 
                 if (response.ok) {
                     const data = await response.json()
@@ -124,7 +122,35 @@ export default function MessagesPage() {
         }
 
         fetchMessages()
-    }, [selectedConversation])
+        joinConversation(selectedConversation.id)
+
+        return () => {
+            leaveConversation(selectedConversation.id)
+        }
+    }, [selectedConversation, joinConversation, leaveConversation])
+
+    // WebSocket listener for new messages
+    useEffect(() => {
+        if (!socket) return
+
+        const handleNewMessage = (data: Message) => {
+            if (data.conversationId === selectedConversation?.id) {
+                setMessages(prev => [...prev, data])
+            }
+
+            // Update conversation list item
+            setConversations(prev => prev.map(c =>
+                c.id === data.conversationId
+                    ? { ...c, lastMessage: data.content, lastMessageAt: data.createdAt }
+                    : c
+            ))
+        }
+
+        socket.on('new_message', handleNewMessage)
+        return () => {
+            socket.off('new_message')
+        }
+    }, [socket, selectedConversation])
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -134,17 +160,13 @@ export default function MessagesPage() {
         if (!newMessage.trim() || !selectedConversation) return
 
         setIsSending(true)
+        const content = newMessage.trim()
         try {
-            const token = localStorage.getItem('token')
-            const response = await fetch(`${API_URL}/api/messages`, {
+            const response = await authorizedRequest('/api/messages', {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
                 body: JSON.stringify({
                     conversationId: selectedConversation.id,
-                    content: newMessage.trim()
+                    content
                 })
             })
 
@@ -153,10 +175,13 @@ export default function MessagesPage() {
                 setMessages(prev => [...prev, sentMessage])
                 setNewMessage('')
 
-                // Update conversation last message
+                // Notify other participants via WebSocket
+                socketSendMessage(selectedConversation.id, content)
+
+                // Update conversation last message locally
                 setConversations(prev => prev.map(c =>
                     c.id === selectedConversation.id
-                        ? { ...c, lastMessage: newMessage.trim(), lastMessageAt: new Date().toISOString() }
+                        ? { ...c, lastMessage: content, lastMessageAt: new Date().toISOString() }
                         : c
                 ))
             } else {

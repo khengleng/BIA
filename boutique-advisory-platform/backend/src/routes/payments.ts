@@ -1,10 +1,10 @@
 import express, { Router, Response } from 'express';
-import { AuthenticatedRequest } from '../middleware/jwt-auth';
+import { AuthenticatedRequest, authorize } from '../middleware/authorize';
 import { createPaymentIntent } from '../utils/stripe';
 
 const router = Router();
 
-router.post('/create-payment-intent', async (req: AuthenticatedRequest, res: Response) => {
+router.post('/create-payment-intent', authorize('payment.create'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const { amount, bookingId, serviceId } = req.body;
 

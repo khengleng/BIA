@@ -1,143 +1,126 @@
-/**
- * Dashboard Routes
- * 
- * Provides dashboard analytics and overview data
- */
-
 import { Router, Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/jwt-auth';
-import { prisma, prismaReplica } from '../database';
-import { shouldUseDatabase } from '../migration-manager';
+import { prisma } from '../database';
 
 const router = Router();
 
-// Get dashboard analytics
-router.get('/analytics', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-    try {
-        if (!shouldUseDatabase()) {
-            // Return dummy data when database is not ready
-            res.json({
-                kpis: {
-                    totalDeals: 15,
-                    activeDeals: 8,
-                    totalInvestment: 5250000,
-                    avgDealSize: 656250,
-                    successRate: 85,
-                    activeSMEs: 15,
-                    activeInvestors: 28,
-                    pendingMatches: 12
-                },
-                monthlyDeals: [
-                    { month: 'Jan', deals: 2, value: 450000 },
-                    { month: 'Feb', deals: 3, value: 780000 },
-                    { month: 'Mar', deals: 4, value: 1200000 }
-                ],
-                sectorDistribution: {
-                    'Technology': 5,
-                    'Agriculture': 3,
-                    'Real Estate': 4,
-                    'Retail': 3
-                },
-                stageDistribution: {
-                    'SEED': 6,
-                    'GROWTH': 5,
-                    'EXPANSION': 3,
-                    'MATURE': 1
-                },
-                recentActivity: [
-                    { type: 'DEAL_CREATED', description: 'TechCorp Series A created', timestamp: new Date().toISOString() },
-                    { type: 'DOCUMENT_UPLOADED', description: 'Financial statements uploaded for AgriSmart', timestamp: new Date().toISOString() }
-                ]
-            });
-            return;
-        }
-
-        // Real data from database
-        const [smeCount, investorCount, dealCount, deals] = await Promise.all([
-            prisma.sME.count(),
-            prisma.investor.count(),
-            prisma.deal.count({ where: { status: 'PUBLISHED' } }),
-            prisma.deal.findMany({ select: { amount: true, createdAt: true, status: true, sme: { select: { sector: true, stage: true } } } })
-        ]);
-
-        const totalInvestment = deals.reduce((sum: number, d: any) => sum + d.amount, 0);
-
-        // Calculate distributions
-        const sectorDistribution: { [key: string]: number } = {};
-        const stageDistribution: { [key: string]: number } = {};
-        deals.forEach((d: any) => {
-            const sector = d.sme?.sector || 'Unknown';
-            const stage = d.sme?.stage || 'Unknown';
-            sectorDistribution[sector] = (sectorDistribution[sector] || 0) + 1;
-            stageDistribution[stage] = (stageDistribution[stage] || 0) + 1;
-        });
-
-        res.json({
-            kpis: {
-                totalDeals: deals.length,
-                activeDeals: dealCount,
-                totalInvestment,
-                avgDealSize: deals.length > 0 ? totalInvestment / deals.length : 0,
-                successRate: 75,
-                activeSMEs: smeCount,
-                activeInvestors: investorCount,
-                pendingMatches: 5
-            },
-            monthlyDeals: [
-                { month: 'Jan', deals: 1, value: 100000 },
-                { month: 'Feb', deals: 2, value: 250000 }
-            ],
-            sectorDistribution,
-            stageDistribution,
-            recentActivity: [
-                { type: 'DEAL_CREATED', description: 'New deal published on platform', timestamp: new Date().toISOString() }
-            ]
-        });
-    } catch (error) {
-        console.error('Error fetching analytics:', error);
-        res.status(500).json({ error: 'Failed to fetch analytics' });
-    }
-});
-
-// Get user-specific dashboard data
-router.get('/my', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+/**
+ * Get role-based dashboard statistics
+ * GET /api/dashboard/stats
+ */
+router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
     try {
         const userId = req.user?.id;
         const role = req.user?.role;
+        const tenantId = req.user?.tenantId || 'default';
 
-        // Return role-specific dashboard data
-        let dashboardData: any = {
-            role,
-            summary: {}
-        };
-
-        if (role === 'INVESTOR') {
-            dashboardData.summary = {
-                portfolioValue: 0,
-                activeInvestments: 0,
-                pendingDeals: 0,
-                returns: 0
-            };
-        } else if (role === 'SME') {
-            dashboardData.summary = {
-                fundingRaised: 0,
-                fundingGoal: 0,
-                investorConnections: 0,
-                dealStatus: 'Not Started'
-            };
-        } else if (role === 'ADMIN' || role === 'ADVISOR') {
-            dashboardData.summary = {
-                managedSMEs: 0,
-                managedDeals: 0,
-                pendingApprovals: 0,
-                platformHealth: 'Good'
-            };
+        if (!userId) {
+            return res.status(401).json({ error: 'Unauthorized' });
         }
 
-        res.json(dashboardData);
+        let stats: any = {};
+
+        switch (role) {
+            case 'SME': {
+                const sme = await prisma.sME.findUnique({ where: { userId } });
+                if (sme) {
+                    const [dealsCount, activeBookings, documentCount] = await Promise.all([
+                        prisma.deal.count({ where: { smeId: sme.id } }),
+                        prisma.booking.count({ where: { userId, status: 'CONFIRMED' } }),
+                        prisma.document.count({ where: { smeId: sme.id } })
+                    ]);
+
+                    const deals = await prisma.deal.findMany({ where: { smeId: sme.id } });
+                    const totalFunding = deals.reduce((acc, deal) => acc + deal.amount, 0);
+
+                    stats = {
+                        totalDeals: dealsCount,
+                        activeBookings,
+                        documents: documentCount,
+                        fundingGoal: totalFunding,
+                        profileCompleteness: 75, // Placeholder for logic
+                        matchCount: await prisma.match.count({ where: { smeId: sme.id } })
+                    };
+                }
+                break;
+            }
+
+            case 'INVESTOR': {
+                const investor = await prisma.investor.findUnique({ where: { userId } });
+                if (investor) {
+                    const [matchCount, investmentCount, activeOffers] = await Promise.all([
+                        prisma.match.count({ where: { investorId: investor.id } }),
+                        prisma.dealInvestor.count({ where: { investorId: investor.id, status: 'COMPLETED' } }),
+                        prisma.dealInvestor.count({ where: { investorId: investor.id, status: 'PENDING' } })
+                    ]);
+
+                    stats = {
+                        totalMatches: matchCount,
+                        activeInvestments: investmentCount,
+                        pendingOffers: activeOffers,
+                        portfolioValue: 0, // Would need more complex calculation
+                        avgMatchScore: 85
+                    };
+                }
+                break;
+            }
+
+            case 'ADVISOR': {
+                const advisor = await prisma.advisor.findUnique({ where: { userId } });
+                if (advisor) {
+                    const [totalBookings, activeClients, pendingCerts] = await Promise.all([
+                        prisma.booking.count({ where: { advisorId: advisor.id } }),
+                        prisma.booking.groupBy({
+                            by: ['userId'],
+                            where: { advisorId: advisor.id }
+                        }).then(groups => groups.length),
+                        prisma.certification.count({ where: { advisorId: advisor.id, status: 'PENDING' } })
+                    ]);
+
+                    const completedPaidBookings = await prisma.booking.findMany({
+                        where: { advisorId: advisor.id, status: 'COMPLETED', amount: { not: null } }
+                    });
+                    const totalEarnings = completedPaidBookings.reduce((acc, b) => acc + (b.amount || 0), 0);
+
+                    stats = {
+                        bookings: totalBookings,
+                        clients: activeClients,
+                        pendingCertifications: pendingCerts,
+                        earnings: totalEarnings,
+                        rating: 4.9
+                    };
+                }
+                break;
+            }
+
+            case 'ADMIN':
+            case 'SUPER_ADMIN': {
+                const [users, smes, investors, deals, revenue] = await Promise.all([
+                    prisma.user.count({ where: { tenantId } }),
+                    prisma.sME.count({ where: { tenantId } }),
+                    prisma.investor.count({ where: { tenantId } }),
+                    prisma.deal.count({ where: { tenantId } }),
+                    prisma.booking.aggregate({
+                        where: { status: 'CONFIRMED' },
+                        _sum: { amount: true }
+                    })
+                ]);
+
+                stats = {
+                    totalUsers: users,
+                    totalSMEs: smes,
+                    totalInvestors: investors,
+                    activeDeals: deals,
+                    platformRevenue: revenue._sum.amount || 0
+                };
+                break;
+            }
+        }
+
+        return res.json({ role, stats });
     } catch (error) {
-        console.error('Error fetching dashboard:', error);
-        res.status(500).json({ error: 'Failed to fetch dashboard' });
+        console.error('Dashboard stats error:', error);
+        return res.status(500).json({ error: 'Failed to fetch dashboard statistics' });
     }
 });
 

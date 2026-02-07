@@ -1,11 +1,12 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../database';
 import { validateBody, createDealSchema, updateDealSchema } from '../middleware/validation';
+import { authorize, AuthenticatedRequest } from '../middleware/authorize';
 
 const router = Router();
 
 // Get all deals
-router.get('/', async (req: any, res: Response) => {
+router.get('/', authorize('deal.list'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user?.id;
     const userRole = req.user?.role;
@@ -13,7 +14,7 @@ router.get('/', async (req: any, res: Response) => {
 
     let query: any = {
       where: {
-        tenantId: tenantId // Multi-tenant isolation
+        tenantId: tenantId
       },
       include: {
         sme: true,
@@ -26,7 +27,6 @@ router.get('/', async (req: any, res: Response) => {
     };
 
     if (userRole === 'SME') {
-      // Find SME and their deals
       const sme = await prisma.sME.findUnique({ where: { userId: userId } });
       if (sme) {
         query.where.smeId = sme.id;
@@ -34,10 +34,8 @@ router.get('/', async (req: any, res: Response) => {
         return res.json([]);
       }
     } else if (userRole === 'INVESTOR') {
-      // Investors see published deals
       query.where.status = 'PUBLISHED';
     }
-    // ADVISOR, ADMIN see all within tenant
 
     const deals = await prisma.deal.findMany(query);
     return res.json(deals);
@@ -48,13 +46,18 @@ router.get('/', async (req: any, res: Response) => {
 });
 
 // Get deal by ID
-router.get('/:id', async (req: Request, res: Response) => {
+router.get('/:id', authorize('deal.read'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
+    const userId = req.user?.id;
+    const userRole = req.user?.role;
+
     const deal = await prisma.deal.findUnique({
       where: { id },
       include: {
-        sme: true,
+        sme: {
+          include: { user: true }
+        },
         investors: {
           include: {
             investor: true
@@ -68,6 +71,11 @@ router.get('/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Deal not found' });
     }
 
+    // Ownership check for SME role
+    if (userRole === 'SME' && deal.sme.userId !== userId) {
+      return res.status(403).json({ error: 'Access denied: You can only view your own deals' });
+    }
+
     return res.json(deal);
   } catch (error) {
     console.error('Get deal error:', error);
@@ -76,14 +84,21 @@ router.get('/:id', async (req: Request, res: Response) => {
 });
 
 // Create new deal - with input validation
-router.post('/', validateBody(createDealSchema), async (req: Request, res: Response) => {
+router.post('/', authorize('deal.create'), validateBody(createDealSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { smeId, title, description, amount, equity, successFee, terms, isDocumentLocked } = req.body;
+    const userId = req.user?.id;
+    const userRole = req.user?.role;
 
     // Verify SME exists
     const sme = await prisma.sME.findUnique({ where: { id: smeId } });
     if (!sme) {
       return res.status(404).json({ error: 'SME not found' });
+    }
+
+    // Ownership check for SME role
+    if (userRole === 'SME' && sme.userId !== userId) {
+      return res.status(403).json({ error: 'Access denied: You can only create deals for your own SME profile' });
     }
 
     const deal = await prisma.deal.create({
@@ -116,15 +131,25 @@ router.post('/', validateBody(createDealSchema), async (req: Request, res: Respo
 });
 
 // Update deal - with input validation
-router.put('/:id', validateBody(updateDealSchema), async (req: Request, res: Response) => {
+router.put('/:id', authorize('deal.update'), validateBody(updateDealSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
+    const userId = req.user?.id;
+    const userRole = req.user?.role;
     const updateData = req.body;
 
     // Check if deal exists
-    const existingDeal = await prisma.deal.findUnique({ where: { id } });
+    const existingDeal = await prisma.deal.findUnique({
+      where: { id },
+      include: { sme: true }
+    });
     if (!existingDeal) {
       return res.status(404).json({ error: 'Deal not found' });
+    }
+
+    // Ownership check for SME role
+    if (userRole === 'SME' && existingDeal.sme.userId !== userId) {
+      return res.status(403).json({ error: 'Access denied: You can only update your own deals' });
     }
 
     const deal = await prisma.deal.update({

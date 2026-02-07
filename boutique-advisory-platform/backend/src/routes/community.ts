@@ -5,14 +5,14 @@
  */
 
 import { Router, Response } from 'express';
-import { AuthenticatedRequest } from '../middleware/auth';
+import { AuthenticatedRequest, authorize } from '../middleware/authorize';
 import { prisma, prismaReplica } from '../database';
 import { shouldUseDatabase } from '../migration-manager';
 
 const router = Router();
 
 // Get all posts
-router.get('/posts', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get('/posts', authorize('community.post_list'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
             res.json({ posts: [], total: 0, page: 1, limit: 20, totalPages: 0 });
@@ -99,7 +99,7 @@ router.get('/posts', async (req: AuthenticatedRequest, res: Response): Promise<v
 });
 
 // Get post by ID
-router.get('/posts/:id', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get('/posts/:id', authorize('community.post_read'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
             res.status(404).json({ error: 'Post not found' });
@@ -140,7 +140,7 @@ router.get('/posts/:id', async (req: AuthenticatedRequest, res: Response): Promi
 });
 
 // Create post
-router.post('/posts', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.post('/posts', authorize('community.post_create'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
             res.status(503).json({ error: 'Database not available' });
@@ -176,7 +176,7 @@ router.post('/posts', async (req: AuthenticatedRequest, res: Response): Promise<
 });
 
 // Update post
-router.put('/posts/:id', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.put('/posts/:id', authorize('community.post_update'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
             res.status(503).json({ error: 'Database not available' });
@@ -193,8 +193,10 @@ router.put('/posts/:id', async (req: AuthenticatedRequest, res: Response): Promi
         }
 
         // Check ownership or admin
-        const isOwner = existing.authorId === req.user?.id;
-        const isAdmin = req.user?.role === 'ADMIN' || req.user?.role === 'SUPER_ADMIN';
+        const userId = req.user?.id;
+        const userRole = req.user?.role;
+        const isOwner = existing.authorId === userId;
+        const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
 
         if (!isOwner && !isAdmin) {
             res.status(403).json({ error: 'Not authorized to edit this post' });
@@ -223,7 +225,7 @@ router.put('/posts/:id', async (req: AuthenticatedRequest, res: Response): Promi
 });
 
 // Delete post
-router.delete('/posts/:id', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.delete('/posts/:id', authorize('community.post_delete'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
             res.status(503).json({ error: 'Database not available' });
@@ -240,8 +242,10 @@ router.delete('/posts/:id', async (req: AuthenticatedRequest, res: Response): Pr
         }
 
         // Check ownership or admin
-        const isOwner = existing.authorId === req.user?.id;
-        const isAdmin = req.user?.role === 'ADMIN' || req.user?.role === 'SUPER_ADMIN';
+        const userId = req.user?.id;
+        const userRole = req.user?.role;
+        const isOwner = existing.authorId === userId;
+        const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
 
         if (!isOwner && !isAdmin) {
             res.status(403).json({ error: 'Not authorized to delete this post' });
@@ -260,7 +264,7 @@ router.delete('/posts/:id', async (req: AuthenticatedRequest, res: Response): Pr
 });
 
 // Like post
-router.post('/posts/:id/like', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.post('/posts/:id/like', authorize('community.post_read'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
             res.status(503).json({ error: 'Database not available' });
@@ -280,7 +284,7 @@ router.post('/posts/:id/like', async (req: AuthenticatedRequest, res: Response):
 });
 
 // Add comment
-router.post('/posts/:id/comments', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.post('/posts/:id/comments', authorize('community.comment_create'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
             res.status(503).json({ error: 'Database not available' });
@@ -321,7 +325,7 @@ router.post('/posts/:id/comments', async (req: AuthenticatedRequest, res: Respon
 });
 
 // Like comment
-router.post('/comments/:id/like', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.post('/comments/:id/like', authorize('community.post_read'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
             res.status(503).json({ error: 'Database not available' });
@@ -341,7 +345,7 @@ router.post('/comments/:id/like', async (req: AuthenticatedRequest, res: Respons
 });
 
 // Get community stats
-router.get('/stats', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get('/stats', authorize('community.post_list'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
             res.json({
@@ -389,7 +393,7 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response): Promise<v
 });
 
 // Get categories
-router.get('/categories', async (req: AuthenticatedRequest, res: Response) => {
+router.get('/categories', authorize('community.post_list'), async (req: AuthenticatedRequest, res: Response) => {
     res.json({
         categories: [
             { id: 'GENERAL', name: 'General Discussion', description: 'General topics and discussions' },

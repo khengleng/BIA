@@ -1,5 +1,5 @@
 import { Router, Response } from 'express';
-import { AuthenticatedRequest } from '../middleware/jwt-auth';
+import { AuthenticatedRequest, authorize, requireRole } from '../middleware/authorize';
 import { prisma } from '../database';
 import { sendNewBookingNotification, sendBookingConfirmation, sendPaymentReceiptEmail } from '../utils/email';
 
@@ -306,7 +306,7 @@ router.post('/book', async (req: AuthenticatedRequest, res: Response) => {
     }
 });
 
-// Get my bookings
+// Get my bookings (Anyone authenticated can see their own)
 router.get('/my-bookings', async (req: AuthenticatedRequest, res: Response) => {
     try {
         const userId = req.user?.id;
@@ -328,14 +328,10 @@ router.get('/my-bookings', async (req: AuthenticatedRequest, res: Response) => {
 // ==================== SERVICE MANAGEMENT (For Advisors/Admins) ====================
 
 // Create a new advisory service (Advisor/Admin only)
-router.post('/services', async (req: AuthenticatedRequest, res: Response) => {
+router.post('/services', authorize('advisory_service.create'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const userId = req.user?.id;
         const userRole = req.user?.role;
-
-        if (!userId || !['ADVISOR', 'ADMIN'].includes(userRole || '')) {
-            return res.status(403).json({ error: 'Only advisors and admins can create services' });
-        }
 
         const { name, category, description, price, duration, features } = req.body;
 
@@ -344,7 +340,7 @@ router.post('/services', async (req: AuthenticatedRequest, res: Response) => {
             where: { userId }
         });
 
-        if (!advisor && userRole !== 'ADMIN') {
+        if (!advisor && userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
             return res.status(404).json({ error: 'Advisor profile not found' });
         }
 
@@ -391,7 +387,14 @@ router.post('/services', async (req: AuthenticatedRequest, res: Response) => {
 });
 
 // Update an advisory service
-router.put('/services/:id', async (req: AuthenticatedRequest, res: Response) => {
+router.put('/services/:id', authorize('advisory_service.update', {
+    getOwnerId: (req) => {
+        // We'll handle refined ownership check inside since we need to fetch the service first
+        // Or we can use a custom middleware. 
+        // For now, let's keep the internal check but use the authorize decoration for audit.
+        return undefined;
+    }
+}), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const userId = req.user?.id;
         const userRole = req.user?.role;
@@ -408,7 +411,7 @@ router.put('/services/:id', async (req: AuthenticatedRequest, res: Response) => 
         }
 
         // Check if user owns this service or is admin
-        if (userRole !== 'ADMIN' && existingService.advisor.userId !== userId) {
+        if (userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN' && existingService.advisor.userId !== userId) {
             return res.status(403).json({ error: 'Not authorized to update this service' });
         }
 
@@ -447,7 +450,7 @@ router.put('/services/:id', async (req: AuthenticatedRequest, res: Response) => 
 });
 
 // Delete an advisory service
-router.delete('/services/:id', async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/services/:id', authorize('advisory_service.delete'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const userId = req.user?.id;
         const userRole = req.user?.role;
@@ -464,7 +467,7 @@ router.delete('/services/:id', async (req: AuthenticatedRequest, res: Response) 
         }
 
         // Check if user owns this service or is admin
-        if (userRole !== 'ADMIN' && existingService.advisor.userId !== userId) {
+        if (userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN' && existingService.advisor.userId !== userId) {
             return res.status(403).json({ error: 'Not authorized to delete this service' });
         }
 
@@ -482,7 +485,7 @@ router.delete('/services/:id', async (req: AuthenticatedRequest, res: Response) 
 });
 
 // Get my services (for advisors)
-router.get('/my-services', async (req: AuthenticatedRequest, res: Response) => {
+router.get('/my-services', authorize('advisory_service.manage'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const userId = req.user?.id;
 
@@ -503,6 +506,66 @@ router.get('/my-services', async (req: AuthenticatedRequest, res: Response) => {
     } catch (error) {
         console.error('Error fetching my services:', error);
         return res.status(500).json({ error: 'Failed to fetch services' });
+    }
+});
+
+// ==================== CERTIFICATION MANAGEMENT ====================
+
+// Get certification requests (for Advisors/Admins)
+router.get('/certifications', authorize('certification.list'), async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const certifications = await prisma.certification.findMany({
+            include: {
+                sme: {
+                    select: {
+                        name: true,
+                        sector: true,
+                        stage: true
+                    }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        return res.json({ certifications });
+    } catch (error) {
+        console.error('Error fetching certifications:', error);
+        return res.status(500).json({ error: 'Failed to fetch certifications' });
+    }
+});
+
+// Update certification status
+router.patch('/certifications/:id', authorize('certification.approve'), async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { status, comments, score } = req.body;
+
+        const certification = await prisma.certification.update({
+            where: { id },
+            data: {
+                status,
+                ...(comments && { comments }),
+                ...(score && { score: parseFloat(score) })
+            },
+            include: { sme: true }
+        });
+
+        // If approved, update SME status
+        if (status === 'APPROVED') {
+            await prisma.sME.update({
+                where: { id: certification.smeId },
+                data: {
+                    certified: true,
+                    certificationDate: new Date(),
+                    status: 'CERTIFIED'
+                }
+            });
+        }
+
+        return res.json({ message: 'Certification updated', certification });
+    } catch (error) {
+        console.error('Error updating certification:', error);
+        return res.status(500).json({ error: 'Failed to update certification' });
     }
 });
 

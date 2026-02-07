@@ -1,11 +1,11 @@
 import { Router, Response } from 'express';
-import { AuthenticatedRequest } from '../middleware/jwt-auth';
+import { AuthenticatedRequest, authorize } from '../middleware/authorize';
 import { prisma } from '../database';
 
 const router = Router();
 
 // Get reports list
-router.get('/', async (req: AuthenticatedRequest, res: Response) => {
+router.get('/', authorize('report.list'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const reports = [
             {
@@ -36,7 +36,7 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
 });
 
 // Get stats for reports
-router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
+router.get('/stats', authorize('report.read'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const [dealCount, smeCount] = await Promise.all([
             prisma.deal.count(),
@@ -58,7 +58,7 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
 });
 
 // Generate a new report
-router.post('/generate', async (req: AuthenticatedRequest, res: Response) => {
+router.post('/generate', authorize('report.create'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const { reportType } = req.body;
 

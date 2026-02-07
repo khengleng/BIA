@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Plus, Edit, Trash2, Save, X } from 'lucide-react'
 import { API_URL } from '@/lib/api'
+import DashboardLayout from '@/components/layout/DashboardLayout'
 
 interface Service {
     id: string
@@ -61,7 +62,6 @@ export default function ManageServicesPage() {
 
         try {
             if (editingId) {
-                // Update existing service
                 const response = await fetch(`${API_URL}/api/advisory/services/${editingId}`, {
                     method: 'PUT',
                     headers: {
@@ -78,7 +78,6 @@ export default function ManageServicesPage() {
                     fetchMyServices()
                 }
             } else {
-                // Create new service
                 const response = await fetch(`${API_URL}/api/advisory/services`, {
                     method: 'POST',
                     headers: {
@@ -154,14 +153,14 @@ export default function ManageServicesPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-900 p-8">
+        <DashboardLayout>
             <div className="max-w-6xl mx-auto">
                 <div className="flex justify-between items-center mb-8">
                     <h1 className="text-3xl font-bold text-white">Manage Advisory Services</h1>
                     {!isCreating && (
                         <button
                             onClick={() => setIsCreating(true)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center"
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center transition-colors"
                         >
                             <Plus className="w-4 h-4 mr-2" />
                             Add New Service
@@ -169,14 +168,13 @@ export default function ManageServicesPage() {
                     )}
                 </div>
 
-                {/* Create/Edit Form */}
                 {isCreating && (
-                    <div className="bg-gray-800 rounded-lg p-6 mb-8">
+                    <div className="bg-gray-800 rounded-lg p-6 mb-8 border border-gray-700">
                         <h2 className="text-xl font-bold text-white mb-4">
                             {editingId ? 'Edit Service' : 'Create New Service'}
                         </h2>
                         <form onSubmit={handleSubmit} className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-300 mb-2">
                                         Service Name
@@ -186,7 +184,7 @@ export default function ManageServicesPage() {
                                         required
                                         value={formData.name}
                                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                        className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500"
+                                        className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none border border-gray-600"
                                         placeholder="e.g., M&A Advisory"
                                     />
                                 </div>
@@ -199,7 +197,7 @@ export default function ManageServicesPage() {
                                         required
                                         value={formData.category}
                                         onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                                        className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500"
+                                        className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none border border-gray-600"
                                         placeholder="e.g., Financial"
                                     />
                                 </div>
@@ -213,13 +211,13 @@ export default function ManageServicesPage() {
                                     required
                                     value={formData.description}
                                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                    className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500"
+                                    className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none border border-gray-600"
                                     rows={3}
                                     placeholder="Describe your service..."
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-300 mb-2">
                                         Price (USD)
@@ -230,7 +228,7 @@ export default function ManageServicesPage() {
                                         step="0.01"
                                         value={formData.price}
                                         onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                                        className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500"
+                                        className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none border border-gray-600"
                                         placeholder="e.g., 5000"
                                     />
                                 </div>
@@ -243,7 +241,7 @@ export default function ManageServicesPage() {
                                         required
                                         value={formData.duration}
                                         onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-                                        className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500"
+                                        className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none border border-gray-600"
                                         placeholder="e.g., 4 weeks"
                                     />
                                 </div>
@@ -258,15 +256,15 @@ export default function ManageServicesPage() {
                                     required
                                     value={formData.features}
                                     onChange={(e) => setFormData({ ...formData, features: e.target.value })}
-                                    className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500"
+                                    className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none border border-gray-600"
                                     placeholder="e.g., Due diligence, Valuation, Deal structuring"
                                 />
                             </div>
 
-                            <div className="flex space-x-4">
+                            <div className="flex space-x-4 pt-4">
                                 <button
                                     type="submit"
-                                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg flex items-center"
+                                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg flex items-center transition-colors"
                                 >
                                     <Save className="w-4 h-4 mr-2" />
                                     {editingId ? 'Update Service' : 'Create Service'}
@@ -274,7 +272,7 @@ export default function ManageServicesPage() {
                                 <button
                                     type="button"
                                     onClick={handleCancel}
-                                    className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg flex items-center"
+                                    className="bg-gray-700 hover:bg-gray-600 text-white px-6 py-2 rounded-lg flex items-center transition-colors"
                                 >
                                     <X className="w-4 h-4 mr-2" />
                                     Cancel
@@ -284,34 +282,32 @@ export default function ManageServicesPage() {
                     </div>
                 )}
 
-                {/* Services List */}
                 <div className="space-y-4">
                     {services.map((service) => (
-                        <div key={service.id} className="bg-gray-800 rounded-lg p-6">
+                        <div key={service.id} className="bg-gray-800 rounded-lg p-6 border border-gray-700 hover:border-blue-500 transition-colors">
                             <div className="flex justify-between items-start">
                                 <div className="flex-1">
                                     <div className="flex items-center space-x-3 mb-2">
                                         <h3 className="text-xl font-bold text-white">{service.name}</h3>
-                                        <span className="px-2 py-1 text-xs bg-blue-600 text-white rounded">
+                                        <span className="px-2 py-1 text-[10px] font-bold bg-blue-600 text-white rounded uppercase tracking-wider">
                                             {service.category}
                                         </span>
-                                        <span className={`px-2 py-1 text-xs rounded ${service.status === 'ACTIVE'
-                                                ? 'bg-green-600 text-white'
-                                                : 'bg-gray-600 text-gray-300'
+                                        <span className={`px-2 py-1 text-[10px] font-bold rounded uppercase tracking-wider ${service.status === 'ACTIVE'
+                                            ? 'bg-green-600 text-white'
+                                            : 'bg-gray-600 text-gray-300'
                                             }`}>
                                             {service.status}
                                         </span>
                                     </div>
-                                    <p className="text-gray-400 mb-3">{service.description}</p>
+                                    <p className="text-gray-400 mb-3 line-clamp-2">{service.description}</p>
                                     <div className="flex items-center space-x-6 text-sm text-gray-400">
-                                        <span className="font-semibold text-blue-400">${service.price.toLocaleString()}</span>
+                                        <span className="font-semibold text-blue-400 font-mono">${service.price.toLocaleString()}</span>
                                         <span>⏱️ {service.duration}</span>
                                     </div>
-                                    <div className="mt-3">
-                                        <p className="text-sm text-gray-500 mb-1">Features:</p>
+                                    <div className="mt-4">
                                         <div className="flex flex-wrap gap-2">
                                             {service.features.map((feature, idx) => (
-                                                <span key={idx} className="px-2 py-1 text-xs bg-gray-700 text-gray-300 rounded">
+                                                <span key={idx} className="px-2 py-1 text-xs bg-gray-700 text-gray-300 rounded-md">
                                                     {feature}
                                                 </span>
                                             ))}
@@ -321,13 +317,15 @@ export default function ManageServicesPage() {
                                 <div className="flex space-x-2 ml-4">
                                     <button
                                         onClick={() => handleEdit(service)}
-                                        className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+                                        className="p-2 bg-gray-700 hover:bg-blue-600 text-white rounded-lg transition-colors"
+                                        title="Edit Service"
                                     >
                                         <Edit className="w-4 h-4" />
                                     </button>
                                     <button
                                         onClick={() => handleDelete(service.id)}
-                                        className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg"
+                                        className="p-2 bg-gray-700 hover:bg-red-600 text-white rounded-lg transition-colors"
+                                        title="Delete Service"
                                     >
                                         <Trash2 className="w-4 h-4" />
                                     </button>
@@ -337,19 +335,22 @@ export default function ManageServicesPage() {
                     ))}
 
                     {services.length === 0 && !isCreating && (
-                        <div className="text-center py-12 text-gray-400">
-                            <p className="text-lg mb-4">No services yet</p>
+                        <div className="text-center py-20 bg-gray-800 rounded-lg border border-dashed border-gray-700 text-gray-400">
+                            <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <Plus className="w-8 h-8 text-gray-500" />
+                            </div>
+                            <p className="text-lg mb-6">You haven't listed any advisory services yet.</p>
                             <button
                                 onClick={() => setIsCreating(true)}
-                                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg inline-flex items-center"
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg inline-flex items-center transition-all hover:scale-105"
                             >
-                                <Plus className="w-4 h-4 mr-2" />
+                                <Plus className="w-5 h-5 mr-2" />
                                 Create Your First Service
                             </button>
                         </div>
                     )}
                 </div>
             </div>
-        </div>
+        </DashboardLayout>
     )
 }

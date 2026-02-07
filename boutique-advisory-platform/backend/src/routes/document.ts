@@ -1,13 +1,14 @@
 import { Router, Response } from 'express';
 import { prisma } from '../database';
-import { authenticateToken, AuthenticatedRequest } from '../middleware/jwt-auth';
+import { AuthenticatedRequest, authorize } from '../middleware/authorize';
 import { upload } from '../middleware/upload';
 import { uploadFile, deleteFile, getPresignedUrl } from '../utils/fileUpload';
 
 const router = Router();
 
 // Upload document to cloud storage
-router.post('/upload', authenticateToken, upload.single('file'), async (req: AuthenticatedRequest, res: Response) => {
+// Upload document to cloud storage
+router.post('/upload', authorize('document.create'), upload.single('file'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const { name, type, smeId, dealId } = req.body;
         const file = req.file;
@@ -51,7 +52,8 @@ router.post('/upload', authenticateToken, upload.single('file'), async (req: Aut
 });
 
 // Get document by ID with access control
-router.get('/:id', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+// Get document by ID with access control
+router.get('/:id', authorize('document.read'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const { id } = req.params;
         const document = await prisma.document.findUnique({
@@ -114,7 +116,8 @@ router.get('/:id', authenticateToken, async (req: AuthenticatedRequest, res: Res
 });
 
 // Get presigned URL for secure document download
-router.get('/:id/download', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+// Get presigned URL for secure document download
+router.get('/:id/download', authorize('document.download'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const { id } = req.params;
         const document = await prisma.document.findUnique({
@@ -175,7 +178,8 @@ router.get('/:id/download', authenticateToken, async (req: AuthenticatedRequest,
 });
 
 // Delete document
-router.delete('/:id', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+// Delete document
+router.delete('/:id', authorize('document.delete'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const { id } = req.params;
         const document = await prisma.document.findUnique({
@@ -216,7 +220,8 @@ router.delete('/:id', authenticateToken, async (req: AuthenticatedRequest, res: 
 });
 
 // List documents with filters
-router.get('/', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+// List documents with filters
+router.get('/', authorize('document.list'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const { smeId, dealId, type } = req.query;
 

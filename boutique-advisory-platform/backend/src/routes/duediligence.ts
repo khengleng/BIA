@@ -5,7 +5,7 @@
  */
 
 import { Router, Response } from 'express';
-import { AuthenticatedRequest } from '../middleware/auth';
+import { AuthenticatedRequest, authorize } from '../middleware/authorize';
 import { prisma, prismaReplica } from '../database';
 import { shouldUseDatabase } from '../migration-manager';
 import { RiskLevel, DueDiligenceStatus } from '@prisma/client';
@@ -63,7 +63,7 @@ function getGrade(score: number): string {
 }
 
 // Get all due diligence reports
-router.get('/', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get('/', authorize('due_diligence.list'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
             res.json([]);
@@ -104,7 +104,7 @@ router.get('/', async (req: AuthenticatedRequest, res: Response): Promise<void> 
 });
 
 // Get due diligence by ID
-router.get('/:id', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get('/:id', authorize('due_diligence.read'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
             res.status(404).json({ error: 'Due diligence not found' });
@@ -145,7 +145,7 @@ router.get('/:id', async (req: AuthenticatedRequest, res: Response): Promise<voi
 });
 
 // Get due diligence for specific SME
-router.get('/sme/:smeId', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get('/sme/:smeId', authorize('due_diligence.read'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
             res.status(404).json({ error: 'No completed due diligence found for this SME' });
@@ -187,17 +187,10 @@ router.get('/sme/:smeId', async (req: AuthenticatedRequest, res: Response): Prom
 });
 
 // Create new due diligence (Advisor/Admin only)
-router.post('/', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.post('/', authorize('due_diligence.create'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
             res.status(503).json({ error: 'Database not available' });
-            return;
-        }
-
-        // SECURITY: Only Advisors and Admins can create due diligence reports
-        const userRole = req.user?.role;
-        if (userRole !== 'ADVISOR' && userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
-            res.status(403).json({ error: 'Only advisors and admins can create due diligence reports' });
             return;
         }
 
@@ -251,7 +244,7 @@ router.post('/', async (req: AuthenticatedRequest, res: Response): Promise<void>
 });
 
 // Update due diligence scores (Advisor only)
-router.put('/:id', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.put('/:id', authorize('due_diligence.update'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
             res.status(503).json({ error: 'Database not available' });
@@ -354,7 +347,7 @@ router.put('/:id', async (req: AuthenticatedRequest, res: Response): Promise<voi
 });
 
 // Get score breakdown
-router.get('/:id/breakdown', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get('/:id/breakdown', authorize('due_diligence.read'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
             res.status(404).json({ error: 'Due diligence not found' });

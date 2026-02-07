@@ -5,7 +5,7 @@
  */
 
 import { Router, Response } from 'express';
-import { AuthenticatedRequest } from '../middleware/auth';
+import { AuthenticatedRequest, authorize } from '../middleware/authorize';
 import { prisma, prismaReplica } from '../database';
 import { shouldUseDatabase } from '../migration-manager';
 import { SyndicateStatus } from '@prisma/client';
@@ -25,7 +25,7 @@ async function calculateRaisedAmount(syndicateId: string): Promise<number> {
 }
 
 // Get all syndicates
-router.get('/', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get('/', authorize('syndicate.list'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
             // Fallback to in-memory for backwards compatibility
@@ -78,7 +78,7 @@ router.get('/', async (req: AuthenticatedRequest, res: Response): Promise<void> 
 });
 
 // Get syndicate by ID
-router.get('/:id', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get('/:id', authorize('syndicate.read'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
             res.status(404).json({ error: 'Syndicate not found' });
@@ -144,7 +144,7 @@ router.get('/:id', async (req: AuthenticatedRequest, res: Response): Promise<voi
 });
 
 // Create syndicate (Lead investor only)
-router.post('/', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.post('/', authorize('syndicate.create'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
             res.status(503).json({ error: 'Database not available' });
@@ -211,7 +211,7 @@ router.post('/', async (req: AuthenticatedRequest, res: Response): Promise<void>
 });
 
 // Join syndicate
-router.post('/:id/join', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.post('/:id/join', authorize('syndicate.join'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
             res.status(503).json({ error: 'Database not available' });
@@ -294,7 +294,7 @@ router.post('/:id/join', async (req: AuthenticatedRequest, res: Response): Promi
 });
 
 // Approve member (Lead investor only)
-router.post('/:id/members/:memberId/approve', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.post('/:id/members/:memberId/approve', authorize('syndicate.manage'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
             res.status(503).json({ error: 'Database not available' });

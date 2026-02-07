@@ -1,5 +1,5 @@
 import { Router, Response } from 'express';
-import { AuthenticatedRequest } from '../middleware/jwt-auth';
+import { AuthenticatedRequest, authorize } from '../middleware/authorize';
 import { prisma } from '../database';
 import { upload } from '../middleware/upload';
 import { uploadFile } from '../utils/fileUpload';
@@ -7,7 +7,7 @@ import { uploadFile } from '../utils/fileUpload';
 const router = Router();
 
 // Get datarooms (grouped by deal)
-router.get('/', async (req: AuthenticatedRequest, res: Response) => {
+router.get('/', authorize('dataroom.list'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const userId = req.user?.id;
         const userRole = req.user?.role;
@@ -99,7 +99,7 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
 });
 
 // Upload document to dataroom (deal)
-router.post('/:dealId/documents', upload.single('file'), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:dealId/documents', authorize('dataroom.upload'), upload.single('file'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const { dealId } = req.params;
         const { name, category } = req.body;
@@ -172,7 +172,7 @@ router.post('/:dealId/documents', upload.single('file'), async (req: Authenticat
 });
 
 // Log document access (for tracking)
-router.post('/:dealId/documents/:docId/access', async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:dealId/documents/:docId/access', authorize('dataroom.read'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const { docId } = req.params;
         const { action } = req.body;
@@ -202,7 +202,7 @@ router.post('/:dealId/documents/:docId/access', async (req: AuthenticatedRequest
 });
 
 // Get specific dataroom by deal ID
-router.get('/:dealId', async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:dealId', authorize('dataroom.read'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const { dealId } = req.params;
         const userId = req.user?.id;

@@ -1,11 +1,11 @@
 import { Router, Response } from 'express';
-import { AuthenticatedRequest } from '../middleware/jwt-auth';
+import { AuthenticatedRequest, authorize } from '../middleware/authorize';
 import { prisma } from '../database';
 
 const router = Router();
 
 // Get financial performance stats
-router.get('/performance', async (req: AuthenticatedRequest, res: Response) => {
+router.get('/performance', authorize('analytics.read'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         // High-end mock analytics until we have deep transaction history
         const performanceData = {
@@ -37,7 +37,7 @@ router.get('/performance', async (req: AuthenticatedRequest, res: Response) => {
 });
 
 // Get platform-wide stats for institutional display
-router.get('/platform-overview', async (req: AuthenticatedRequest, res: Response) => {
+router.get('/platform-overview', authorize('analytics.system'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const stats = await prisma.$transaction([
             prisma.user.count(),

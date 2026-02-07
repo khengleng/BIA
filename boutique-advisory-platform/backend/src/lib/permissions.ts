@@ -29,7 +29,16 @@ export type Resource =
     | 'report'
     | 'settings'
     | 'audit_log'
-    | 'matchmaking';
+    | 'matchmaking'
+    | 'advisory_service'
+    | 'syndicate'
+    | 'secondary_trading'
+    | 'notification'
+    | 'analytics'
+    | 'payment'
+    | 'dataroom'
+    | 'due_diligence'
+    | 'community';
 
 // Special permission modifiers
 const OWNER_SUFFIX = ':owner';
@@ -145,6 +154,73 @@ export const PERMISSIONS: Record<string, string[]> = {
     'matchmaking.read': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
     'matchmaking.express_interest': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
     'matchmaking.create_match': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
+
+    // ==================== Advisory Service Permissions ====================
+    'advisory_service.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR', 'SME'],
+    'advisory_service.read': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR', 'SME'],
+    'advisory_service.create': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
+    'advisory_service.update': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR:owner'],
+    'advisory_service.delete': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR:owner'],
+    'advisory_service.manage': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
+
+    // ==================== Syndicate Permissions ====================
+    'syndicate.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR', 'SME'],
+    'syndicate.read': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR', 'SME'],
+    'syndicate.create': ['SUPER_ADMIN', 'ADMIN', 'INVESTOR'],
+    'syndicate.update': ['SUPER_ADMIN', 'ADMIN', 'INVESTOR:owner'],
+    'syndicate.join': ['SUPER_ADMIN', 'ADMIN', 'INVESTOR'],
+    'syndicate.manage': ['SUPER_ADMIN', 'ADMIN', 'INVESTOR:owner'],
+
+    // ==================== Secondary Trading Permissions ====================
+    'secondary_trading.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR', 'SME'],
+    'secondary_trading.read': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR', 'SME'],
+    'secondary_trading.create_listing': ['SUPER_ADMIN', 'ADMIN', 'INVESTOR'],
+    'secondary_trading.update_listing': ['SUPER_ADMIN', 'ADMIN', 'INVESTOR:owner'],
+    'secondary_trading.buy': ['SUPER_ADMIN', 'ADMIN', 'INVESTOR'],
+    'secondary_trading.execute': ['SUPER_ADMIN', 'ADMIN'],
+
+    // ==================== Notification Permissions ====================
+    'notification.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR', 'SME'],
+    'notification.read': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR', 'SME'],
+    'notification.update': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR:owner', 'INVESTOR:owner', 'SME:owner'],
+    'notification.delete': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR:owner', 'INVESTOR:owner', 'SME:owner'],
+    'notification.broadcast': ['SUPER_ADMIN', 'ADMIN'],
+
+    // ==================== Analytics Permissions ====================
+    'analytics.read': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
+    'analytics.financial': ['SUPER_ADMIN', 'ADMIN'],
+    'analytics.system': ['SUPER_ADMIN'],
+
+    // ==================== Payment Permissions ====================
+    'payment.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR:owner', 'INVESTOR:owner', 'SME:owner'],
+    'payment.read': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR:owner', 'INVESTOR:owner', 'SME:owner'],
+    'payment.create': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
+    'payment.refund': ['SUPER_ADMIN', 'ADMIN'],
+
+    // ==================== Dataroom Permissions ====================
+    'dataroom.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR', 'SME'],
+    'dataroom.read': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR', 'SME'],
+    'dataroom.upload': ['SUPER_ADMIN', 'ADMIN', 'SME:owner', 'ADVISOR'],
+    'dataroom.delete': ['SUPER_ADMIN', 'ADMIN', 'SME:owner'],
+    'dataroom.manage': ['SUPER_ADMIN', 'ADMIN', 'SME:owner'],
+
+    // ==================== Due Diligence Permissions ====================
+    'due_diligence.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR', 'SME'],
+    'due_diligence.read': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR', 'SME'],
+    'due_diligence.create': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
+    'due_diligence.update': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR:owner'],
+    'due_diligence.manage': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
+
+    // ==================== Community Permissions ====================
+    'community.post_list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR', 'SME'],
+    'community.post_read': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR', 'SME'],
+    'community.post_create': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
+    'community.post_update': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR:owner', 'INVESTOR:owner', 'SME:owner'],
+    'community.post_delete': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR:owner', 'INVESTOR:owner', 'SME:owner'],
+    'community.comment_create': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
+    'community.comment_update': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR:owner', 'INVESTOR:owner', 'SME:owner'],
+    'community.comment_delete': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR:owner', 'INVESTOR:owner', 'SME:owner'],
+    'community.manage': ['SUPER_ADMIN', 'ADMIN'],
 };
 
 /**

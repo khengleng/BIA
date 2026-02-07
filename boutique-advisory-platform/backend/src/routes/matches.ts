@@ -1,5 +1,5 @@
 import { Router, Response } from 'express';
-import { AuthenticatedRequest } from '../middleware/jwt-auth';
+import { AuthenticatedRequest, authorize } from '../middleware/authorize';
 import { prisma } from '../database';
 
 const router = Router();
@@ -54,7 +54,7 @@ const calculateMatchScore = (sme: any, investor: any) => {
 };
 
 // Get matches
-router.get('/', async (req: AuthenticatedRequest, res: Response) => {
+router.get('/', authorize('matchmaking.read'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const userId = req.user?.id;
         const role = req.user?.role;
@@ -108,7 +108,7 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
 });
 
 // Trigger Re-computation
-router.post('/recompute', async (req: AuthenticatedRequest, res: Response) => {
+router.post('/recompute', authorize('matchmaking.create_match'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const smes = await prisma.sME.findMany();
         const investors = await prisma.investor.findMany();
@@ -147,11 +147,11 @@ router.post('/recompute', async (req: AuthenticatedRequest, res: Response) => {
 });
 
 // Express Interest
-router.post('/:id/interest', async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:id/interest', authorize('matchmaking.express_interest'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const { interest } = req.body; // true = like, false = dislike
         const matchId = req.params.id;
-        const userId = req.user?.id;
+        const userId = req.user!.id;
 
         const updatedInterest = await prisma.matchInterest.upsert({
             where: {
