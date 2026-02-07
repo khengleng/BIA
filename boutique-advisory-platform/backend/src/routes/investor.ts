@@ -230,7 +230,7 @@ router.post('/kyc-session', authorize('investor.update'), async (req: Authentica
 
 
 // Create Sumsub SDK Access Token
-router.post('/kyc-token', authorize('investor.update'), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/kyc-token', authorize('investor.update', { getOwnerId: (req) => req.user?.id }), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });

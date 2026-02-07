@@ -14,6 +14,7 @@ import {
 import DashboardLayout from '../../components/layout/DashboardLayout'
 import { useToast } from '../../contexts/ToastContext'
 import { authorizedRequest } from '../../lib/api'
+import SumsubKyc from '../../components/SumsubKyc'
 
 export default function KYCPage() {
     const { addToast } = useToast()
@@ -25,6 +26,7 @@ export default function KYCPage() {
         idNumber: '',
         investorType: 'ANGEL'
     })
+    const [showSumsub, setShowSumsub] = useState(false)
 
     useEffect(() => {
         const fetchKycStatus = async () => {
@@ -90,77 +92,43 @@ export default function KYCPage() {
                 ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <div className="lg:col-span-2">
-                            <form onSubmit={handleSubmit} className="bg-gray-800 rounded-2xl p-8 border border-gray-700 space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-400 mb-2">Full Legal Name</label>
-                                        <div className="relative">
-                                            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-                                            <input
-                                                type="text"
-                                                required
-                                                className="w-full bg-gray-900 border-gray-700 rounded-xl pl-10 text-white focus:ring-green-500 pr-4 py-2.5"
-                                                value={formData.fullName}
-                                                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-400 mb-2">Nationality</label>
-                                        <div className="relative">
-                                            <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-                                            <input
-                                                type="text"
-                                                required
-                                                className="w-full bg-gray-900 border-gray-700 rounded-xl pl-10 text-white focus:ring-green-500 pr-4 py-2.5"
-                                                value={formData.nationality}
-                                                onChange={(e) => setFormData({ ...formData, nationality: e.target.value })}
-                                            />
-                                        </div>
-                                    </div>
+                            <div className="bg-gray-800 rounded-2xl p-8 border border-gray-700 space-y-8 flex flex-col items-center text-center">
+                                <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center">
+                                    <ShieldCheck className="w-10 h-10 text-green-400" />
+                                </div>
+                                <div>
+                                    <h2 className="text-2xl font-bold text-white mb-2">Instant Identity Verification</h2>
+                                    <p className="text-gray-400 max-w-md mx-auto">
+                                        We use Sumsub for secure, instant identity verification. This process takes less than 2 minutes and requires a valid ID document.
+                                    </p>
                                 </div>
 
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-400 mb-2">ID Number (Passport / National ID)</label>
-                                    <input
-                                        type="text"
-                                        required
-                                        className="w-full bg-gray-900 border-gray-700 rounded-xl text-white focus:ring-green-500 px-4 py-2.5"
-                                        value={formData.idNumber}
-                                        onChange={(e) => setFormData({ ...formData, idNumber: e.target.value })}
-                                    />
-                                </div>
+                                <div className="w-full space-y-4">
+                                    <div className="grid grid-cols-2 gap-4 text-left">
+                                        <div className="p-4 bg-gray-900/50 rounded-xl border border-gray-700">
+                                            <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Method</p>
+                                            <p className="text-sm text-white font-medium">Digital Scan</p>
+                                        </div>
+                                        <div className="p-4 bg-gray-900/50 rounded-xl border border-gray-700">
+                                            <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Time</p>
+                                            <p className="text-sm text-white font-medium">~2 Minutes</p>
+                                        </div>
+                                    </div>
 
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-400 mb-2">Investor Classification</label>
-                                    <select
-                                        className="w-full bg-gray-900 border-gray-700 rounded-xl text-white focus:ring-green-500 px-4 py-2.5"
-                                        value={formData.investorType}
-                                        onChange={(e) => setFormData({ ...formData, investorType: e.target.value })}
+                                    <button
+                                        onClick={() => setShowSumsub(true)}
+                                        disabled={kycStatus === 'UNDER_REVIEW'}
+                                        className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-2xl transition-all shadow-lg shadow-green-900/40 disabled:opacity-50 flex items-center justify-center gap-3 text-lg"
                                     >
-                                        <option value="ANGEL">Angel Investor</option>
-                                        <option value="VENTURE_CAPITAL">Venture Capitalist</option>
-                                        <option value="PRIVATE_EQUITY">Private Equity</option>
-                                        <option value="INSTITUTIONAL">Institutional Investor</option>
-                                    </select>
+                                        <ShieldCheck className="w-6 h-6" />
+                                        {kycStatus === 'UNDER_REVIEW' ? 'Review in Progress' : 'Start Verification Now'}
+                                    </button>
                                 </div>
 
-                                <div className="pt-4">
-                                    <label className="block text-sm font-medium text-gray-400 mb-4">Identity Document Upload</label>
-                                    <div className="border-2 border-dashed border-gray-700 rounded-xl p-8 text-center hover:border-green-500 transition-all cursor-pointer group">
-                                        <Upload className="w-10 h-10 text-gray-600 mx-auto mb-2 group-hover:text-green-500" />
-                                        <p className="text-gray-400">Click or drag your ID document here (PDF, JPG, PNG)</p>
-                                    </div>
-                                </div>
-
-                                <button
-                                    type="submit"
-                                    disabled={isSubmitting || kycStatus === 'UNDER_REVIEW'}
-                                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-green-900/40 disabled:opacity-50"
-                                >
-                                    {isSubmitting ? 'Submitting...' : kycStatus === 'UNDER_REVIEW' ? 'Pending Review' : 'Submit for Verification'}
-                                </button>
-                            </form>
+                                <p className="text-xs text-gray-500">
+                                    By clicking start, you agree to our processing of your identity data for compliance purposes.
+                                </p>
+                            </div>
                         </div>
 
                         <div className="space-y-6">
@@ -203,6 +171,17 @@ export default function KYCPage() {
                     </div>
                 )}
             </div>
+
+            {showSumsub && (
+                <SumsubKyc
+                    onClose={() => setShowSumsub(false)}
+                    onComplete={() => {
+                        setShowSumsub(false);
+                        setKycStatus('UNDER_REVIEW');
+                        addToast('success', 'Identity verification submitted. We will review it shortly.');
+                    }}
+                />
+            )}
         </DashboardLayout>
     )
 }

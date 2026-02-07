@@ -52,6 +52,7 @@ import dataroomRoutes from './routes/dataroom';
 import advisoryRoutes from './routes/advisory';
 import analyticsRoutes from './routes/analytics';
 import paymentRoutes from './routes/payments';
+import webhookRoutes from './routes/webhooks';
 
 // Security Validation
 import { validateSecurityConfiguration } from './utils/securityValidator';
@@ -257,6 +258,7 @@ app.get('/health', async (req, res) => {
 
 // Authentication endpoints (public but rate limited)
 app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/webhooks', webhookRoutes);
 
 // Core endpoints - NOW PROTECTED (Fix #1)
 app.use('/api/smes', authenticateToken, smeRoutes);

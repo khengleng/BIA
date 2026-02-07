@@ -52,6 +52,9 @@ export const sumsub = {
             .update(signatureStr)
             .digest('hex');
 
+        console.log(`📡 Sumsub Request: ${method} ${SUMSUB_BASE_URL + url}`);
+        console.log(`🔑 Sumsub Auth: TS=${timestamp}, Token=${SUMSUB_APP_TOKEN.substring(0, 5)}...`);
+
         return axios({
             method,
             url: SUMSUB_BASE_URL + url,
