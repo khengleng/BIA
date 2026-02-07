@@ -269,6 +269,7 @@ app.use('/api/duediligence', authenticateToken, dueDiligenceRoutes);
 app.use('/api/community', authenticateToken, communityRoutes);
 app.use('/api/secondary-trading', authenticateToken, secondaryTradingRoutes);
 app.use('/api/notifications', authenticateToken, notificationRoutes);
+app.use('/api/push', authenticateToken, notificationRoutes); // Alias for push subscription endpoints
 app.use('/api/dashboard', authenticateToken, dashboardRoutes);
 app.use('/api/pipeline', authenticateToken, pipelineRoutes);
 app.use('/api/matches', authenticateToken, matchesRoutes);

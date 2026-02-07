@@ -196,4 +196,35 @@ router.put('/read-all', async (req: AuthenticatedRequest, res: Response): Promis
     }
 });
 
+// Web Push Subscription
+router.post('/subscribe', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+        const subscription = req.body;
+        console.log('📱 Received push subscription:', subscription);
+
+        // TODO: Save subscription to user profile in DB
+        // await prisma.pushSubscription.create({ ... })
+
+        res.status(201).json({ message: 'Push subscription successful' });
+    } catch (error) {
+        console.error('Error subscribing to push:', error);
+        res.status(500).json({ error: 'Failed to subscribe to push notifications' });
+    }
+});
+
+// Web Push Unsubscribe
+router.post('/unsubscribe', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+        const { endpoint } = req.body;
+        console.log('📱 Unsubscribing push endpoint:', endpoint);
+
+        // TODO: Remove subscription from DB
+
+        res.json({ message: 'Push unsubscribe successful' });
+    } catch (error) {
+        console.error('Error unsubscribing from push:', error);
+        res.status(500).json({ error: 'Failed to unsubscribe' });
+    }
+});
+
 export default router;
