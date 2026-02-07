@@ -1,7 +1,7 @@
 import { Resend } from 'resend';
 
 // Initialize Resend client
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = new Resend(process.env.RESEND_API_KEY || 're_mock_key_for_startup_check');
 
 const FROM_EMAIL = process.env.EMAIL_FROM || 'contact@cambobia.com';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3005';
@@ -12,12 +12,12 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3005';
 
 // Welcome email for new users
 export async function sendWelcomeEmail(to: string, userName: string, userRole: string) {
-    try {
-        const { data, error } = await resend.emails.send({
-            from: FROM_EMAIL,
-            to: [to],
-            subject: 'Welcome to Boutique Advisory Platform!',
-            html: `
+  try {
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: [to],
+      subject: 'Welcome to Boutique Advisory Platform!',
+      html: `
         <!DOCTYPE html>
         <html>
           <head>
@@ -55,35 +55,35 @@ export async function sendWelcomeEmail(to: string, userName: string, userRole: s
           </body>
         </html>
       `,
-        });
+    });
 
-        if (error) {
-            console.error('Error sending welcome email:', error);
-            return { success: false, error };
-        }
-
-        console.log('✅ Welcome email sent to:', to);
-        return { success: true, data };
-    } catch (error) {
-        console.error('Failed to send welcome email:', error);
-        return { success: false, error };
+    if (error) {
+      console.error('Error sending welcome email:', error);
+      return { success: false, error };
     }
+
+    console.log('✅ Welcome email sent to:', to);
+    return { success: true, data };
+  } catch (error) {
+    console.error('Failed to send welcome email:', error);
+    return { success: false, error };
+  }
 }
 
 // New match notification
 export async function sendMatchNotification(
-    to: string,
-    userName: string,
-    matchName: string,
-    matchType: 'SME' | 'INVESTOR',
-    matchScore: number
+  to: string,
+  userName: string,
+  matchName: string,
+  matchType: 'SME' | 'INVESTOR',
+  matchScore: number
 ) {
-    try {
-        const { data, error } = await resend.emails.send({
-            from: FROM_EMAIL,
-            to: [to],
-            subject: `New Match Found: ${matchName}`,
-            html: `
+  try {
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: [to],
+      subject: `New Match Found: ${matchName}`,
+      html: `
         <!DOCTYPE html>
         <html>
           <head>
@@ -118,41 +118,41 @@ export async function sendMatchNotification(
           </body>
         </html>
       `,
-        });
+    });
 
-        if (error) {
-            console.error('Error sending match notification:', error);
-            return { success: false, error };
-        }
-
-        console.log('✅ Match notification sent to:', to);
-        return { success: true, data };
-    } catch (error) {
-        console.error('Failed to send match notification:', error);
-        return { success: false, error };
+    if (error) {
+      console.error('Error sending match notification:', error);
+      return { success: false, error };
     }
+
+    console.log('✅ Match notification sent to:', to);
+    return { success: true, data };
+  } catch (error) {
+    console.error('Failed to send match notification:', error);
+    return { success: false, error };
+  }
 }
 
 // Deal update notification
 export async function sendDealUpdateNotification(
-    to: string,
-    userName: string,
-    dealTitle: string,
-    updateType: 'PUBLISHED' | 'FUNDED' | 'CLOSED' | 'DOCUMENT_UPLOADED'
+  to: string,
+  userName: string,
+  dealTitle: string,
+  updateType: 'PUBLISHED' | 'FUNDED' | 'CLOSED' | 'DOCUMENT_UPLOADED'
 ) {
-    const updateMessages = {
-        PUBLISHED: 'A new deal has been published',
-        FUNDED: 'has been successfully funded',
-        CLOSED: 'has been closed',
-        DOCUMENT_UPLOADED: 'New document uploaded to',
-    };
+  const updateMessages = {
+    PUBLISHED: 'A new deal has been published',
+    FUNDED: 'has been successfully funded',
+    CLOSED: 'has been closed',
+    DOCUMENT_UPLOADED: 'New document uploaded to',
+  };
 
-    try {
-        const { data, error } = await resend.emails.send({
-            from: FROM_EMAIL,
-            to: [to],
-            subject: `Deal Update: ${dealTitle}`,
-            html: `
+  try {
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: [to],
+      subject: `Deal Update: ${dealTitle}`,
+      html: `
         <!DOCTYPE html>
         <html>
           <head>
@@ -182,35 +182,35 @@ export async function sendDealUpdateNotification(
           </body>
         </html>
       `,
-        });
+    });
 
-        if (error) {
-            console.error('Error sending deal update notification:', error);
-            return { success: false, error };
-        }
-
-        console.log('✅ Deal update notification sent to:', to);
-        return { success: true, data };
-    } catch (error) {
-        console.error('Failed to send deal update notification:', error);
-        return { success: false, error };
+    if (error) {
+      console.error('Error sending deal update notification:', error);
+      return { success: false, error };
     }
+
+    console.log('✅ Deal update notification sent to:', to);
+    return { success: true, data };
+  } catch (error) {
+    console.error('Failed to send deal update notification:', error);
+    return { success: false, error };
+  }
 }
 
 // Booking confirmation
 export async function sendBookingConfirmation(
-    to: string,
-    userName: string,
-    serviceName: string,
-    advisorName: string,
-    bookingDate: Date
+  to: string,
+  userName: string,
+  serviceName: string,
+  advisorName: string,
+  bookingDate: Date
 ) {
-    try {
-        const { data, error } = await resend.emails.send({
-            from: FROM_EMAIL,
-            to: [to],
-            subject: `Booking Confirmed: ${serviceName}`,
-            html: `
+  try {
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: [to],
+      subject: `Booking Confirmed: ${serviceName}`,
+      html: `
         <!DOCTYPE html>
         <html>
           <head>
@@ -236,13 +236,13 @@ export async function sendBookingConfirmation(
                   <p><strong>Service:</strong> ${serviceName}</p>
                   <p><strong>Advisor:</strong> ${advisorName}</p>
                   <p><strong>Date:</strong> ${bookingDate.toLocaleDateString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            })}</p>
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })}</p>
                 </div>
                 <a href="${FRONTEND_URL}/calendar" class="button">View in Calendar</a>
               </div>
@@ -253,31 +253,31 @@ export async function sendBookingConfirmation(
           </body>
         </html>
       `,
-        });
+    });
 
-        if (error) {
-            console.error('Error sending booking confirmation:', error);
-            return { success: false, error };
-        }
-
-        console.log('✅ Booking confirmation sent to:', to);
-        return { success: true, data };
-    } catch (error) {
-        console.error('Failed to send booking confirmation:', error);
-        return { success: false, error };
+    if (error) {
+      console.error('Error sending booking confirmation:', error);
+      return { success: false, error };
     }
+
+    console.log('✅ Booking confirmation sent to:', to);
+    return { success: true, data };
+  } catch (error) {
+    console.error('Failed to send booking confirmation:', error);
+    return { success: false, error };
+  }
 }
 
 // Password reset email
 export async function sendPasswordResetEmail(to: string, resetToken: string) {
-    const resetUrl = `${FRONTEND_URL}/auth/reset-password?token=${resetToken}`;
+  const resetUrl = `${FRONTEND_URL}/auth/reset-password?token=${resetToken}`;
 
-    try {
-        const { data, error } = await resend.emails.send({
-            from: FROM_EMAIL,
-            to: [to],
-            subject: 'Reset Your Password',
-            html: `
+  try {
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: [to],
+      subject: 'Reset Your Password',
+      html: `
         <!DOCTYPE html>
         <html>
           <head>
@@ -312,35 +312,35 @@ export async function sendPasswordResetEmail(to: string, resetToken: string) {
           </body>
         </html>
       `,
-        });
+    });
 
-        if (error) {
-            console.error('Error sending password reset email:', error);
-            return { success: false, error };
-        }
-
-        console.log('✅ Password reset email sent to:', to);
-        return { success: true, data };
-    } catch (error) {
-        console.error('Failed to send password reset email:', error);
-        return { success: false, error };
+    if (error) {
+      console.error('Error sending password reset email:', error);
+      return { success: false, error };
     }
+
+    console.log('✅ Password reset email sent to:', to);
+    return { success: true, data };
+  } catch (error) {
+    console.error('Failed to send password reset email:', error);
+    return { success: false, error };
+  }
 }
 
 // Generic notification email
 export async function sendNotificationEmail(
-    to: string,
-    subject: string,
-    message: string,
-    actionUrl?: string,
-    actionText?: string
+  to: string,
+  subject: string,
+  message: string,
+  actionUrl?: string,
+  actionText?: string
 ) {
-    try {
-        const { data, error } = await resend.emails.send({
-            from: FROM_EMAIL,
-            to: [to],
-            subject: subject,
-            html: `
+  try {
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: [to],
+      subject: subject,
+      html: `
         <!DOCTYPE html>
         <html>
           <head>
@@ -369,17 +369,17 @@ export async function sendNotificationEmail(
           </body>
         </html>
       `,
-        });
+    });
 
-        if (error) {
-            console.error('Error sending notification email:', error);
-            return { success: false, error };
-        }
-
-        console.log('✅ Notification email sent to:', to);
-        return { success: true, data };
-    } catch (error) {
-        console.error('Failed to send notification email:', error);
-        return { success: false, error };
+    if (error) {
+      console.error('Error sending notification email:', error);
+      return { success: false, error };
     }
+
+    console.log('✅ Notification email sent to:', to);
+    return { success: true, data };
+  } catch (error) {
+    console.error('Failed to send notification email:', error);
+    return { success: false, error };
+  }
 }
