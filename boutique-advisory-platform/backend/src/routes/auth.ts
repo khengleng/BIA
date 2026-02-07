@@ -380,8 +380,15 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
       const hashedResetToken = hashToken(resetToken);
       const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour expiry
 
-      // Store hashed token in user record (you'd want a separate table in production)
-      // For now, we'll log it securely
+      // Store hashed token in user record
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          resetToken: hashedResetToken,
+          resetTokenExpiry: expiresAt
+        }
+      });
+
       await logAuditEvent({
         userId: user.id,
         action: 'PASSWORD_RESET_REQUESTED',
@@ -464,47 +471,57 @@ router.post('/reset-password', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid or expired reset token' });
     }
 
-    // In production: Find user by hashed token and verify expiry
-    // const resetRecord = await prisma.passwordReset.findFirst({
-    //   where: { tokenHash: hashedToken, expiresAt: { gt: new Date() } }
-    // });
-
-    // For demonstration, if email is provided, update the password
-    if (email) {
-      const sanitizedEmail = sanitizeEmail(email);
-      if (!sanitizedEmail) {
-        return res.status(400).json({ error: 'Invalid email format' });
+    // Verify token exists and is not expired
+    const user = await prisma.user.findFirst({
+      where: {
+        resetToken: hashedToken,
+        resetTokenExpiry: {
+          gt: new Date()
+        }
       }
+    });
 
-      const user = await prisma.user.findFirst({
-        where: { email: sanitizedEmail }
+    if (!user) {
+      await logAuditEvent({
+        userId: 'unknown',
+        action: 'PASSWORD_RESET_INVALID_TOKEN',
+        resource: 'auth',
+        details: { tokenHash: hashedToken.substring(0, 10) + '...' },
+        ipAddress: clientIp,
+        success: false,
+        errorMessage: 'Token not found or expired'
       });
-
-      if (user) {
-        const hashedPassword = await bcrypt.hash(password, 12);
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { password: hashedPassword }
-        });
-
-        await logAuditEvent({
-          userId: user.id,
-          action: 'PASSWORD_RESET_SUCCESS',
-          resource: 'auth',
-          details: { email: sanitizedEmail },
-          ipAddress: clientIp,
-          success: true
-        });
-
-        // Clear any failed login attempts for this user
-        clearFailedAttempts(sanitizedEmail);
-
-        return res.json({
-          message: 'Password has been reset successfully.',
-          success: true
-        });
-      }
+      return res.status(400).json({ error: 'Invalid or expired reset token' });
     }
+
+    // Has valid token, update password
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        resetToken: null,       // Invalidate token
+        resetTokenExpiry: null
+      }
+    });
+
+    await logAuditEvent({
+      userId: user.id,
+      action: 'PASSWORD_RESET_SUCCESS',
+      resource: 'auth',
+      details: { email: user.email },
+      ipAddress: clientIp,
+      success: true
+    });
+
+    // Clear any failed login attempts for this user
+    clearFailedAttempts(user.email);
+
+    return res.json({
+      message: 'Password has been reset successfully.',
+      success: true
+    });
 
     // If we get here, token validation would have failed in production
     await logAuditEvent({
