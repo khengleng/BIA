@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/jwt-auth';
 import { prisma } from '../database';
+import { sendNewBookingNotification, sendBookingConfirmation, sendPaymentReceiptEmail } from '../utils/email';
 
 const router = Router();
 
@@ -245,13 +246,55 @@ router.post('/book', async (req: AuthenticatedRequest, res: Response) => {
                 preferredDate: new Date(preferredDate),
                 notes: enhancedNotes,
                 amount: amount ? parseFloat(amount) : null,
-                status: 'PENDING'
+                status: amount ? 'CONFIRMED' : 'PENDING'
             },
             include: {
                 service: true,
-                advisor: true
+                advisor: {
+                    include: {
+                        user: true
+                    }
+                },
+                user: true
             }
         });
+
+        // Send emails
+        if (booking.advisor && booking.advisor.user) {
+            const clientName = `${booking.user.firstName} ${booking.user.lastName}`;
+            const serviceName = booking.service?.name || 'Consultation Session';
+
+            // Notify Advisor
+            await sendNewBookingNotification(
+                booking.advisor.user.email,
+                `${booking.advisor.user.firstName} ${booking.advisor.user.lastName}`,
+                clientName,
+                serviceName,
+                booking.preferredDate,
+                enhancedNotes
+            );
+
+            // If confirmed (paid), notify User
+            if (booking.status === 'CONFIRMED') {
+                await sendBookingConfirmation(
+                    booking.user.email,
+                    clientName,
+                    serviceName,
+                    `${booking.advisor.user.firstName} ${booking.advisor.user.lastName}`,
+                    booking.preferredDate
+                );
+
+                if (amount) {
+                    await sendPaymentReceiptEmail(
+                        booking.user.email,
+                        clientName,
+                        parseFloat(amount),
+                        `Booking: ${serviceName}`,
+                        `txn_${Date.now()}` // Mock transaction ID
+                    );
+                }
+            }
+        }
 
         return res.status(201).json({
             message: 'Booking successful',
