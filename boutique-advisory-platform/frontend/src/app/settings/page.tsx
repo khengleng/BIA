@@ -1,4 +1,5 @@
 'use client'
+import { API_URL } from '@/lib/api'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import {
@@ -47,7 +48,7 @@ export default function SettingsPage() {
 
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch('/api/auth/change-password', {
+      const response = await fetch(`${API_URL}/api/auth/change-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
