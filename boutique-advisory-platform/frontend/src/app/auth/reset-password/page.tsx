@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Lock, Building2, ArrowLeft, CheckCircle, Eye, EyeOff } from 'lucide-react'
+import { apiRequest } from '../../../lib/api'
 
 function ResetPasswordContent() {
     const searchParams = useSearchParams()
@@ -62,11 +63,20 @@ function ResetPasswordContent() {
         setError('')
 
         try {
-            // Simulate API call - in production this would call the backend
-            await new Promise(resolve => setTimeout(resolve, 1500))
+            const response = await apiRequest('/api/auth/reset-password', {
+                method: 'POST',
+                body: JSON.stringify({
+                    token,
+                    password: formData.password
+                })
+            })
 
-            // For demo purposes, we'll show success
-            setIsSubmitted(true)
+            if (response.ok) {
+                setIsSubmitted(true)
+            } else {
+                const data = await response.json()
+                setError(data.error || 'Failed to reset password')
+            }
         } catch (err) {
             console.error('Reset password error:', err)
             setError('An error occurred. Please try again.')
