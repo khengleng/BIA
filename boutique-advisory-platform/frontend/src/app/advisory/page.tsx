@@ -22,6 +22,7 @@ import {
   BookOpen
 } from 'lucide-react'
 import StripePaymentModal from '@/components/advisory/StripePaymentModal'
+import ServiceDetailsModal from '@/components/advisory/ServiceDetailsModal'
 
 interface User {
   id: string
@@ -43,6 +44,7 @@ export default function AdvisoryPage() {
   const [paymentClientSecret, setPaymentClientSecret] = useState<string | null>(null)
   const [paymentAmount, setPaymentAmount] = useState<number>(0)
   const [pendingBookingData, setPendingBookingData] = useState<any>(null)
+  const [selectedService, setSelectedService] = useState<any>(null)
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -209,6 +211,28 @@ export default function AdvisoryPage() {
     // Navigate to advisor profile page or open modal
     console.log('Viewing advisor profile:', advisor.name)
     // In a real implementation, you would navigate to a detailed advisor profile page
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleViewDetails = async (service: any) => {
+    try {
+      const token = localStorage.getItem('token')
+      // Optimistically set the selected service with available data
+      setSelectedService(service)
+
+      // Fetch full details
+      if (token) {
+        const res = await fetch(`${API_URL}/api/advisory/services/${service.id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        if (res.ok) {
+          const fullService = await res.json()
+          setSelectedService(fullService)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching service details:', error)
+    }
   }
 
   const servicesToDisplay = advisoryServices.length > 0 ? advisoryServices : [
@@ -497,8 +521,8 @@ export default function AdvisoryPage() {
                             Book Now
                           </button>
                           <button
-                            onClick={() => alert(`Viewing details for: ${service.name}`)}
-                            className="bg-gray-600 hover:bg-gray-500 text-white px-3 py-2 rounded-lg text-sm flex items-center justify-center"
+                            onClick={() => handleViewDetails(service)}
+                            className="bg-gray-600 hover:bg-gray-500 text-white px-3 py-2 rounded-lg text-sm flex items-center justify-center transition-colors"
                           >
                             <Eye className="w-4 h-4" />
                           </button>
@@ -674,6 +698,17 @@ export default function AdvisoryPage() {
           clientSecret={paymentClientSecret}
           onSuccess={handleBookingSuccess}
           onCancel={() => setShowPaymentModal(false)}
+        />
+      )}
+
+      {selectedService && (
+        <ServiceDetailsModal
+          service={selectedService}
+          onClose={() => setSelectedService(null)}
+          onBook={() => {
+            setSelectedService(null)
+            handleBookService(selectedService)
+          }}
         />
       )}
     </div>
