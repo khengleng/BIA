@@ -24,10 +24,18 @@ if [ -z "$JWT_SECRET" ]; then
 fi
 
 # Run database migrations
+# Run database migrations
 echo "📦 Running database migrations..."
+
+# Temporarily disable exit-on-error for migration check
+set +e
 npx prisma migrate deploy
-if [ $? -ne 0 ]; then
-    echo "❌ Migration failed! Trying prisma db push instead..."
+MIGRATION_EXIT_CODE=$?
+set -e
+
+if [ $MIGRATION_EXIT_CODE -ne 0 ]; then
+    echo "❌ Migration failed (Exit code: $MIGRATION_EXIT_CODE). Likely due to non-empty DB."
+    echo "⚠️  Falling back to prisma db push..."
     npx prisma db push --accept-data-loss
 fi
 

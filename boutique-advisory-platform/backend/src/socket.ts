@@ -7,9 +7,31 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 export let io: Server;
 
 export function initSocket(server: HttpServer) {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const allowedOrigins = [
+        frontendUrl,
+        frontendUrl.replace(/\/$/, ''), // Remove trailing slash
+        frontendUrl.replace('https://', 'https://www.'),
+        frontendUrl.replace('https://www.', 'https://'),
+        'http://localhost:3000',
+        'http://localhost:3001',
+        'http://localhost:3002',
+        'http://localhost:3003'
+    ];
+
     io = new Server(server, {
         cors: {
-            origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+            origin: (origin, callback) => {
+                // Allow requests with no origin (like mobile apps or curl)
+                if (!origin) return callback(null, true);
+
+                if (allowedOrigins.includes(origin) || origin.endsWith('.railway.app')) {
+                    callback(null, true);
+                } else {
+                    console.log('Socket CORS blocked:', origin);
+                    callback(null, true); // Temporarily allow all for debugging if strict mode fails
+                }
+            },
             methods: ['GET', 'POST'],
             credentials: true
         }

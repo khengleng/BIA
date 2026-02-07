@@ -35,6 +35,43 @@ router.get('/services', async (req: AuthenticatedRequest, res: Response) => {
     }
 });
 
+// Get single advisory service
+router.get('/services/:id', async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+
+        // Handle mock IDs
+        if (id === '1') {
+            return res.json({ id: '1', name: 'M&A Advisory', description: 'Expert guidance through mergers and acquisitions.', price: 5000, category: 'Financial', duration: '4 weeks', advisor: { name: 'James Wilson' } });
+        }
+        if (id === '2') {
+            return res.json({ id: '2', name: 'Financial Modeling', description: 'Comprehensive financial forecasting and modeling.', price: 2500, category: 'Financial', duration: '1 week', advisor: { name: 'Sarah Chen' } });
+        }
+
+        const service = await prisma.advisoryService.findUnique({
+            where: { id },
+            include: {
+                advisor: {
+                    select: {
+                        id: true,
+                        name: true,
+                        specialization: true
+                    }
+                }
+            }
+        });
+
+        if (!service) {
+            return res.status(404).json({ error: 'Service not found' });
+        }
+
+        return res.json(service);
+    } catch (error) {
+        console.error('Error fetching service:', error);
+        return res.status(500).json({ error: 'Failed to fetch advisory service' });
+    }
+});
+
 // Get all advisors
 router.get('/advisors', async (req: AuthenticatedRequest, res: Response) => {
     try {
