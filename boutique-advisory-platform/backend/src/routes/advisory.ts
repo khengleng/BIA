@@ -140,6 +140,28 @@ router.post('/book', async (req: AuthenticatedRequest, res: Response) => {
             ? notes
             : `Service: ${serviceName || 'Consultation'}\n${notes || ''}`;
 
+        // Check availability (prevent double booking)
+        if (actualAdvisorId) {
+            const bookingDate = new Date(preferredDate);
+            const durationMs = 60 * 60 * 1000; // Default 1 hour
+            const endTime = new Date(bookingDate.getTime() + durationMs);
+
+            const conflicts = await prisma.booking.findMany({
+                where: {
+                    advisorId: actualAdvisorId,
+                    status: { in: ['CONFIRMED', 'PENDING'] },
+                    preferredDate: {
+                        gte: new Date(bookingDate.getTime() - durationMs + 1), // Overlap check
+                        lt: endTime
+                    }
+                }
+            });
+
+            if (conflicts.length > 0) {
+                return res.status(409).json({ error: 'Advisor is not available at this time. Please choose another slot.' });
+            }
+        }
+
         const booking = await prisma.booking.create({
             data: {
                 userId,

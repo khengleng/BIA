@@ -30,3 +30,27 @@ const serwist = new Serwist({
 });
 
 serwist.addEventListeners();
+
+self.addEventListener('push', (event: any) => {
+  const data = event.data?.json() ?? { title: 'New Notification', body: 'You have a new update' };
+  const options = {
+    body: data.body,
+    icon: data.icon || '/icons/icon-192x192.png',
+    badge: '/icons/icon-96x96.png',
+    data: {
+      url: data.url || '/'
+    }
+  };
+  event.waitUntil(
+    self.registration.showNotification(data.title, options)
+  );
+});
+
+self.addEventListener('notificationclick', (event: any) => {
+  event.notification.close();
+  if (event.notification.data?.url) {
+    event.waitUntil(
+      self.clients.openWindow(event.notification.data.url)
+    );
+  }
+});

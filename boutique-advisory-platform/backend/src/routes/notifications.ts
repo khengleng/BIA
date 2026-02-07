@@ -1,13 +1,14 @@
 /**
  * Notifications Routes
  * 
- * Provides user notifications functionality
+ * Provides user notifications functionality and Web Push integration
  */
 
 import { Router, Request, Response } from 'express';
 import { prisma, prismaReplica } from '../database';
 import { shouldUseDatabase } from '../migration-manager';
 import { NotificationType } from '@prisma/client';
+import webpush from 'web-push';
 
 // Extended request interface for authenticated requests
 interface AuthenticatedRequest extends Request {
@@ -20,6 +21,69 @@ interface AuthenticatedRequest extends Request {
 }
 
 const router = Router();
+
+// Configure Web Push
+const publicVapidKey = process.env.VAPID_PUBLIC_KEY || 'BO2WrnjdJYmlc9gEeHjYpRn1p7r4TMB33gh70AqQQzIrcBAN_kNQZ-kX2b-G9HQ7Z4GVjGVISUC2NEjGpNBzgkY';
+const privateVapidKey = process.env.VAPID_PRIVATE_KEY || 'Inv2_qvKv8rCsnDG2VmoEi99mBExvU0cbecVWCApbTc';
+
+// Email for VAPID contact
+const vapidEmail = 'mailto:contact@cambobia.com';
+
+try {
+    webpush.setVapidDetails(
+        vapidEmail,
+        publicVapidKey,
+        privateVapidKey
+    );
+    console.log('✅ Web Push initialized');
+} catch (error) {
+    console.error('❌ Failed to initialize Web Push:', error);
+}
+
+// Helper to send push notification
+async function sendPushToUser(userId: string, title: string, body: string, url?: string) {
+    if (!shouldUseDatabase()) return;
+
+    try {
+        // Get user subscriptions
+        const subscriptions = await prisma.pushSubscription.findMany({
+            where: { userId }
+        });
+
+        if (subscriptions.length === 0) return;
+
+        const payload = JSON.stringify({
+            title,
+            body,
+            url,
+            icon: '/icons/icon-192x192.png'
+        });
+
+        // Send to all user devices
+        const promises = subscriptions.map(async (sub) => {
+            try {
+                const pushSubscription = {
+                    endpoint: sub.endpoint,
+                    keys: sub.keys as any
+                };
+                await webpush.sendNotification(pushSubscription, payload);
+            } catch (error: any) {
+                // If 410 Gone or 404, remove subscription
+                if (error.statusCode === 410 || error.statusCode === 404) {
+                    await prisma.pushSubscription.delete({
+                        where: { id: sub.id }
+                    });
+                } else {
+                    console.error('Error sending push to device:', error);
+                }
+            }
+        });
+
+        await Promise.all(promises);
+    } catch (error) {
+        console.error('Error in sendPushToUser:', error);
+    }
+}
 
 // Create notification (Admin/Advisor only)
 router.post('/', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
@@ -43,7 +107,6 @@ router.post('/', async (req: AuthenticatedRequest, res: Response): Promise<void>
                 actionUrl: actionUrl || null,
                 createdAt: new Date().toISOString()
             };
-            // In a real mock scenario, we'd push to a global store, but here we just echo back
             res.status(201).json(newNotification);
             return;
         }
@@ -65,6 +128,11 @@ router.post('/', async (req: AuthenticatedRequest, res: Response): Promise<void>
             }
         });
 
+        // Trigger Web Push in background
+        sendPushToUser(userId, title, message, actionUrl).catch(err =>
+            console.error('Failed to send push for new notification:', err)
+        );
+
         res.status(201).json(notification);
     } catch (error) {
         console.error('Error creating notification:', error);
@@ -85,28 +153,12 @@ router.get('/', async (req: AuthenticatedRequest, res: Response): Promise<void> 
                     message: 'Start exploring investment opportunities and connect with SMEs.',
                     read: false,
                     createdAt: new Date().toISOString()
-                },
-                {
-                    id: 'notif_2',
-                    type: 'deal',
-                    title: 'New Deal Available',
-                    message: 'TechCorp Cambodia is seeking Series A funding.',
-                    read: false,
-                    createdAt: new Date(Date.now() - 3600000).toISOString()
-                },
-                {
-                    id: 'notif_3',
-                    type: 'system',
-                    title: 'Profile Complete',
-                    message: 'Your investor profile has been verified.',
-                    read: true,
-                    createdAt: new Date(Date.now() - 86400000).toISOString()
                 }
             ];
 
             res.json({
                 notifications,
-                unreadCount: notifications.filter(n => !n.read).length
+                unreadCount: 1
             });
             return;
         }
@@ -200,10 +252,36 @@ router.put('/read-all', async (req: AuthenticatedRequest, res: Response): Promis
 router.post('/subscribe', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         const subscription = req.body;
-        console.log('📱 Received push subscription:', subscription);
 
-        // TODO: Save subscription to user profile in DB
-        // await prisma.pushSubscription.create({ ... })
+        if (!subscription || !subscription.endpoint || !subscription.keys) {
+            res.status(400).json({ error: 'Invalid subscription object' });
+            return;
+        }
+
+        console.log('📱 Received push subscription for user:', req.user?.id);
+
+        if (shouldUseDatabase() && req.user) {
+            // Upsert subscription (update keys if endpoint exists for user)
+            await prisma.pushSubscription.upsert({
+                where: {
+                    userId_endpoint: {
+                        userId: req.user.id,
+                        endpoint: subscription.endpoint
+                    }
+                },
+                update: {
+                    keys: subscription.keys,
+                    updatedAt: new Date()
+                },
+                create: {
+                    tenantId: req.user.tenantId || 'default',
+                    userId: req.user.id,
+                    endpoint: subscription.endpoint,
+                    keys: subscription.keys
+                }
+            });
+            console.log('✅ Push subscription saved to DB');
+        }
 
         res.status(201).json({ message: 'Push subscription successful' });
     } catch (error) {
@@ -216,14 +294,48 @@ router.post('/subscribe', async (req: AuthenticatedRequest, res: Response): Prom
 router.post('/unsubscribe', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         const { endpoint } = req.body;
+
+        if (!endpoint) {
+            res.status(400).json({ error: 'Endpoint required' });
+            return;
+        }
+
         console.log('📱 Unsubscribing push endpoint:', endpoint);
 
-        // TODO: Remove subscription from DB
+        if (shouldUseDatabase() && req.user) {
+            await prisma.pushSubscription.deleteMany({
+                where: {
+                    userId: req.user.id,
+                    endpoint: endpoint
+                }
+            });
+            console.log('✅ Subscription removed from DB');
+        }
 
         res.json({ message: 'Push unsubscribe successful' });
     } catch (error) {
         console.error('Error unsubscribing from push:', error);
         res.status(500).json({ error: 'Failed to unsubscribe' });
+    }
+});
+
+// Send Test Notification (Self)
+router.post('/test', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+        if (!req.user) {
+            res.status(401).json({ error: 'Unauthorized' });
+            return;
+        }
+
+        const title = 'Test Notification';
+        const message = 'This is a test message sent at ' + new Date().toLocaleTimeString();
+
+        await sendPushToUser(req.user.id, title, message);
+
+        res.json({ message: 'Test notification queued' });
+    } catch (error) {
+        console.error('Error sending test push:', error);
+        res.status(500).json({ error: 'Failed to send test push' });
     }
 });
 

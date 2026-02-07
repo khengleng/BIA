@@ -76,7 +76,7 @@ export default function PushNotifications() {
             const registration = await navigator.serviceWorker.ready
 
             // VAPID public key (in production, this would come from your backend)
-            const vapidPublicKey = 'YOUR_VAPID_PUBLIC_KEY_HERE'
+            const vapidPublicKey = 'BO2WrnjdJYmlc9gEeHjYpRn1p7r4TMB33gh70AqQQzIrcBAN_kNQZ-kX2b-G9HQ7Z4GVjGVISUC2NEjGpNBzgkY'
 
             const subscription = await registration.pushManager.subscribe({
                 userVisibleOnly: true,

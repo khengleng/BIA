@@ -29,6 +29,7 @@ model Tenant {
   workflows   Workflow[]
   documents   Document[]
   notifications Notification[]
+  pushSubscriptions PushSubscription[]
   conversations Conversation[]
   matches       Match[]
 
@@ -56,6 +57,7 @@ model User {
   investor    Investor? @relation("InvestorUser")
   advisor     Advisor? @relation("AdvisorUser")
   notifications Notification[]
+  pushSubscriptions PushSubscription[]
   messageParticipants ConversationParticipant[]
   sentMessages      Message[]
   bookings          Booking[]
@@ -783,4 +785,20 @@ enum MatchStatus {
   PENDING
   ADVISOR_VERIFIED
   REJECTED
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  endpoint  String
+  keys      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, endpoint])
+  @@map("push_subscriptions")
 }
