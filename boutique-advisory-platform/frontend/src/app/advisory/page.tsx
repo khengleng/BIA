@@ -40,7 +40,9 @@ export default function AdvisoryPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('services')
   const [advisoryServices, setAdvisoryServices] = useState<any[]>([])
+
   const [availableAdvisors, setAvailableAdvisors] = useState<any[]>([])
+  const [myBookings, setMyBookings] = useState<any[]>([])
   const [isDataLoading, setIsDataLoading] = useState(false)
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [paymentClientSecret, setPaymentClientSecret] = useState<string | null>(null)
@@ -79,13 +81,15 @@ export default function AdvisoryPage() {
       setIsDataLoading(true)
       try {
         const token = localStorage.getItem('token')
-        const [servicesRes, advisorsRes] = await Promise.all([
+        const [servicesRes, advisorsRes, bookingsRes] = await Promise.all([
           fetch(`${API_URL}/api/advisory/services`, { headers: { 'Authorization': `Bearer ${token}` } }),
-          fetch(`${API_URL}/api/advisory/advisors`, { headers: { 'Authorization': `Bearer ${token}` } })
+          fetch(`${API_URL}/api/advisory/advisors`, { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch(`${API_URL}/api/advisory/my-bookings`, { headers: { 'Authorization': `Bearer ${token}` } })
         ])
 
         if (servicesRes.ok) setAdvisoryServices(await servicesRes.json())
         if (advisorsRes.ok) setAvailableAdvisors(await advisorsRes.json())
+        if (bookingsRes.ok) setMyBookings(await bookingsRes.json())
       } catch (error) {
         console.error('Error fetching advisory data:', error)
       } finally {
@@ -647,43 +651,45 @@ export default function AdvisoryPage() {
                   <div className="bg-gray-700 rounded-lg p-6">
                     <h2 className="text-xl font-semibold text-white mb-4">Your Bookings</h2>
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between p-4 bg-gray-600 rounded-lg">
-                        <div>
-                          <h3 className="text-white font-medium">Business Strategy Consultation</h3>
-                          <p className="text-gray-400 text-sm">Dr. Sarah Johnson</p>
-                          <p className="text-gray-400 text-sm">March 15, 2024 at 2:00 PM</p>
+                      {myBookings.length > 0 ? (
+                        myBookings.map((booking) => (
+                          <div key={booking.id} className="flex items-center justify-between p-4 bg-gray-600 rounded-lg">
+                            <div>
+                              <h3 className="text-white font-medium">
+                                {booking.service?.name || 'Advisory Session'}
+                              </h3>
+                              <p className="text-gray-400 text-sm">
+                                {booking.advisor?.user?.firstName ? `${booking.advisor.user.firstName} ${booking.advisor.user.lastName}` : (booking.advisor?.name || 'Advisor')}
+                              </p>
+                              <p className="text-gray-400 text-sm">
+                                {new Date(booking.preferredDate).toLocaleDateString()}
+                              </p>
+                              {booking.notes && <p className="text-gray-500 text-xs mt-1 truncate max-w-xs">{booking.notes}</p>}
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <span className={`px-2 py-1 rounded-full text-xs ${booking.status === 'CONFIRMED' ? 'bg-green-500/20 text-green-400' :
+                                booking.status === 'PENDING' ? 'bg-yellow-500/20 text-yellow-400' :
+                                  'bg-gray-500/20 text-gray-400'
+                                }`}>
+                                {booking.status}
+                              </span>
+                              {booking.status === 'CONFIRMED' && (
+                                <button
+                                  onClick={() => alert(`Join Link: ${booking.meetingLink || '#'}`)}
+                                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm"
+                                >
+                                  Join
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-8 text-gray-400">
+                          <p>No bookings found.</p>
+                          <button onClick={() => setActiveTab('services')} className="text-blue-400 hover:underline mt-2">Book a service</button>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-xs">
-                            Scheduled
-                          </span>
-                          <button
-                            onClick={() => alert('Joining meeting: Business Strategy Consultation')}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm"
-                          >
-                            Join Meeting
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between p-4 bg-gray-600 rounded-lg">
-                        <div>
-                          <h3 className="text-white font-medium">Financial Planning Session</h3>
-                          <p className="text-gray-400 text-sm">Michael Chen</p>
-                          <p className="text-gray-400 text-sm">March 20, 2024 at 10:00 AM</p>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded-full text-xs">
-                            Confirmed
-                          </span>
-                          <button
-                            onClick={() => alert('Rescheduling: Financial Planning Session')}
-                            className="bg-gray-600 hover:bg-gray-500 text-white px-3 py-2 rounded-lg text-sm"
-                          >
-                            Reschedule
-                          </button>
-                        </div>
-                      </div>
+                      )}
                     </div>
                   </div>
                 </div>
