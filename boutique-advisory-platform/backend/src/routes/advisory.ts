@@ -103,6 +103,80 @@ router.get('/advisors', async (req: AuthenticatedRequest, res: Response) => {
     }
 });
 
+// Get single advisor
+router.get('/advisors/:id', async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+
+        // Mock fallback
+        if (id === '1') {
+            return res.json({
+                id: '1',
+                name: 'James Wilson',
+                role: 'Financial Expert',
+                specialization: ['M&A', 'Valuation'],
+                rating: 4.9,
+                image: 'https://i.pravatar.cc/150?u=james',
+                bio: 'Senior financial advisor with over 15 years of experience in mergers and acquisitions.',
+                services: [
+                    { id: '1', name: 'M&A Advisory', price: 5000, duration: '4 weeks', category: 'Financial' }
+                ]
+            });
+        }
+        if (id === '2') {
+            return res.json({
+                id: '2',
+                name: 'Sarah Chen',
+                role: 'Strategic Consultant',
+                specialization: ['Market Entry', 'Ops'],
+                rating: 4.8,
+                image: 'https://i.pravatar.cc/150?u=sarah',
+                bio: 'Expert in market entry strategies for Southeast Asia.',
+                services: [
+                    { id: '2', name: 'Financial Modeling', price: 2500, duration: '1 week', category: 'Financial' }
+                ]
+            });
+        }
+
+        const advisor = await prisma.advisor.findUnique({
+            where: { id },
+            include: {
+                user: {
+                    select: {
+                        firstName: true,
+                        lastName: true,
+                        email: true
+                    }
+                },
+                services: {
+                    where: { status: 'ACTIVE' }
+                }
+            }
+        });
+
+        if (!advisor) {
+            return res.status(404).json({ error: 'Advisor not found' });
+        }
+
+        // Format response
+        const formattedAdvisor = {
+            ...advisor,
+            name: `${advisor.user.firstName} ${advisor.user.lastName}`,
+            email: advisor.user.email,
+            // Mock additional fields that Schema doesn't have yet
+            role: 'Professional Advisor',
+            rating: 4.5, // Placeholder
+            image: `https://ui-avatars.com/api/?name=${advisor.user.firstName}+${advisor.user.lastName}`,
+            bio: 'Experienced advisor on the Boutique Advisory Platform.'
+        };
+
+        return res.json(formattedAdvisor);
+    } catch (error) {
+        console.error('Error fetching advisor:', error);
+        return res.status(500).json({ error: 'Failed to fetch advisor' });
+    }
+});
+
 // Book a service or session
 router.post('/book', async (req: AuthenticatedRequest, res: Response) => {
     try {

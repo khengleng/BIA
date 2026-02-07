@@ -3,6 +3,7 @@ import { API_URL } from '@/lib/api'
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   Building2,
   Users,
@@ -35,6 +36,7 @@ interface User {
 
 export default function AdvisoryPage() {
   const [user, setUser] = useState<User | null>(null)
+  const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('services')
   const [advisoryServices, setAdvisoryServices] = useState<any[]>([])
@@ -208,9 +210,7 @@ export default function AdvisoryPage() {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleViewAdvisorProfile = (advisor: any) => {
-    // Navigate to advisor profile page or open modal
-    console.log('Viewing advisor profile:', advisor.name)
-    // In a real implementation, you would navigate to a detailed advisor profile page
+    router.push(`/advisory/advisor/${advisor.id}`)
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
