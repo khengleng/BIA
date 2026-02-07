@@ -1,48 +1,94 @@
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_mock', {
+if (!process.env.STRIPE_SECRET_KEY) {
+    console.warn('STRIPE_SECRET_KEY is not defined in environment variables');
+}
+
+export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_dummy', {
     apiVersion: '2023-10-16' as any,
 });
 
+/**
+ * KYC & Identity Utilities
+ */
+
+export const kyc = {
+    /**
+     * Create a Stripe VerificationSession
+     * This creates a link for the user to upload their ID and take a selfie
+     */
+    async createVerificationSession(userId: string) {
+        try {
+            const session = await stripe.identity.verificationSessions.create({
+                type: 'document',
+                metadata: { userId },
+                options: {
+                    document: {
+                        require_id_number: true,
+                        require_matching_selfie: true,
+                    },
+                },
+            });
+            return session;
+        } catch (error) {
+            console.error('Stripe Identity Error:', error);
+            throw error;
+        }
+    },
+
+    async getVerificationSession(sessionId: string) {
+        return await stripe.identity.verificationSessions.retrieve(sessionId);
+    }
+};
+
+/**
+ * Escrow & Payment Utilities
+ */
+
+export const payments = {
+    /**
+     * Create a PaymentIntent for an investment
+     * This "authorizes" the payment, effectively holding it in escrow
+     */
+    async createEscrowIntent(amount: number, currency: string = 'usd', metadata: any) {
+        try {
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: Math.round(amount * 100), // Stripe uses cents
+                currency,
+                payment_method_types: ['card'],
+                capture_method: 'manual', // MANUAL capture = Escrow (auth first, charge later)
+                metadata,
+            });
+            return paymentIntent;
+        } catch (error) {
+            console.error('Stripe Payment Error:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Capture the held funds (Release Escrow to SME)
+     */
+    async capturePayment(paymentIntentId: string) {
+        return await stripe.paymentIntents.capture(paymentIntentId);
+    },
+
+    /**
+     * Refund/Release the held funds back to Investor
+     */
+    async cancelPayment(paymentIntentId: string) {
+        return await stripe.paymentIntents.cancel(paymentIntentId);
+    }
+};
+
+/**
+ * Standard Payment Intent (for services/fees)
+ */
 export async function createPaymentIntent(amount: number, currency: string = 'usd') {
-    try {
-        // Check if Stripe is properly configured
-        if (!process.env.STRIPE_SECRET_KEY ||
-            process.env.STRIPE_SECRET_KEY === 'sk_test_...' ||
-            process.env.STRIPE_SECRET_KEY === 'sk_test_mock') {
-            throw new Error('Stripe is not configured. Please add a valid STRIPE_SECRET_KEY to your .env file. Get your key from https://dashboard.stripe.com/test/apikeys');
-        }
-
-        const paymentIntent = await stripe.paymentIntents.create({
-            amount: Math.round(amount * 100), // Stripe expects cents
-            currency,
-            automatic_payment_methods: {
-                enabled: true,
-            },
-        });
-        return paymentIntent;
-    } catch (error: any) {
-        console.error('Stripe error:', error);
-        // Provide helpful error message
-        if (error.message && error.message.includes('not configured')) {
-            throw error; // Re-throw our custom error
-        }
-        throw new Error('Payment processing failed. Please contact support.');
-    }
+    return await stripe.paymentIntents.create({
+        amount: Math.round(amount * 100),
+        currency,
+        payment_method_types: ['card'],
+    });
 }
 
-export async function createCheckoutSession(lineItems: any[], successUrl: string, cancelUrl: string) {
-    try {
-        const session = await stripe.checkout.sessions.create({
-            payment_method_types: ['card'],
-            line_items: lineItems,
-            mode: 'payment',
-            success_url: successUrl,
-            cancel_url: cancelUrl,
-        });
-        return session;
-    } catch (error) {
-        console.error('Stripe error:', error);
-        throw error;
-    }
-}

@@ -25,8 +25,12 @@ import {
   FileText as DocumentIcon,
   X,
   MapPin,
-  User
+  User,
+  Sparkles as SparklesIcon
 } from 'lucide-react'
+import DealAnalysis from '@/components/DealAnalysis'
+import DataroomChat from '@/components/DataroomChat'
+import TemplateGenerator from '@/components/TemplateGenerator'
 
 interface User {
   id: string
@@ -49,6 +53,7 @@ export default function DealDetailPage() {
   const [showAddTimelineModal, setShowAddTimelineModal] = useState(false)
   const [showUploadDocumentModal, setShowUploadDocumentModal] = useState(false)
   const [showAddActivityModal, setShowAddActivityModal] = useState(false)
+  const [showAiChat, setShowAiChat] = useState(false)
   const [editForm, setEditForm] = useState({
     title: '',
     description: '',
@@ -768,18 +773,16 @@ export default function DealDetailPage() {
                         <div className="text-2xl font-bold text-purple-400">{deal.metrics.marketSize}</div>
                         <div className="text-sm text-gray-400">Market Size</div>
                       </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-yellow-400">{deal.metrics.riskAssessment}</div>
-                        <div className="text-sm text-gray-400">Risk Assessment</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-red-400">{deal.metrics.competitiveAdvantage}</div>
-                        <div className="text-sm text-gray-400">Competitive Advantage</div>
-                      </div>
                     </div>
+                  </div>
+
+                  {/* AI Analysis Integration */}
+                  <div className="mt-8">
+                    <DealAnalysis dealId={params.id as string} />
                   </div>
                 </div>
               )}
+
 
               {activeTab === 'timeline' && (
                 <div className="space-y-6">
@@ -818,6 +821,11 @@ export default function DealDetailPage() {
 
               {activeTab === 'documents' && (
                 <div className="space-y-6">
+                  {/* Digital Document Foundation */}
+                  <div className="mb-8">
+                    <TemplateGenerator />
+                  </div>
+
                   <div className="flex justify-between items-center">
                     <h3 className="text-lg font-semibold text-white">Documents</h3>
                     <button
@@ -1600,6 +1608,25 @@ export default function DealDetailPage() {
           </div>
         </div>
       )}
+      {/* Floating AI Assistant Toggle */}
+      <div className="fixed bottom-8 right-8 z-50">
+        {!showAiChat ? (
+          <button
+            onClick={() => setShowAiChat(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-2xl shadow-blue-900/40 border border-blue-400/30 flex items-center gap-2 group transition-all"
+          >
+            <SparklesIcon className="w-6 h-6 animate-pulse" />
+            <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-500 font-bold whitespace-nowrap">
+              Ask Dataroom AI
+            </span>
+          </button>
+        ) : (
+          <div className="w-96 animate-in slide-in-from-bottom-8 duration-300">
+            <DataroomChat dealId={params.id as string} onClose={() => setShowAiChat(false)} />
+          </div>
+        )}
+      </div>
     </div>
   )
 }
+

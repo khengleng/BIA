@@ -38,7 +38,8 @@ export type Resource =
     | 'payment'
     | 'dataroom'
     | 'due_diligence'
-    | 'community';
+    | 'community'
+    | 'admin';
 
 // Special permission modifiers
 const OWNER_SUFFIX = ':owner';
@@ -221,6 +222,12 @@ export const PERMISSIONS: Record<string, string[]> = {
     'community.comment_update': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR:owner', 'INVESTOR:owner', 'SME:owner'],
     'community.comment_delete': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR:owner', 'INVESTOR:owner', 'SME:owner'],
     'community.manage': ['SUPER_ADMIN', 'ADMIN'],
+
+    // ==================== Admin Permissions ====================
+    'admin.read': ['SUPER_ADMIN', 'ADMIN'],
+    'admin.user_manage': ['SUPER_ADMIN', 'ADMIN'],
+    'admin.tenant_manage': ['SUPER_ADMIN'],
+    'admin.system_config': ['SUPER_ADMIN'],
 };
 
 /**

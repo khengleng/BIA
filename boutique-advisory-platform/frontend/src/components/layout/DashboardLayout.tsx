@@ -25,7 +25,11 @@ import {
     UsersRound,
     Shield,
     MessagesSquare,
-    ArrowLeftRight
+    ArrowLeftRight,
+    LayoutDashboard,
+    UserCog,
+    History,
+    Briefcase
 } from 'lucide-react'
 import { useTranslations } from '../../hooks/useTranslations'
 import { User } from '../../types'
@@ -115,6 +119,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         { href: '/advisory', label: t('navigation.advisory'), icon: Award, roles: ['ADMIN', 'SME', 'INVESTOR'] },
         { href: '/advisory/manage', label: 'Manage Services', icon: Settings, roles: ['ADMIN', 'ADVISOR'] },
         { href: '/reports', label: t('navigation.reports'), icon: FileText, roles: ['ADMIN', 'ADVISOR'] },
+        { href: '/investor/portfolio', label: 'My Portfolio', icon: Briefcase, roles: ['ADMIN', 'ADVISOR', 'INVESTOR'] },
+        // Admin Section
+        { href: '', label: '― Administration ―', icon: null, divider: true, roles: ['ADMIN', 'SUPER_ADMIN'] },
+        { href: '/admin/dashboard', label: 'Admin Panel', icon: LayoutDashboard, roles: ['ADMIN', 'SUPER_ADMIN'] },
+        { href: '/admin/users', label: 'User Management', icon: UserCog, roles: ['ADMIN', 'SUPER_ADMIN'] },
+        { href: '/admin/audit', label: 'System Audit', icon: History, roles: ['ADMIN', 'SUPER_ADMIN'] },
         // New Features Section
         { href: '', label: '― New Features ―', icon: null, divider: true, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
         { href: '/syndicates', label: 'Syndicates', icon: UsersRound, isNew: true, roles: ['ADMIN', 'ADVISOR', 'INVESTOR'] },

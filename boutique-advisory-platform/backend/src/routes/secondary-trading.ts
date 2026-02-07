@@ -7,6 +7,7 @@
 import { Router, Response } from 'express';
 import { AuthenticatedRequest, authorize } from '../middleware/authorize';
 import { prisma, prismaReplica } from '../database';
+import { payments } from '../utils/stripe';
 import { shouldUseDatabase } from '../migration-manager';
 
 const router = Router();
@@ -277,10 +278,17 @@ router.post('/listings/:id/buy', authorize('secondary_trading.buy'), async (req:
             }
         });
 
+        // Create Escrow Payment Intent
+        const escrow = await payments.createEscrowIntent(
+            trade.totalAmount + trade.fee,
+            'usd',
+            { tradeId: trade.id, listingId: listing.id, buyerId: buyer.id }
+        );
+
         res.status(201).json({
-            message: 'Trade created successfully',
             trade,
-            netAmount: totalAmount - fee
+            clientSecret: escrow.client_secret,
+            paymentIntentId: escrow.id
         });
     } catch (error) {
         console.error('Error creating trade:', error);
