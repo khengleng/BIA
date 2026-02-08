@@ -52,6 +52,112 @@ router.get('/', authorize('investor.list'), async (req: AuthenticatedRequest, re
   }
 });
 
+
+// Get current investor profile
+router.get('/profile', async (req: any, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const investor = await prisma.investor.findUnique({
+      where: { userId },
+      include: { user: true }
+    });
+
+    if (!investor) {
+      return res.status(404).json({ error: 'Investor not found' });
+    }
+
+    return res.json({ investor, user: investor.user });
+  } catch (error) {
+    console.error('Get investor profile error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get investor portfolio analytics
+router.get('/portfolio/stats', authorize('investor.read'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+
+    // Get investor profile with investments
+    const investor = await prisma.investor.findUnique({
+      where: { userId },
+      include: {
+        dealInvestments: {
+          include: {
+            deal: {
+              include: {
+                sme: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!investor) {
+      return res.status(404).json({ error: 'Investor not found' });
+    }
+
+    // Calculate Portfolio Metrics
+    const investments = investor.dealInvestments;
+    // Calculate total value based on invested amount
+    const totalValue = investments.reduce((sum, inv) => sum + (inv.amount || 0), 0);
+    const activePositions = investments.filter(inv => ['APPROVED', 'COMPLETED', 'PENDING'].includes(inv.status)).length;
+
+    // Calculate Sector Allocation
+    const sectorMap = new Map<string, number>();
+
+    investments.forEach(inv => {
+      // Use dealing's SME sector or default
+      const sector = inv.deal?.sme?.sector || 'General';
+      const current = sectorMap.get(sector) || 0;
+      sectorMap.set(sector, current + (inv.amount || 0));
+    });
+
+    const sectors = Array.from(sectorMap.entries()).map(([sector, amount]) => {
+      // Avoid division by zero
+      const percentage = totalValue > 0 ? (amount / totalValue) * 100 : 0;
+
+      return {
+        sector,
+        allocation: parseFloat(percentage.toFixed(1)),
+        value: amount,
+        color: getColorForSector(sector)
+      };
+    }).sort((a, b) => b.value - a.value); // Sort by largest allocation
+
+    // Format individual portfolio items for the list
+    const portfolioItems = investments.map(inv => {
+      const percentage = totalValue > 0 ? (inv.amount / totalValue) * 100 : 0;
+
+      return {
+        id: inv.dealId,
+        name: inv.deal?.sme?.name || 'Unknown Company',
+        sector: inv.deal?.sme?.sector || 'General',
+        allocation: parseFloat(percentage.toFixed(1)),
+        value: inv.amount,
+        returns: calculateMockReturns(inv.amount, inv.status),
+        color: getColorForSector(inv.deal?.sme?.sector || 'General')
+      };
+    });
+
+    return res.json({
+      summary: {
+        totalAum: totalValue,
+        activePositions,
+        realizedRoi: 12.5, // Mocked for now
+        startDate: investor.createdAt
+      },
+      sectors: sectors,
+      items: portfolioItems
+    });
+
+  } catch (error) {
+    console.error('Get portfolio stats error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Get investor by ID
 router.get('/:id', authorize('investor.read'), async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -157,25 +263,7 @@ router.post('/:id/kyc', async (req: any, res: Response) => {
   }
 });
 
-// Get current investor profile
-router.get('/profile', async (req: any, res: Response) => {
-  try {
-    const userId = req.user?.id;
-    const investor = await prisma.investor.findUnique({
-      where: { userId },
-      include: { user: true }
-    });
 
-    if (!investor) {
-      return res.status(404).json({ error: 'Investor not found' });
-    }
-
-    return res.json({ investor, user: investor.user });
-  } catch (error) {
-    console.error('Get investor profile error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-});
 
 // Submit KYC details
 router.post('/kyc-submit', async (req: any, res: Response) => {
@@ -247,6 +335,30 @@ router.post('/kyc-token', authorize('investor.update', { getOwnerId: (req) => re
     return res.status(500).json({ error: 'Failed to generate Sumsub verification token' });
   }
 });
+
+
+
+function getColorForSector(sector: string): string {
+  const colors: any = {
+    'Technology': 'bg-blue-500',
+    'Fintech': 'bg-indigo-500',
+    'Agriculture': 'bg-green-500',
+    'Energy': 'bg-yellow-500',
+    'Healthcare': 'bg-red-500',
+    'Logistics': 'bg-purple-500',
+    'Real Estate': 'bg-teal-500',
+    'Education': 'bg-pink-500',
+    'Manufacturing': 'bg-orange-500'
+  };
+  return colors[sector] || 'bg-gray-500';
+}
+
+function calculateMockReturns(amount: number, status: string): number {
+  if (status === 'PENDING') return 0;
+  // Generate a deterministic random-looking return based on amount
+  const seed = (amount % 17) - 5;
+  return parseFloat(seed.toFixed(1));
+}
 
 export default router;
 

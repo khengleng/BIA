@@ -3,13 +3,9 @@
 import { useState, useEffect } from 'react'
 import {
     ShieldCheck,
-    User,
-    FileText,
-    Upload,
     CheckCircle,
     AlertCircle,
     Lock,
-    Globe
 } from 'lucide-react'
 import DashboardLayout from '../../components/layout/DashboardLayout'
 import { useToast } from '../../contexts/ToastContext'
@@ -19,13 +15,6 @@ import SumsubKyc from '../../components/SumsubKyc'
 export default function KYCPage() {
     const { addToast } = useToast()
     const [kycStatus, setKycStatus] = useState<string>('PENDING')
-    const [isSubmitting, setIsSubmitting] = useState(false)
-    const [formData, setFormData] = useState({
-        fullName: '',
-        nationality: '',
-        idNumber: '',
-        investorType: 'ANGEL'
-    })
     const [showSumsub, setShowSumsub] = useState(false)
 
     useEffect(() => {
@@ -35,12 +24,6 @@ export default function KYCPage() {
                 if (response.ok) {
                     const data = await response.json()
                     setKycStatus(data.investor?.kycStatus || 'PENDING')
-                    setFormData({
-                        fullName: data.user?.firstName + ' ' + data.user?.lastName || '',
-                        nationality: data.investor?.preferences?.nationality || '',
-                        idNumber: data.investor?.preferences?.idNumber || '',
-                        investorType: data.investor?.type || 'ANGEL'
-                    })
                 }
             } catch (error) {
                 console.error('Error fetching KYC status:', error)
@@ -48,29 +31,6 @@ export default function KYCPage() {
         }
         fetchKycStatus()
     }, [])
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
-        setIsSubmitting(true)
-
-        try {
-            const response = await authorizedRequest('/api/investors/kyc-submit', {
-                method: 'POST',
-                body: JSON.stringify(formData)
-            })
-
-            if (response.ok) {
-                addToast('success', 'KYC details submitted for review')
-                setKycStatus('UNDER_REVIEW')
-            } else {
-                addToast('error', 'Submission failed')
-            }
-        } catch (error) {
-            addToast('error', 'An error occurred during submission')
-        } finally {
-            setIsSubmitting(false)
-        }
-    }
 
     return (
         <DashboardLayout>
