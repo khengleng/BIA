@@ -88,7 +88,7 @@ export default function SumsubKyc({ onClose, onComplete }: SumsubKycProps) {
                                 lang: 'en',
                                 i18n: {
                                     en: {
-                                        "header.title": "Verification for Cambobia"
+                                        "header.title": "Verification for Boutique Advisory Platform"
                                     }
                                 }
                             }}

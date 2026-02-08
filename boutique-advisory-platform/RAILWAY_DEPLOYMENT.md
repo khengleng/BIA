@@ -58,6 +58,8 @@ DATABASE_URL=<Railway PostgreSQL URL>
 JWT_SECRET=<your-jwt-secret>
 PORT=3003
 NODE_ENV=production
+FRONTEND_URL=https://www.cambobia.com
+
 
 # Stripe (if using payments)
 STRIPE_SECRET_KEY=<your-stripe-secret>

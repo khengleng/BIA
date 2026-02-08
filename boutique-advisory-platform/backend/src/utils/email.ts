@@ -4,7 +4,7 @@ import { Resend } from 'resend';
 const resend = new Resend(process.env.RESEND_API_KEY || 're_mock_key_for_startup_check');
 
 const FROM_EMAIL = process.env.EMAIL_FROM || 'contact@cambobia.com';
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3005';
+const FRONTEND_URL = (process.env.FRONTEND_URL || 'https://www.cambobia.com').replace(/\/$/, '');
 
 /**
  * Email Templates

@@ -155,7 +155,7 @@ app.use(cookieParser());
 app.use(cors({
   origin: (origin, callback) => {
     // In production, strictly match the FRONTEND_URL
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3002';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://www.cambobia.com';
     const allowedOrigins = [frontendUrl, frontendUrl.replace(/\/$/, '')];
 
     // Always allow requests with no origin (like mobile apps or curl)
