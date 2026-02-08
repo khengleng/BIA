@@ -5,6 +5,8 @@ import { authorize, AuthenticatedRequest } from '../middleware/authorize';
 import { kyc } from '../utils/stripe';
 import { sumsub } from '../utils/sumsub';
 
+import { encrypt, decrypt } from '../utils/encryption';
+
 const router = Router();
 
 // Get all investors
@@ -45,7 +47,16 @@ router.get('/', authorize('investor.list'), async (req: AuthenticatedRequest, re
     }
 
     const investors = await prisma.investor.findMany(query);
-    return res.json(investors);
+
+    // Sanitize sensitive preferences from list view
+    const sanitizedInvestors = investors.map(inv => {
+      const prefs: any = inv.preferences || {};
+      // Remove sensitive PII from list view
+      const { idNumber, ...safePrefs } = prefs;
+      return { ...inv, preferences: safePrefs };
+    });
+
+    return res.json(sanitizedInvestors);
   } catch (error) {
     console.error('Get investors error:', error);
     return res.status(500).json({ error: 'Internal server error' });
@@ -66,7 +77,13 @@ router.get('/profile', async (req: any, res: Response) => {
       return res.status(404).json({ error: 'Investor not found' });
     }
 
-    return res.json({ investor, user: investor.user });
+    // Decrypt sensitive data
+    const prefs: any = investor.preferences || {};
+    if (prefs.idNumber) {
+      prefs.idNumber = decrypt(prefs.idNumber);
+    }
+
+    return res.json({ investor: { ...investor, preferences: prefs }, user: investor.user });
   } catch (error) {
     console.error('Get investor profile error:', error);
     return res.status(500).json({ error: 'Internal server error' });
@@ -178,11 +195,24 @@ router.get('/:id', authorize('investor.read'), async (req: AuthenticatedRequest,
     }
 
     // Explicit ownership check for INVESTOR role
-    if (userRole === 'INVESTOR' && investor.userId !== userId) {
+    const isOwner = investor.userId === userId;
+    if (userRole === 'INVESTOR' && !isOwner) {
       return res.status(403).json({ error: 'Access denied: You can only view your own investor profile' });
     }
 
-    return res.json(investor);
+    // Decrypt sensitive data only for owner or admin
+    const prefs: any = investor.preferences || {};
+    if (prefs.idNumber) {
+      // Only decrypt if authorized to see detailed PII
+      if (isOwner || userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') {
+        prefs.idNumber = decrypt(prefs.idNumber);
+      } else {
+        // Mask it for others
+        prefs.idNumber = '********';
+      }
+    }
+
+    return res.json({ ...investor, preferences: prefs });
   } catch (error) {
     console.error('Get investor error:', error);
     return res.status(500).json({ error: 'Internal server error' });
@@ -208,6 +238,13 @@ router.put('/:id', authorize('investor.update'), validateBody(updateInvestorSche
       return res.status(403).json({ error: 'Access denied: You can only update your own investor profile' });
     }
 
+    // Encrypt sensitive fields if updated
+    if (updateData.preferences) {
+      if (updateData.preferences.idNumber) {
+        updateData.preferences.idNumber = encrypt(updateData.preferences.idNumber);
+      }
+    }
+
     const investor = await prisma.investor.update({
       where: { id },
       data: updateData,
@@ -216,7 +253,13 @@ router.put('/:id', authorize('investor.update'), validateBody(updateInvestorSche
       }
     });
 
-    return res.json(investor);
+    // Don't return encrypted PII directly, decrypt it back for response
+    const prefs: any = investor.preferences || {};
+    if (prefs.idNumber) {
+      prefs.idNumber = decrypt(prefs.idNumber);
+    }
+
+    return res.json({ ...investor, preferences: prefs });
   } catch (error) {
     console.error('Update investor error:', error);
     return res.status(500).json({ error: 'Internal server error' });
@@ -284,7 +327,7 @@ router.post('/kyc-submit', async (req: any, res: Response) => {
         preferences: {
           ...(investor.preferences as any),
           nationality,
-          idNumber,
+          idNumber: encrypt(idNumber),
           fullName
         } as any
       }
