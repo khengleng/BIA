@@ -135,6 +135,23 @@ The platform implements **AES-256-GCM** encryption for sensitive Personally Iden
     - **Admins**: Can view/decrypt all user data for compliance.
     - **Public/Other Users**: Receive sanitized objects with sensitive fields removed.
 
+### PCI DSS Compliance
+
+The platform is designed to align with **PCI DSS** standards for handling sensitive data:
+
+1.  **Cardholder Data (CHD)**:
+    - We **NEVER** store Primary Account Numbers (PAN) or sensitive authentication data (CAV2/CVC2).
+    - All payments are processed via **Stripe**, which uses tokenization to keep CHD off our servers entirely (SAQ A compliance).
+
+2.  **Key Management (Requirement 3)**:
+    - In production, `ENCRYPTION_KEY` **MUST** be injected via a secure Key Management Service (KMS) or Secrets Manager (e.g., AWS Secrets Manager, HashiCorp Vault).
+    - The code explicitly fails to start in `production` mode if a secure key is not provided (preventing use of fallback keys).
+    - Keys should be rotated annually.
+
+3.  **Data Minimization (Requirement 3.4)**:
+    - Only essential PII (e.g., National IDs for KYC) is stored, and it is strictly encrypted using AES-256-GCM.
+    - Rendered PII is masked (e.g., `********`) wherever possible in the UI.
+
 ---
 
 **Boutique Advisory Platform** → Connecting SMEs and Investors

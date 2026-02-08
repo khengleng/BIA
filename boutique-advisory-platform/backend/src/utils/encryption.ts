@@ -1,8 +1,16 @@
 import crypto from 'crypto';
 
 // Use a consistent encryption key from environment in production
-// Fallback only for development
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || '14d6762934e3d84f9ebe6ba7b6b7363dc8ad53869da8dfceb44fe479779b48ed';
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
+
+if (!ENCRYPTION_KEY) {
+    if (process.env.NODE_ENV === 'production') {
+        throw new Error('FATAL: ENCRYPTION_KEY is not defined. This is a critical security violation for PCI DSS compliance.');
+    }
+    // Fallback strictly for local development only
+    console.warn('WARNING: Using insecure default encryption key. Do not use in production.');
+}
+const ACTIVE_KEY = ENCRYPTION_KEY || '14d6762934e3d84f9ebe6ba7b6b7363dc8ad53869da8dfceb44fe479779b48ed';
 const ALGORITHM = 'aes-256-gcm';
 
 // Standard IV length for GCM is 12 bytes (96 bits)
@@ -17,7 +25,7 @@ export function encrypt(text: string): string {
 
     // Generate a random IV for each encryption
     const iv = crypto.randomBytes(IV_LENGTH);
-    const key = Buffer.from(ENCRYPTION_KEY, 'hex');
+    const key = Buffer.from(ACTIVE_KEY, 'hex');
 
     const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
 
@@ -46,7 +54,7 @@ export function decrypt(text: string): string {
 
         const [ivHex, authTagHex, encryptedHex] = parts;
 
-        const key = Buffer.from(ENCRYPTION_KEY, 'hex');
+        const key = Buffer.from(ACTIVE_KEY, 'hex');
         const iv = Buffer.from(ivHex, 'hex');
         const authTag = Buffer.from(authTagHex, 'hex');
 
