@@ -114,6 +114,27 @@ boutique-advisory-platform/
 - Review CORS settings in `docker-compose.yml` or cloud config.
 - Databases should always use SSL in production (`sslmode=require`).
 
+### Encryption & Data Protection
+
+The platform implements **AES-256-GCM** encryption for sensitive Personally Identifiable Information (PII) at rest.
+
+- **Algorithm**: AES-256-GCM (Galois/Counter Mode) gives both confidentiality and integrity.
+- **Key Management**: Uses `ENCRYPTION_KEY` environment variable (32-byte hex string).
+- **Implementation**:
+    - Random 12-byte IV (Initialization Vector) generated for every encryption.
+    - Authentication Tag stored with cipher text to prevent tampering.
+- **Scope**:
+    - **Investor KYC Data**: Identity Numbers (National ID/Passport) are encrypted before storage.
+    - **API Responses**: Sensitive PII is automatically decrypted for authorized owners/admins but masked or omitted for others.
+
+### Data Masking
+
+- **List Views**: Sensitive fields (like ID numbers, phone numbers) are stripped from all list API responses.
+- **Role-Based Access**:
+    - **Investors**: Can only view/decrypt their own data.
+    - **Admins**: Can view/decrypt all user data for compliance.
+    - **Public/Other Users**: Receive sanitized objects with sensitive fields removed.
+
 ---
 
 **Boutique Advisory Platform** → Connecting SMEs and Investors
