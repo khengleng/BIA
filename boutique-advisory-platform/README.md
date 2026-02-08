@@ -100,6 +100,10 @@ boutique-advisory-platform/
 | `S3_BUCKET_NAME` | Optional | S3/R2 bucket name |
 | `RESEND_API_KEY` | Optional | Resend API key for email notifications |
 | `EMAIL_FROM` | Optional | Sender email address (default: contact@cambobia.com) |
+| `ENCRYPTION_KEY` | **Required** (Prod) | 32-byte hex string for AES-256-GCM encryption |
+| `SUMSUB_APP_TOKEN` | Optional | Sumsub App Token for KYC |
+| `SUMSUB_SECRET_KEY` | Optional | Sumsub Secret Key for KYC |
+| `GEMINI_API_KEY` | Optional | Google Gemini API Key for AI features |
 
 ### Frontend
 
