@@ -69,11 +69,23 @@ STRIPE_PUBLISHABLE_KEY=<your-stripe-publishable>
 RESEND_API_KEY=<your-resend-key>
 FROM_EMAIL=<your-from-email>
 
-# File Upload (if using R2/MinIO)
-R2_ENDPOINT=<your-r2-endpoint>
-R2_ACCESS_KEY_ID=<your-access-key>
-R2_SECRET_ACCESS_KEY=<your-secret-key>
-R2_BUCKET_NAME=<your-bucket>
+# File Upload (S3/R2 Compatible)
+# Note: The code uses S3_ prefix even for R2
+S3_ENDPOINT=<your-r2-endpoint>
+S3_REGION=auto
+S3_ACCESS_KEY_ID=<your-access-key>
+S3_SECRET_ACCESS_KEY=<your-secret-key>
+S3_BUCKET_NAME=<your-bucket>
+# Optional: Public URL if using custom domain
+S3_PUBLIC_URL=https://<your-custom-domain>
+
+# Identity Verification (Sumsub)
+SUMSUB_APP_TOKEN=<your-sumsub-token>
+SUMSUB_SECRET_KEY=<your-sumsub-secret>
+SUMSUB_LEVEL_NAME=basic-kyc-level
+
+# AI Features (Gemini)
+GEMINI_API_KEY=<your-gemini-key>
 ```
 
 ### Frontend Service

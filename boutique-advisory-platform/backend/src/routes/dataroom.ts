@@ -64,19 +64,33 @@ router.get('/', authorize('dataroom.list'), async (req: AuthenticatedRequest, re
             ].filter(Boolean);
 
             // Format documents
-            const documents = deal.documents.map(doc => ({
-                id: doc.id,
-                name: doc.name,
-                category: doc.type,
-                size: `${(doc.size / 1024 / 1024).toFixed(2)} MB`,
-                uploadedBy: doc.uploadedBy,
-                uploadedAt: doc.createdAt.toISOString(),
-                accessCount: 0, // TODO: Track in separate table
-                lastAccessedBy: null,
-                lastAccessedAt: null,
-                url: doc.url,
-                mimeType: doc.mimeType
-            }));
+            // Group documents by name to handle versioning
+            const docsByName = new Map<string, any[]>();
+            deal.documents.forEach(doc => {
+                const key = doc.name;
+                if (!docsByName.has(key)) docsByName.set(key, []);
+                docsByName.get(key)!.push(doc);
+            });
+
+            const documents = Array.from(docsByName.entries()).map(([name, versions]) => {
+                versions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                const latest = versions[0];
+
+                return {
+                    id: latest.id,
+                    name: latest.name,
+                    category: latest.type,
+                    size: `${(latest.size / 1024 / 1024).toFixed(2)} MB`,
+                    uploadedBy: latest.uploadedBy,
+                    uploadedAt: latest.createdAt.toISOString(),
+                    accessCount: 0,
+                    lastAccessedBy: null,
+                    lastAccessedAt: null,
+                    url: latest.url,
+                    mimeType: latest.mimeType,
+                    versionCount: versions.length // Just show count in list view
+                };
+            });
 
             return {
                 id: deal.id,
@@ -254,19 +268,49 @@ router.get('/:dealId', authorize('dataroom.read'), async (req: AuthenticatedRequ
             ...deal.investors.map(inv => inv.investor.userId)
         ].filter(Boolean);
 
-        const documents = deal.documents.map(doc => ({
-            id: doc.id,
-            name: doc.name,
-            category: doc.type,
-            size: `${(doc.size / 1024 / 1024).toFixed(2)} MB`,
-            uploadedBy: doc.uploadedBy,
-            uploadedAt: doc.createdAt.toISOString(),
-            accessCount: 0,
-            lastAccessedBy: null,
-            lastAccessedAt: null,
-            url: doc.url,
-            mimeType: doc.mimeType
-        }));
+        // Group documents by name to handle versioning
+        const docsByName = new Map<string, any[]>();
+
+        deal.documents.forEach(doc => {
+            const key = doc.name; // Group by filename
+            if (!docsByName.has(key)) {
+                docsByName.set(key, []);
+            }
+            docsByName.get(key)!.push(doc);
+        });
+
+        const documents = Array.from(docsByName.entries()).map(([name, versions]) => {
+            // Sort versions by date desc (latest first)
+            versions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+            const latest = versions[0];
+            const previousVersions = versions.slice(1).map((v, index) => ({
+                version: versions.length - index - 1, // Calculate version number
+                id: v.id,
+                uploadedAt: v.createdAt.toISOString(),
+                uploadedBy: v.uploadedBy,
+                size: `${(v.size / 1024 / 1024).toFixed(2)} MB`
+            }));
+
+            // Current version is the latest
+            const currentVersionNum = versions.length;
+
+            return {
+                id: latest.id,
+                name: latest.name,
+                category: latest.type,
+                size: `${(latest.size / 1024 / 1024).toFixed(2)} MB`,
+                uploadedBy: latest.uploadedBy,
+                uploadedAt: latest.createdAt.toISOString(),
+                version: currentVersionNum, // Add version number
+                accessCount: 0,
+                lastAccessedBy: null,
+                lastAccessedAt: null,
+                url: latest.url,
+                mimeType: latest.mimeType,
+                versions: previousVersions // Include history
+            };
+        });
 
         const dataRoom = {
             id: deal.id,
