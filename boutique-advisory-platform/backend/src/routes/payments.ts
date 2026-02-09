@@ -88,6 +88,9 @@ router.post('/aba/create-transaction', authorize('payment.create'), async (req: 
             return res.status(400).json({ error: 'Amount is required' });
         }
 
+        // Generate Short Transaction ID for ABA (Max 20 chars, e.g. 19 chars)
+        const shortTranId = Date.now().toString() + Math.floor(100000 + Math.random() * 900000).toString();
+
         // Create Payment record
         const payment = await (prisma as any).payment.create({
             data: {
@@ -97,6 +100,7 @@ router.post('/aba/create-transaction', authorize('payment.create'), async (req: 
                 currency: 'USD',
                 method: 'ABA_PAYWAY',
                 provider: 'ABA',
+                providerTxId: shortTranId, // Store ABA ID
                 status: 'PENDING',
                 bookingId: bookingId || null,
                 dealInvestorId: dealInvestorId || null,
@@ -106,7 +110,7 @@ router.post('/aba/create-transaction', authorize('payment.create'), async (req: 
 
         // Generate ABA Request Data
         const abaRequest = createAbaTransaction(
-            payment.id,
+            shortTranId,
             amount,
             items || [{ name: 'Advisory Service', quantity: 1, price: amount }],
             {

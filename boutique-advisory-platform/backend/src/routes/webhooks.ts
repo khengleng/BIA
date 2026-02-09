@@ -108,11 +108,12 @@ router.post('/aba', async (req: Request, res: Response) => {
         // Using any cast to avoid TS errors if model update isn't refreshed in IDE
         const db = prisma as any;
 
-        const payment = await db.payment.findUnique({ where: { id: tran_id } });
+        // Find by providerTxId (shortTranId) since tran_id from ABA is the short one
+        const payment = await db.payment.findFirst({ where: { providerTxId: tran_id } });
 
         if (payment) {
             await db.payment.update({
-                where: { id: tran_id },
+                where: { id: payment.id }, // Update by internal UUID
                 data: {
                     status: paymentStatus,
                     metadata: req.body
