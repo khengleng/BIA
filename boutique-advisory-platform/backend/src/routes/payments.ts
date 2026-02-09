@@ -223,9 +223,13 @@ router.post('/aba/generate-qr', authorize('payment.create'), async (req: Authent
             return res.status(500).json({ error: 'Failed to generate QR Code from ABA' });
         }
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('ABA Generate QR Error:', error);
-        return res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({
+            error: 'Internal server error during QR generation',
+            message: error.message,
+            details: error.response?.data || 'No additional details'
+        });
     }
 });
 

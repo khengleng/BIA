@@ -120,29 +120,31 @@ export const createAbaTransaction = (
 };
 
 
+import axios from 'axios';
+
 // Helper to generate hash for QR Transaction (Direct API V1)
+// Exact 19-field order from ABA QR API Docs:
+// req_time + merchant_id + tran_id + amount + items + first_name + last_name + email + phone + purchase_type + payment_option + callback_url + return_deeplink + currency + custom_fields + return_params + payout + lifetime + qr_image_template
 export const generateAbaQrHash = (
     req_time: string,
     tran_id: string,
     amount: string,
-    items: string = '',
-    first_name: string = '',
-    last_name: string = '',
-    email: string = '',
-    phone: string = '',
-    purchase_type: string = 'purchase',
-    payment_option: string = 'abapay_khqr',
-    callback_url: string = '',
-    return_deeplink: string = '',
-    currency: string = 'USD',
-    custom_fields: string = '',
-    return_params: string = '',
-    payout: string = '',
-    lifetime: string = '',
-    qr_image_template: string = ''
+    items: string,
+    first_name: string,
+    last_name: string,
+    email: string,
+    phone: string,
+    purchase_type: string,
+    payment_option: string,
+    callback_url: string,
+    return_deeplink: string,
+    currency: string,
+    custom_fields: string,
+    return_params: string,
+    payout: string,
+    lifetime: string,
+    qr_image_template: string
 ): string => {
-    // Exact 19-field order from ABA QR API Docs:
-    // req_time + merchant_id + tran_id + amount + items + first_name + last_name + email + phone + purchase_type + payment_option + callback_url + return_deeplink + currency + custom_fields + return_params + payout + lifetime + qr_image_template
     const dataToSign = [
         req_time,
         ABA_PAYWAY_MERCHANT_ID,
@@ -178,31 +180,49 @@ export const generateAbaQr = async (
     try {
         const req_time = new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14);
         const amountStr = amount.toFixed(2);
-        const itemsBase64 = items.length > 0 ? Buffer.from(JSON.stringify(items)).toString('base64') : '';
-        const payment_option = 'abapay_khqr';
+
+        // Items must be Base64 encoded JSON, and mandatory for the hash (can be empty array)
+        const itemsBase64 = Buffer.from(JSON.stringify(items || [])).toString('base64');
+        const first_name = user.firstName || user.email.split('@')[0];
+        const last_name = user.lastName || 'User';
+        const email = user.email || '';
+        const phone = user.phone || '';
         const purchase_type = 'purchase';
+        const payment_option = 'abapay_khqr';
         const currency = 'USD';
 
-        // All fields must be present in the hash calculation
+        // Callback URL is required and should be Base64 encoded in some versions
+        // We'll use the production URL if possible, otherwise a placeholder
+        const callbackUrlRaw = process.env.ABA_PAYWAY_CALLBACK_URL || 'https://www.cambobia.com/api/webhooks/aba';
+        const callback_url = Buffer.from(callbackUrlRaw).toString('base64');
+
+        const return_deeplink = '';
+        const custom_fields = '';
+        const return_params = '';
+        const payout = '';
+        const lifetime = '';
+        const qr_image_template = '';
+
+        // Generate Hash using the 19-field logic
         const hash = generateAbaQrHash(
             req_time,
             tran_id,
             amountStr,
             itemsBase64,
-            user.firstName,
-            user.lastName,
-            user.email,
-            user.phone || '',
+            first_name,
+            last_name,
+            email,
+            phone,
             purchase_type,
             payment_option,
-            '', // callback_url
-            '', // return_deeplink
+            callback_url,
+            return_deeplink,
             currency,
-            '', // custom_fields
-            '', // return_params
-            '', // payout
-            '', // lifetime
-            ''  // qr_image_template
+            custom_fields,
+            return_params,
+            payout,
+            lifetime,
+            qr_image_template
         );
 
         const payload = {
@@ -211,20 +231,20 @@ export const generateAbaQr = async (
             tran_id,
             amount: amountStr,
             items: itemsBase64,
-            first_name: user.firstName,
-            last_name: user.lastName,
-            email: user.email,
-            phone: user.phone || '',
+            first_name,
+            last_name,
+            email,
+            phone,
             purchase_type,
             payment_option,
-            callback_url: '',
-            return_deeplink: '',
+            callback_url,
+            return_deeplink,
             currency,
-            custom_fields: '',
-            return_params: '',
-            payout: '',
-            lifetime: '',
-            qr_image_template: '',
+            custom_fields,
+            return_params,
+            payout,
+            lifetime,
+            qr_image_template,
             hash
         };
 
@@ -232,30 +252,41 @@ export const generateAbaQr = async (
         const baseUrl = isSandbox ? 'https://pw-api-sandbox.ababank.com' : 'https://api-payway.ababank.com';
         const endpoint = `${baseUrl}/api/payment-gateway/v1/payments/generate-qr`;
 
-        console.log('--- ABA QR REQUEST ---');
+        console.log('--- ABA QR REQUEST DEBUG ---');
         console.log('Endpoint:', endpoint);
-        // console.log('Payload:', payload); // Be careful with logging keys in real apps
+        console.log('Merchant ID:', ABA_PAYWAY_MERCHANT_ID);
+        console.log('Transaction ID:', tran_id);
+        console.log('Amount:', amountStr);
 
-        const resJson: any = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        }).then(r => r.json());
+        // Standard fetch might have issues with SSL or global availability in some Node environments
+        // Using axios for more robust performance and error handling
+        const response = await axios.post(endpoint, payload, {
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            timeout: 10000 // 10s timeout
+        });
 
-        if (resJson.status === 0 || resJson.status === '0') {
+        const resData = response.data;
+
+        if (resData.status === 0 || resData.status === '0') {
             return {
-                qrString: resJson.qr_string || resJson.qrString,
-                qrImage: resJson.qr_image || resJson.qrImage,
-                raw: resJson
+                qrString: resData.qr_string || resData.qrString,
+                qrImage: resData.qr_image || resData.qrImage,
+                raw: resData
             };
         } else {
-            console.error('ABA QR Gen Failed with Status:', resJson.status);
-            console.error('Error Details:', resJson.description || resJson.error || resJson);
+            console.error('ABA QR Gen Failed. Status:', resData.status, 'Desc:', resData.description || resData.message);
+            console.error('Full Error Response:', resData);
             return null;
         }
 
-    } catch (error) {
-        console.error('Error generating ABA QR:', error);
+    } catch (error: any) {
+        console.error('Error generating ABA QR:', error.message);
+        if (error.response) {
+            console.error('ABA API Error Response:', error.response.data);
+            console.error('ABA API Error Status:', error.response.status);
+        }
         return null;
     }
 };
