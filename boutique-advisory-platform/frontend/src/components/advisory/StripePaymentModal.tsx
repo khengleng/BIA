@@ -68,14 +68,16 @@ export default function StripePaymentModal({
     amount,
     clientSecret,
     onSuccess,
-    onAbaPay, // New prop
-    onCancel
+    onAbaPay,
+    onCancel,
+    abaQrData, // New prop
 }: {
     amount: number
     clientSecret: string
     onSuccess: () => void
-    onAbaPay: () => void // New prop type
+    onAbaPay: () => void
     onCancel: () => void
+    abaQrData?: { qrString: string; qrImage: string } | null
 }) {
     const [isProcessing, setIsProcessing] = useState(false)
 
@@ -88,6 +90,43 @@ export default function StripePaymentModal({
         await new Promise(resolve => setTimeout(resolve, 1500))
         setIsProcessing(false)
         onSuccess()
+    }
+
+    // Render ABA QR Code State
+    if (abaQrData) {
+        return (
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+                <div className="bg-gray-800 border border-gray-700 p-8 rounded-2xl w-full max-w-md shadow-2xl text-center">
+                    <h2 className="text-2xl font-bold text-white mb-2">Scan to Pay</h2>
+                    <p className="text-gray-400 mb-6">
+                        Scan the ABA PayWay QR code below with your banking app.
+                    </p>
+
+                    <div className="bg-white p-4 rounded-xl inline-block mb-6">
+                        {/* Display QR Image directly if provided as base64 or URL */}
+                        <img
+                            src={abaQrData.qrImage.startsWith('data:') ? abaQrData.qrImage : `data:image/png;base64,${abaQrData.qrImage}`}
+                            alt="ABA PayWay QR"
+                            className="w-64 h-64 object-contain"
+                        />
+                    </div>
+
+                    <div className="bg-blue-900/30 text-blue-200 p-3 rounded-lg mb-6 text-sm animate-pulse">
+                        Waiting for payment confirmation...
+                    </div>
+
+                    <p className="text-gray-500 text-xs mb-4">Transaction ID embedded in QR</p>
+
+                    <button
+                        type="button"
+                        onClick={onCancel}
+                        className="w-full px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-xl transition-all"
+                    >
+                        Cancel Transaction
+                    </button>
+                </div>
+            </div>
+        );
     }
 
     // Mock payment UI (when Stripe is not configured)

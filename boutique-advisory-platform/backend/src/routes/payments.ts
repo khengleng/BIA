@@ -2,7 +2,7 @@
 import express, { Router, Response } from 'express';
 import { AuthenticatedRequest, authorize } from '../middleware/authorize';
 import { createPaymentIntent } from '../utils/stripe';
-import { createAbaTransaction, verifyAbaCallback } from '../utils/aba';
+import { createAbaTransaction, verifyAbaCallback, generateAbaQr } from '../utils/aba'; // Update import
 import { prisma } from '../database';
 
 const router = Router();
@@ -160,6 +160,71 @@ router.get('/aba/status/:id', authorize('payment.read'), async (req: Authenticat
         return res.json({ status: payment.status });
     } catch (error) {
         console.error('ABA Status Check Error:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// 4. Generate QR (Direct API)
+router.post('/aba/generate-qr', authorize('payment.create'), async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const { amount, bookingId, dealInvestorId, items } = req.body;
+        const user = req.user!;
+
+        if (!amount) {
+            return res.status(400).json({ error: 'Amount is required' });
+        }
+
+        // Generate Short Transaction ID
+        const shortTranId = Date.now().toString() + Math.floor(100000 + Math.random() * 900000).toString();
+
+        // Create Payment record
+        const payment = await (prisma as any).payment.create({
+            data: {
+                tenantId: user.tenantId,
+                userId: user.id,
+                amount: parseFloat(amount),
+                currency: 'USD',
+                method: 'ABA_PAYWAY_QR',
+                provider: 'ABA',
+                providerTxId: shortTranId,
+                status: 'PENDING',
+                bookingId: bookingId || null,
+                dealInvestorId: dealInvestorId || null,
+                description: `ABA QR Payment by ${user.email}`,
+            }
+        });
+
+        // Call ABA API
+        const userData = user as any;
+        const qrResult = await generateAbaQr(
+            shortTranId,
+            parseFloat(amount),
+            {
+                firstName: userData.firstName || userData.email.split('@')[0],
+                lastName: userData.lastName || 'User',
+                email: userData.email,
+                phone: userData.phone
+            },
+            items
+        );
+
+        if (qrResult) {
+            return res.json({
+                success: true,
+                paymentId: payment.id,
+                ...qrResult
+            });
+        } else {
+            // Failed to generate QR
+            await (prisma as any).payment.update({
+                where: { id: payment.id },
+                data: { status: 'FAILED' }
+            });
+            return res.status(500).json({ error: 'Failed to generate QR Code from ABA' });
+        }
+
+    } catch (error) {
+        console.error('ABA Generate QR Error:', error);
         return res.status(500).json({ error: 'Internal server error' });
     }
 });

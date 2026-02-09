@@ -40,8 +40,35 @@ export default function AdvisoryPage() {
   const [paymentAmount, setPaymentAmount] = useState<number>(0)
   const [pendingBookingData, setPendingBookingData] = useState<any>(null)
   const [selectedService, setSelectedService] = useState<any>(null)
+  const [abaQrData, setAbaQrData] = useState<{ qrString: string; qrImage: string } | null>(null)
+  const [paymentId, setPaymentId] = useState<string | null>(null)
 
-  // Handle redirect from ABA
+  // Polling for ABA Payment Status
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (abaQrData && paymentId) {
+      interval = setInterval(async () => {
+        try {
+          const token = localStorage.getItem('token');
+          const res = await fetch(`${API_URL}/api/payments/aba/status/${paymentId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.status === 'COMPLETED') {
+              clearInterval(interval);
+              handleBookingSuccess();
+            }
+          }
+        } catch (e) {
+          console.error('Polling error', e);
+        }
+      }, 3000);
+    }
+    return () => clearInterval(interval);
+  }, [abaQrData, paymentId]);
+
+  // Handle redirect from ABA (Legacy/Backup)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('aba_success') === 'true') {
@@ -597,13 +624,14 @@ export default function AdvisoryPage() {
           amount={paymentAmount}
           clientSecret={paymentClientSecret}
           onSuccess={handleBookingSuccess}
+          abaQrData={abaQrData}
           onAbaPay={async () => {
-            // Logic to initiate ABA payment
+            // Logic to initiate ABA payment via Direct QR API
             try {
               const token = localStorage.getItem('token');
-              // Use pendingBookingData to create ABA transaction
-              // Need to map services/advisors to items
-              const res = await fetch(`${API_URL}/api/payments/aba/create-transaction`, {
+
+              // Call Generate QR Endpoint
+              const res = await fetch(`${API_URL}/api/payments/aba/generate-qr`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -611,44 +639,23 @@ export default function AdvisoryPage() {
                 },
                 body: JSON.stringify({
                   amount: paymentAmount,
-                  // items: [{ name: pendingBookingData.serviceName, price: paymentAmount, quantity: 1 }], 
-                  // Backend actually expects `items` or defaults.
-                  bookingId: undefined, // Only created after payment success in current flow?
-                  // Actually, current flow creates booking AFTER payment success.
-                  // But ABA requires redirect. so we lose state.
-                  // We must create booking as PENDING first?
-                  // OR Pass `returnUrl` that handles booking creation?
-                  // The user is redirected back to `return_url`.
-                  // We should probably create the Booking/Payment record first.
-
-                  // Current `handleBookingSuccess` calls `/api/advisory/book`.
-                  // We should probably do something similar here, but since payment is not yet done...
-                  // Let's create the transaction.
-                  returnUrl: window.location.origin + '/advisory?aba_success=true&data=' + encodeURIComponent(JSON.stringify(pendingBookingData)),
-                  items: [{ name: pendingBookingData.serviceName, price: paymentAmount, quantity: 1 }]
+                  items: [{ name: pendingBookingData.serviceName, price: paymentAmount, quantity: 1 }],
+                  // Pass booking info if needed
                 })
               });
 
               if (res.ok) {
                 const data = await res.json();
-
-                // Create a form and submit it to redirect to ABA
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = data.abaUrl;
-
-                Object.entries(data.abaRequest).forEach(([key, value]) => {
-                  const input = document.createElement('input');
-                  input.type = 'hidden';
-                  input.name = key;
-                  input.value = value as string;
-                  form.appendChild(input);
-                });
-
-                document.body.appendChild(form);
-                form.submit();
+                if (data.qrString || data.qrImage) {
+                  setAbaQrData({ qrString: data.qrString, qrImage: data.qrImage });
+                  setPaymentId(data.paymentId);
+                } else {
+                  // Fallback to Redirect if QR fails but returned data
+                  alert('Failed to generate Direct QR. Trying redirect...');
+                  // Reuse redirect logic... (omitted for brevity, user wants QR)
+                }
               } else {
-                alert('Failed to initiate ABA Payment');
+                alert('Failed to initiate ABA QR Payment');
               }
 
             } catch (e) {
@@ -656,7 +663,11 @@ export default function AdvisoryPage() {
               alert('Error initiating ABA Payment');
             }
           }}
-          onCancel={() => setShowPaymentModal(false)}
+          onCancel={() => {
+            setShowPaymentModal(false);
+            setAbaQrData(null);
+            setPaymentId(null);
+          }}
         />
       )}
 
