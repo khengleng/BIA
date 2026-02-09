@@ -204,28 +204,30 @@ export const generateAbaQr = async (
         const lifetime = '';
         const qr_image_template = '';
 
-        // Generate Hash using the 19-field logic
+        // Concatenate parameters for the hash (exactly 19 fields)
         const mid = ABA_PAYWAY_MERCHANT_ID.toLowerCase();
+
+        // Exact order from docs: req_time + merchant_id + tran_id + amount + items + first_name + last_name + email + phone + purchase_type + payment_option + callback_url + return_deeplink + currency + custom_fields + return_params + payout + lifetime + qr_image_template
         const hash = generateAbaQrHash(
-            req_time,
-            mid,
-            tran_id,
-            amountStr,
-            itemsBase64,
-            first_name,
-            last_name,
-            email,
-            phone,
-            purchase_type,
-            payment_option,
-            callback_url,
-            return_deeplink,
-            currency,
-            custom_fields,
-            return_params,
-            payout,
-            lifetime,
-            qr_image_template
+            req_time,     // 1
+            mid,          // 2
+            tran_id,      // 3
+            amountStr,    // 4
+            itemsBase64,  // 5
+            first_name,   // 6
+            last_name,    // 7
+            email,        // 8
+            phone,        // 9
+            purchase_type,// 10
+            payment_option,// 11
+            callback_url, // 12
+            return_deeplink, // 13
+            currency,     // 14
+            custom_fields,// 15
+            return_params,// 16
+            payout,       // 17
+            lifetime,     // 18
+            qr_image_template // 19
         );
 
         const payload = {
@@ -255,18 +257,13 @@ export const generateAbaQr = async (
         const baseUrl = isSandbox ? 'https://pw-api-sandbox.ababank.com' : 'https://api-payway.ababank.com';
         const endpoint = `${baseUrl}/api/payment-gateway/v1/payments/generate-qr`;
 
-        console.log('--- ABA QR REQUEST DEBUG ---');
-        console.log('Endpoint:', endpoint);
-        console.log('Merchant ID:', mid);
-        console.log('Transaction ID:', tran_id);
+        console.log('--- ABA QR SUBMISSION ---');
+        console.log('URL:', endpoint);
+        console.log('Merchant:', mid);
         console.log('Amount:', amountStr);
-        // Log hash string components (masked) for verification
-        console.log('Hash Fields Sequence Check: req_time, merchant_id, tran_id, amount, items, first_name, last_name, email, phone, purchase_type, payment_option, callback_url, return_deeplink, currency, custom_fields, return_params, payout, lifetime, qr_image_template');
 
         const response = await axios.post(endpoint, payload, {
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             timeout: 10000
         });
 
@@ -279,18 +276,21 @@ export const generateAbaQr = async (
                 raw: resData
             };
         } else {
-            console.error('ABA QR Gen Declined by API. Status:', resData.status);
-            console.error('API Description:', resData.description || resData.message || 'No description');
-            if (resData.status === 1) console.error('Hint: Status 1 often means invalid hash/signature.');
-            return null;
+            console.error('ABA API REJECTION:', resData);
+            return {
+                success: false,
+                raw: resData,
+                message: `ABA Gateway rejected request with status: ${resData.status}`
+            } as any;
         }
 
     } catch (error: any) {
-        console.error('ABA QR Generation Error:', error.message);
-        if (error.response) {
-            console.error('ABA API Error Body:', error.response.data);
-        }
-        return null;
+        console.error('ABA QR System Error:', error.message);
+        return {
+            success: false,
+            message: error.message,
+            raw: error.response?.data
+        } as any;
     }
 };
 

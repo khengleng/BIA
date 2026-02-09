@@ -208,25 +208,36 @@ router.post('/aba/generate-qr', authorize('payment.create'), async (req: Authent
             items
         );
 
-        if (qrResult) {
+        if (qrResult && (qrResult as any).qrString) {
             return res.json({
                 success: true,
                 paymentId: payment.id,
                 ...qrResult
             });
         } else {
-            // Failed to generate QR
+            const errorInfo = qrResult as any;
+            console.error('Failed to generate QR Code. ABA Info:', errorInfo);
+
             await (prisma as any).payment.update({
                 where: { id: payment.id },
-                data: { status: 'FAILED' }
+                data: {
+                    status: 'FAILED',
+                    description: `ABA Error: ${errorInfo?.raw?.description || 'Unknown Error'}`
+                }
             });
-            return res.status(500).json({ error: 'Failed to generate QR Code from ABA' });
+
+            return res.status(400).json({
+                error: 'ABA Payment Gateway Error',
+                status: errorInfo?.raw?.status,
+                description: errorInfo?.raw?.description || 'The payment gateway rejected the request. Check your Merchant ID and API Key.',
+                message: errorInfo?.message // Internal message from axios if any
+            });
         }
 
     } catch (error: any) {
-        console.error('ABA Generate QR Error:', error);
+        console.error('ABA Generate QR Route Error:', error.message);
         return res.status(500).json({
-            error: 'Internal server error during QR generation',
+            error: 'Server Error',
             message: error.message,
             details: error.response?.data || 'No additional details'
         });
