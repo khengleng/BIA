@@ -12,6 +12,10 @@ export default function LoginPage() {
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [step, setStep] = useState<'credentials' | '2fa'>('credentials')
+  const [tempToken, setTempToken] = useState('')
+  const [twoFactorCode, setTwoFactorCode] = useState('')
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -48,6 +52,33 @@ export default function LoginPage() {
     return Object.keys(newErrors).length === 0
   }
 
+  const handle2faSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+
+    try {
+      const response = await fetch(`${API_URL}/api/auth/verify-2fa`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tempToken, code: twoFactorCode })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        localStorage.setItem('token', data.token)
+        localStorage.setItem('user', JSON.stringify(data.user))
+        router.push('/dashboard')
+      } else {
+        const errorData = await response.json()
+        setErrors({ general: errorData.error || 'Invalid code' })
+      }
+    } catch (error) {
+      setErrors({ general: 'Network error' })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -61,23 +92,27 @@ export default function LoginPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include', // Critical for receiving HttpOnly cookie
+        credentials: 'include',
         body: JSON.stringify({
           email: formData.email,
           password: formData.password,
         }),
       })
 
+      const data = await response.json()
+
       if (response.ok) {
-        const data = await response.json()
-        // Save token for authenticated requests
-        localStorage.setItem('token', data.token)
-        localStorage.setItem('user', JSON.stringify(data.user))
-        // Redirect to dashboard
-        router.push('/dashboard')
+        if (data.require2fa) {
+          setTempToken(data.tempToken)
+          setStep('2fa')
+          setErrors({})
+        } else {
+          localStorage.setItem('token', data.token)
+          localStorage.setItem('user', JSON.stringify(data.user))
+          router.push('/dashboard')
+        }
       } else {
-        const errorData = await response.json()
-        setErrors({ general: errorData.error || 'Login failed' })
+        setErrors({ general: data.error || 'Login failed' })
       }
     } catch (error) {
       console.error('Login error:', error)
@@ -90,18 +125,58 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
-        <div>
-          <div className="mx-auto h-12 w-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-            <Building2 className="h-6 w-6 text-white" />
-          </div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-white">
-            {t('auth.login')}
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-300">
-            Sign in to your Boutique Advisory account
-          </p>
+        <div className="mx-auto h-12 w-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+          <Building2 className="h-6 w-6 text-white" />
         </div>
+        <h2 className="mt-6 text-center text-3xl font-extrabold text-white">
+          {step === '2fa' ? 'Two-Factor Authentication' : t('auth.login')}
+        </h2>
+        <p className="mt-2 text-center text-sm text-gray-300">
+          {step === '2fa'
+            ? 'Enter the 6-digit code from your authenticator app'
+            : 'Sign in to your Boutique Advisory account'}
+        </p>
+      </div>
 
+      {step === '2fa' ? (
+        <form className="mt-8 space-y-6" onSubmit={handle2faSubmit}>
+          {errors.general && (
+            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+              <p className="text-red-400 text-sm">{errors.general}</p>
+            </div>
+          )}
+          <div>
+            <label htmlFor="code" className="block text-sm font-medium text-gray-300">
+              Authentication Code
+            </label>
+            <input
+              id="code"
+              name="code"
+              type="text"
+              maxLength={6}
+              required
+              value={twoFactorCode}
+              onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, ''))}
+              className="mt-1 appearance-none block w-full px-3 py-3 border border-gray-600 placeholder-gray-400 text-white bg-gray-800/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-center tracking-[0.5em] text-2xl"
+              placeholder="000000"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={isLoading || twoFactorCode.length !== 6}
+            className="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-colors"
+          >
+            {isLoading ? 'Verifying...' : 'Verify'}
+          </button>
+          <button
+            type="button"
+            onClick={() => { setStep('credentials'); setTempToken(''); setTwoFactorCode(''); }}
+            className="w-full text-sm text-gray-400 hover:text-white"
+          >
+            Back to Login
+          </button>
+        </form>
+      ) : (
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {errors.general && (
             <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
@@ -228,7 +303,8 @@ export default function LoginPage() {
             </p>
           </div>
         </form>
-      </div>
+      )}
     </div>
+
   )
 }

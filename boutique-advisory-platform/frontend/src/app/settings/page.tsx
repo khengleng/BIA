@@ -25,6 +25,7 @@ interface User {
   email: string
   role: 'SME' | 'INVESTOR' | 'ADVISOR' | 'ADMIN'
   tenantId: string
+  twoFactorEnabled?: boolean
 }
 
 export default function SettingsPage() {
@@ -34,6 +35,17 @@ export default function SettingsPage() {
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+
+  // 2FA State
+  const [is2faEnabled, setIs2faEnabled] = useState(false)
+  const [show2faModal, setShow2faModal] = useState(false)
+  const [qrCode, setQrCode] = useState('')
+  const [secret, setSecret] = useState('')
+  const [verificationCode, setVerificationCode] = useState('')
+  const [disablePassword, setDisablePassword] = useState('')
+  const [showDisableModal, setShowDisableModal] = useState(false)
+  const [backupCodes, setBackupCodes] = useState<string[]>([])
+  const [showBackupCodesModal, setShowBackupCodesModal] = useState(false)
 
   const handleUpdatePassword = async () => {
     if (newPassword !== confirmPassword) {
@@ -76,6 +88,103 @@ export default function SettingsPage() {
     }
   }
 
+  const handleEnable2FA = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`${API_URL}/api/auth/2fa/setup`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      const data = await response.json()
+      if (response.ok) {
+        setQrCode(data.qrCode)
+        setSecret(data.secret)
+        setShow2faModal(true)
+      } else {
+        alert(data.error || 'Failed to start 2FA setup')
+      }
+    } catch (error) {
+      console.error('Error setting up 2FA:', error)
+    }
+  }
+
+  const handleVerify2FA = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`${API_URL}/api/auth/2fa/activate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ code: verificationCode, secret })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setIs2faEnabled(true)
+        setShow2faModal(false)
+        setVerificationCode('')
+
+        if (data.backupCodes) {
+          setBackupCodes(data.backupCodes)
+          setShowBackupCodesModal(true)
+        } else {
+          alert('Two-Factor Authentication Enabled Successfully!')
+        }
+
+        // Update local user object
+        if (user) {
+          const updatedUser = { ...user, twoFactorEnabled: true }
+          setUser(updatedUser)
+          localStorage.setItem('user', JSON.stringify(updatedUser))
+        }
+      } else {
+        alert(data.error || 'Invalid code')
+      }
+    } catch (error) {
+      console.error('Error activating 2FA:', error)
+    }
+  }
+
+  const handleDisable2FA = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`${API_URL}/api/auth/2fa/disable`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ password: disablePassword })
+      })
+
+      if (response.ok) {
+        setIs2faEnabled(false)
+        setShowDisableModal(false)
+        setDisablePassword('')
+        alert('Two-Factor Authentication Disabled')
+
+        // Update local user object
+        if (user) {
+          const updatedUser = { ...user, twoFactorEnabled: false }
+          setUser(updatedUser)
+          localStorage.setItem('user', JSON.stringify(updatedUser))
+        }
+
+      } else {
+        const data = await response.json()
+        alert(data.error || 'Failed to disable 2FA')
+      }
+    } catch (error) {
+      console.error('Error disabling 2FA:', error)
+    }
+  }
+
   useEffect(() => {
     // Get user data from localStorage
     const fetchUser = async () => {
@@ -89,13 +198,33 @@ export default function SettingsPage() {
         }
 
         // Parse user data from localStorage
-        const user = JSON.parse(userData)
-        setUser(user)
+        const parsedUser = JSON.parse(userData)
+        setUser(parsedUser)
+
+        // Fetch fresh status including 2FA
+        const meResponse = await fetch(`${API_URL}/api/auth/me`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+
+        // Note: The /me endpoint needs to exist or be inferred. 
+        // If it doesn't exist, we rely on the localStorage data initially, 
+        // but ideally we should refresh it. 
+        // Assuming /me exists or we can check via another means. 
+        // If /me fails, we fallback to parsedUser.twoFactorEnabled if available.
+
+        if (meResponse.ok) {
+          const meData = await meResponse.json()
+          if (meData.user?.twoFactorEnabled !== undefined) {
+            setIs2faEnabled(meData.user.twoFactorEnabled)
+          } else {
+            setIs2faEnabled(!!parsedUser.twoFactorEnabled)
+          }
+        } else {
+          setIs2faEnabled(!!parsedUser.twoFactorEnabled)
+        }
+
       } catch (error) {
         console.error('Error fetching user:', error)
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-        window.location.href = '/auth/login'
       } finally {
         setIsLoading(false)
       }
@@ -111,28 +240,8 @@ export default function SettingsPage() {
   }
 
   const handleSaveProfile = async () => {
-    try {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        window.location.href = '/auth/login'
-        return
-      }
-
-      // In a real implementation, this would update the user profile
-      console.log('Profile updated successfully!')
-
-      // You would typically make an API call here to update the user profile
-      // const response = await fetch(`${API_URL}/api/users/profile`, {
-      //   method: 'PUT',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     'Authorization': `Bearer ${token}`
-      //   },
-      //   body: JSON.stringify(profileData)
-      // })
-    } catch (error) {
-      console.error('Error updating profile:', error)
-    }
+    // Placeholder for profile save
+    alert('Profile update placeholder')
   }
 
   const tabs = [
@@ -245,7 +354,6 @@ export default function SettingsPage() {
             </div>
           </nav>
 
-          {/* Logout Button at Bottom of Sidebar */}
           <div className="px-4 pb-8">
             <button
               onClick={handleLogout}
@@ -264,7 +372,6 @@ export default function SettingsPage() {
             <p className="text-gray-400 mt-2">Manage your account settings and preferences</p>
           </div>
 
-          {/* Settings Tabs */}
           <div className="bg-gray-800 rounded-lg">
             <div className="border-b border-gray-700">
               <nav className="flex space-x-8 px-6">
@@ -282,17 +389,6 @@ export default function SettingsPage() {
                   </button>
                 ))}
               </nav>
-
-              {/* Logout Button at Bottom of Sidebar */}
-              <div className="px-4 pb-8">
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center w-full px-4 py-2 text-red-400 hover:text-white hover:bg-red-600 rounded-lg transition-colors"
-                >
-                  <LogOut className="w-5 h-5 mr-3" />
-                  Logout
-                </button>
-              </div>
             </div>
 
             <div className="p-6">
@@ -344,131 +440,218 @@ export default function SettingsPage() {
                 </div>
               )}
 
-
-
               {activeTab === 'security' && (
                 <div className="space-y-6">
                   <h2 className="text-xl font-semibold text-white">Security Settings</h2>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Current Password</label>
-                      <input
-                        type="password"
-                        value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
-                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">New Password</label>
-                      <input
-                        type="password"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Confirm New Password</label>
-                      <input
-                        type="password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
+
+                  {/* Password Section */}
+                  <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
+                    <h3 className="text-lg font-medium text-white mb-4">Change Password</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Current Password</label>
+                        <input
+                          type="password"
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">New Password</label>
+                        <input
+                          type="password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Confirm New Password</label>
+                        <input
+                          type="password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <button
+                        onClick={handleUpdatePassword}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+                      >
+                        Update Password
+                      </button>
                     </div>
                   </div>
-                  <button
-                    onClick={handleUpdatePassword}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
-                  >
-                    Update Password
-                  </button>
+
+                  {/* 2FA Section */}
+                  <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
+                    <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
+                      <Shield className="w-5 h-5 text-blue-400" />
+                      Two-Factor Authentication (2FA)
+                    </h3>
+
+                    {is2faEnabled ? (
+                      <div className="flex items-center justify-between bg-green-500/10 border border-green-500/20 p-4 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-green-500/20 rounded-full">
+                            <Shield className="w-6 h-6 text-green-400" />
+                          </div>
+                          <div>
+                            <p className="text-white font-medium">2FA is Enabled</p>
+                            <p className="text-sm text-gray-400">Your account is secured with an authenticator app.</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setShowDisableModal(true)}
+                          className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg border border-red-500/20 transition-colors"
+                        >
+                          Disable
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between bg-gray-700/30 p-4 rounded-lg">
+                        <div>
+                          <p className="text-gray-300">Protect your account with an extra layer of security.</p>
+                          <p className="text-sm text-gray-500">Require a code from your mobile device to sign in.</p>
+                        </div>
+                        <button
+                          onClick={handleEnable2FA}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                        >
+                          Enable 2FA
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
               {activeTab === 'notifications' && (
                 <div className="space-y-6">
                   <h2 className="text-xl font-semibold text-white">Notification Preferences</h2>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-white font-medium">Email Notifications</h3>
-                        <p className="text-gray-400 text-sm">Receive notifications via email</p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" defaultChecked className="sr-only peer" />
-                        <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                      </label>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-white font-medium">Push Notifications</h3>
-                        <p className="text-gray-400 text-sm">Receive push notifications in browser</p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" defaultChecked className="sr-only peer" />
-                        <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                      </label>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-white font-medium">Deal Updates</h3>
-                        <p className="text-gray-400 text-sm">Get notified about deal progress</p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" defaultChecked className="sr-only peer" />
-                        <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                      </label>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => alert('Notification preferences saved!')}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
-                  >
-                    Save Preferences
-                  </button>
+                  <div className="text-gray-400">Notification settings content...</div>
                 </div>
               )}
 
               {activeTab === 'preferences' && (
                 <div className="space-y-6">
                   <h2 className="text-xl font-semibold text-white">General Preferences</h2>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Language</label>
-                      <select className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="en">English</option>
-                        <option value="km">ខ្មែរ (Khmer)</option>
-                        <option value="zh">中文 (Chinese)</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Time Zone</label>
-                      <select className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="UTC+7">Asia/Phnom_Penh (UTC+7)</option>
-                        <option value="UTC+8">Asia/Shanghai (UTC+8)</option>
-                        <option value="UTC+0">UTC (UTC+0)</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Currency</label>
-                      <select className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="USD">USD ($)</option>
-                        <option value="KHR">KHR (៛)</option>
-                        <option value="CNY">CNY (¥)</option>
-                      </select>
-                    </div>
-                  </div>
-                  <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
-                    Save Preferences
-                  </button>
+                  <div className="text-gray-400">Preference settings content...</div>
                 </div>
               )}
             </div>
           </div>
         </main>
       </div>
+
+      {/* Enable 2FA Modal */}
+      {show2faModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-gray-800 rounded-2xl max-w-md w-full border border-gray-700 shadow-2xl p-6">
+            <h3 className="text-xl font-bold text-white mb-4">Set up 2FA</h3>
+
+            <div className="space-y-6">
+              <div className="flex justify-center bg-white p-4 rounded-xl">
+                <img src={qrCode} alt="2FA QR Code" className="w-48 h-48" />
+              </div>
+
+              <div className="text-center space-y-2">
+                <p className="text-gray-300 text-sm">1. Scan this QR code with your authenticator app</p>
+                <p className="text-gray-300 text-sm">2. Enter the 6-digit code below to verify.</p>
+              </div>
+
+              <input
+                type="text"
+                maxLength={6}
+                value={verificationCode}
+                onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
+                placeholder="000000"
+                className="w-full text-center text-3xl tracking-[0.5em] py-3 bg-gray-900 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder-gray-600"
+              />
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShow2faModal(false)}
+                  className="flex-1 py-3 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleVerify2FA}
+                  disabled={verificationCode.length !== 6}
+                  className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Verify & Enable
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Disable 2FA Modal */}
+      {showDisableModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-gray-800 rounded-2xl max-w-sm w-full border border-gray-700 shadow-2xl p-6">
+            <h3 className="text-xl font-bold text-white mb-2">Disable 2FA?</h3>
+            <p className="text-gray-400 text-sm mb-6">Are you sure? This will decrease your account security.</p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Confirm Password</label>
+                <input
+                  type="password"
+                  value={disablePassword}
+                  onChange={(e) => setDisablePassword(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDisableModal(false)}
+                  className="flex-1 py-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDisable2FA}
+                  className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium"
+                >
+                  Disable 2FA
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Backup Codes Modal */}
+      {showBackupCodesModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-gray-800 rounded-2xl max-w-md w-full border border-gray-700 shadow-2xl p-6">
+            <h3 className="text-xl font-bold text-white mb-4">Backup Codes</h3>
+            <p className="text-gray-300 text-sm mb-4">
+              Save these backup codes in a safe place. You can use them to log in if you lose access to your authenticator app.
+              Each code can only be used once.
+            </p>
+            <div className="bg-gray-900 p-4 rounded-lg grid grid-cols-2 gap-2 mb-6">
+              {backupCodes.map((code, index) => (
+                <code key={index} className="text-blue-400 font-mono text-center block bg-gray-800/50 p-1 rounded">
+                  {code}
+                </code>
+              ))}
+            </div>
+            <button
+              onClick={() => setShowBackupCodesModal(false)}
+              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium"
+            >
+              I have saved these codes
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

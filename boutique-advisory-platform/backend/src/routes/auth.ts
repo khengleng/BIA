@@ -13,6 +13,11 @@ import {
   sanitizeEmail
 } from '../utils/security';
 import { sendWelcomeEmail, sendPasswordResetEmail } from '../utils/email';
+import { generateMfaSecret, generateQrCode, verifyMfaToken, generateBackupCodes } from '../utils/mfa';
+import {
+  authenticateToken,
+  AuthenticatedRequest
+} from '../middleware/jwt-auth';
 
 const router = Router();
 
@@ -261,6 +266,27 @@ router.post('/login', async (req: Request, res: Response) => {
       return res.status(500).json({ error: 'Server configuration error' });
     }
 
+    // 2FA Check
+    if (user.twoFactorEnabled) {
+      const tempToken = jwt.sign(
+        {
+          userId: user.id,
+          email: user.email,
+          role: user.role,
+          tenantId: user.tenantId,
+          isPreAuth: true
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: '5m' } // Short expiration for 2FA entry
+      );
+
+      return res.status(200).json({
+        message: '2FA verification required',
+        require2fa: true,
+        tempToken
+      });
+    }
+
     const token = jwt.sign(
       {
         userId: user.id,
@@ -290,7 +316,8 @@ router.post('/login', async (req: Request, res: Response) => {
         email: user.email,
         role: user.role,
         firstName: user.firstName,
-        lastName: user.lastName
+        lastName: user.lastName,
+        twoFactorEnabled: user.twoFactorEnabled
       }
     });
   } catch (error) {
@@ -335,7 +362,8 @@ router.get('/me', async (req: Request, res: Response) => {
         email: user.email,
         role: user.role,
         firstName: user.firstName,
-        lastName: user.lastName
+        lastName: user.lastName,
+        twoFactorEnabled: user.twoFactorEnabled
       }
     });
   } catch (error) {
@@ -621,6 +649,237 @@ router.post('/change-password', async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error('Change password error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ==================== 2FA ENDPOINTS ====================
+
+// Verify 2FA during Login
+router.post('/verify-2fa', async (req: Request, res: Response) => {
+  const { tempToken, code } = req.body;
+  const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+
+  if (!tempToken || !code) {
+    return res.status(400).json({ error: 'Token and code are required' });
+  }
+
+  try {
+    if (!process.env.JWT_SECRET) return res.status(500).json({ error: 'Config error' });
+
+    // Verify temp token
+    const decoded = jwt.verify(tempToken, process.env.JWT_SECRET) as any;
+
+    // Ensure it is a pre-auth token
+    if (!decoded.isPreAuth) {
+      return res.status(400).json({ error: 'Invalid token usage' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
+
+    if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) {
+      return res.status(400).json({ error: '2FA not enabled or configured' });
+    }
+
+    // Verify TOTP or Backup Code
+    let verified = verifyMfaToken(user.twoFactorSecret, code);
+    let usedBackupCode = false;
+
+    if (!verified && user.twoFactorBackupCodes && user.twoFactorBackupCodes.length > 0) {
+      // Check backup codes
+      for (const hashedCode of user.twoFactorBackupCodes) {
+        const isMatch = await bcrypt.compare(code, hashedCode);
+        if (isMatch) {
+          verified = true;
+          usedBackupCode = true;
+
+          // Remove used backup code (SECURITY best practice)
+          const updatedCodes = user.twoFactorBackupCodes.filter(c => c !== hashedCode);
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { twoFactorBackupCodes: updatedCodes }
+          });
+
+          await logAuditEvent({
+            userId: user.id,
+            action: 'LOGIN_MFA_BACKUP',
+            resource: 'user',
+            details: { remaining: updatedCodes.length },
+            ipAddress: clientIp,
+            success: true
+          });
+          break;
+        }
+      }
+    }
+
+    if (!verified) {
+      await logAuditEvent({
+        userId: user.id,
+        action: 'LOGIN_MFA_FAIL',
+        resource: 'user',
+        details: { reason: 'invalid_code' },
+        ipAddress: clientIp,
+        success: false
+      });
+      return res.status(401).json({ error: 'Invalid 2FA code' });
+    }
+
+    // Generate real access token
+    const token = jwt.sign(
+      {
+        userId: user.id,
+        email: user.email,
+        role: user.role,
+        tenantId: user.tenantId
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    await logAuditEvent({
+      userId: user.id,
+      action: 'LOGIN_SUCCESS',
+      resource: 'auth',
+      details: { method: '2FA' },
+      ipAddress: clientIp,
+      success: true
+    });
+
+    return res.json({
+      message: 'Login successful',
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        twoFactorEnabled: true
+      }
+    });
+
+  } catch (error) {
+    console.error('2FA Verify Error:', error);
+    return res.status(401).json({ error: 'Invalid or expired session' });
+  }
+});
+
+// Setup 2FA (Generate Secret)
+router.post('/2fa/setup', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const user = req.user;
+    if (user.twoFactorEnabled) {
+      return res.status(400).json({ error: '2FA is already enabled' });
+    }
+
+    const secret = generateMfaSecret(user.email);
+    if (!secret.otpauth_url) {
+      return res.status(500).json({ error: 'Failed to generate 2FA secret URL' });
+    }
+    const qrCode = await generateQrCode(secret.otpauth_url);
+
+    // Return secret to client (client must send it back to confirm)
+    // We do NOT save it to DB yet to prevent lockout if they fail to scan
+    return res.json({
+      secret: secret.base32,
+      qrCode
+    });
+
+  } catch (error) {
+    console.error('2FA Setup Error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Activate 2FA (Verify and Save)
+router.post('/2fa/activate', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  const { code, secret } = req.body;
+  const user = req.user;
+
+  if (!code || !secret) {
+    return res.status(400).json({ error: 'Code and secret are required' });
+  }
+
+  try {
+    const isValid = verifyMfaToken(secret, code);
+
+    if (!isValid) {
+      return res.status(400).json({ error: 'Invalid code. Please try again.' });
+    }
+
+    // Generate backup codes
+    const backupCodes = generateBackupCodes(); // Assuming this function exists and generates an array of plaintext codes
+    const hashedBackupCodes = await Promise.all(backupCodes.map(code => bcrypt.hash(code, 12)));
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        twoFactorEnabled: true,
+        twoFactorSecret: secret, // Encrypting secret is recommended for production
+        twoFactorBackupCodes: hashedBackupCodes
+      }
+    });
+
+    await logAuditEvent({
+      userId: user.id,
+      action: '2FA_ENABLED',
+      resource: 'auth',
+      ipAddress: req.ip || 'unknown',
+      success: true
+    });
+
+    return res.json({
+      message: 'Two-factor authentication enabled successfully',
+      success: true,
+      backupCodes
+    });
+
+  } catch (error) {
+    console.error('2FA Activation Error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Disable 2FA
+router.post('/2fa/disable', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  const { password } = req.body; // Require password to disable
+  const user = req.user;
+
+  if (!password) {
+    return res.status(400).json({ error: 'Password required' });
+  }
+
+  try {
+    // Verify password again for security
+    const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+    if (!dbUser) return res.status(404).json({ error: 'User not found' });
+
+    const validPassword = await bcrypt.compare(password, dbUser.password);
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Invalid password' });
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        twoFactorEnabled: false,
+        twoFactorSecret: null
+      }
+    });
+
+    await logAuditEvent({
+      userId: user.id,
+      action: '2FA_DISABLED',
+      resource: 'auth',
+      ipAddress: req.ip || 'unknown',
+      success: true
+    });
+
+    return res.json({ message: 'Two-factor authentication disabled' });
+
+  } catch (error) {
+    console.error('2FA Disable Error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

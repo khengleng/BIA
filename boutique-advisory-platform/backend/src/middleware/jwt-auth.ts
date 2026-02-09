@@ -32,6 +32,11 @@ export const authenticateToken = async (req: AuthenticatedRequest, res: Response
         const decoded = jwt.verify(token, process.env.JWT_SECRET) as any;
 
         // Find user in database
+        if (decoded.isPreAuth) {
+            res.status(401).json({ error: 'Two-factor authentication required', code: '2FA_REQUIRED' });
+            return;
+        }
+
         const user = await prisma.user.findUnique({
             where: { id: decoded.userId }
         });
@@ -44,7 +49,7 @@ export const authenticateToken = async (req: AuthenticatedRequest, res: Response
         req.user = user;
         next();
     } catch (error) {
-        res.status(403).json({ error: 'Invalid token' });
+        res.status(401).json({ error: 'Invalid token' });
         return;
     }
 };
