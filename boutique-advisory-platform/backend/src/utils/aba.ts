@@ -120,37 +120,49 @@ export const createAbaTransaction = (
 };
 
 
-// Helper to generate hash for QR Transaction
+// Helper to generate hash for QR Transaction (Direct API V1)
 export const generateAbaQrHash = (
     req_time: string,
     tran_id: string,
     amount: string,
-    firstName: string = '',
-    lastName: string = '',
+    items: string = '',
+    first_name: string = '',
+    last_name: string = '',
     email: string = '',
     phone: string = '',
-    items: string = '', // Base64
+    purchase_type: string = 'purchase',
     payment_option: string = 'abapay_khqr',
-    type: string = 'purchase', // Default for QR? subagent said type 'purchase'
-    currency: string = 'USD'
+    callback_url: string = '',
+    return_deeplink: string = '',
+    currency: string = 'USD',
+    custom_fields: string = '',
+    return_params: string = '',
+    payout: string = '',
+    lifetime: string = '',
+    qr_image_template: string = ''
 ): string => {
-    // Standard ABA Hash:
-    // req_time + merchant_id + tran_id + amount + items + shipping(empty) + firstname + lastname + email + phone + type + payment_option + currency + return_params(empty)
+    // Exact 19-field order from ABA QR API Docs:
+    // req_time + merchant_id + tran_id + amount + items + first_name + last_name + email + phone + purchase_type + payment_option + callback_url + return_deeplink + currency + custom_fields + return_params + payout + lifetime + qr_image_template
     const dataToSign = [
         req_time,
         ABA_PAYWAY_MERCHANT_ID,
         tran_id,
         amount,
         items,
-        '', // shipping
-        firstName,
-        lastName,
+        first_name,
+        last_name,
         email,
         phone,
-        type,
+        purchase_type,
         payment_option,
+        callback_url,
+        return_deeplink,
         currency,
-        '' // return_params
+        custom_fields,
+        return_params,
+        payout,
+        lifetime,
+        qr_image_template
     ].join('');
 
     const hmac = crypto.createHmac('sha512', ABA_PAYWAY_API_KEY);
@@ -168,19 +180,29 @@ export const generateAbaQr = async (
         const amountStr = amount.toFixed(2);
         const itemsBase64 = items.length > 0 ? Buffer.from(JSON.stringify(items)).toString('base64') : '';
         const payment_option = 'abapay_khqr';
-        const type = 'purchase'; // As per subagent finding
+        const purchase_type = 'purchase';
+        const currency = 'USD';
 
+        // All fields must be present in the hash calculation
         const hash = generateAbaQrHash(
             req_time,
             tran_id,
             amountStr,
+            itemsBase64,
             user.firstName,
             user.lastName,
             user.email,
-            user.phone || '012000000',
-            itemsBase64,
+            user.phone || '',
+            purchase_type,
             payment_option,
-            type
+            '', // callback_url
+            '', // return_deeplink
+            currency,
+            '', // custom_fields
+            '', // return_params
+            '', // payout
+            '', // lifetime
+            ''  // qr_image_template
         );
 
         const payload = {
@@ -188,34 +210,31 @@ export const generateAbaQr = async (
             merchant_id: ABA_PAYWAY_MERCHANT_ID,
             tran_id,
             amount: amountStr,
-            currency: 'USD',
-            hash,
+            items: itemsBase64,
             first_name: user.firstName,
             last_name: user.lastName,
             email: user.email,
-            phone: user.phone || '012000000',
-            items: itemsBase64,
+            phone: user.phone || '',
+            purchase_type,
             payment_option,
-            type, // Subagent found 'purchase_type' in JSON? No, 'type' in key list?
-            // Subagent JSON: "purchase_type": "purchase".
-            // AND "type": "purchase" in usual PayWay.
-            // Let's look at subagent output carefully:
-            // "purchase_type": "purchase", // Optional
-            // But usually "type" is the field in hash.
-            // I'll send both or stick to standard.
-            // I'll send `purchase_type` as well if needed.
-            // Let's stick to standard payload keys first.
+            callback_url: '',
+            return_deeplink: '',
+            currency,
+            custom_fields: '',
+            return_params: '',
+            payout: '',
+            lifetime: '',
+            qr_image_template: '',
+            hash
         };
 
-        // URL Logic
-        // Sandbox: https://pw-api-sandbox.ababank.com/api/payment-gateway/v1/payments/generate-qr
-        // Prod: https://api-payway.ababank.com/api/payment-gateway/v1/payments/generate-qr
-        // User's Env might be 'checkout'.
-        // I will rely on a new Env Var or derived logic.
-        // If current ABA_PAYWAY_API_URL contains 'sandbox', use sandbox API.
         const isSandbox = ABA_PAYWAY_API_URL.includes('sandbox');
         const baseUrl = isSandbox ? 'https://pw-api-sandbox.ababank.com' : 'https://api-payway.ababank.com';
         const endpoint = `${baseUrl}/api/payment-gateway/v1/payments/generate-qr`;
+
+        console.log('--- ABA QR REQUEST ---');
+        console.log('Endpoint:', endpoint);
+        // console.log('Payload:', payload); // Be careful with logging keys in real apps
 
         const resJson: any = await fetch(endpoint, {
             method: 'POST',
@@ -225,12 +244,13 @@ export const generateAbaQr = async (
 
         if (resJson.status === 0 || resJson.status === '0') {
             return {
-                qrString: resJson.qr_string,
-                qrImage: resJson.qr_image,
+                qrString: resJson.qr_string || resJson.qrString,
+                qrImage: resJson.qr_image || resJson.qrImage,
                 raw: resJson
             };
         } else {
-            console.error('ABA QR Gen Failed:', resJson);
+            console.error('ABA QR Gen Failed with Status:', resJson.status);
+            console.error('Error Details:', resJson.description || resJson.error || resJson);
             return null;
         }
 
