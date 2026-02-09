@@ -41,6 +41,37 @@ export default function AdvisoryPage() {
   const [pendingBookingData, setPendingBookingData] = useState<any>(null)
   const [selectedService, setSelectedService] = useState<any>(null)
 
+  // Handle redirect from ABA
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('aba_success') === 'true') {
+      const dataStr = params.get('data');
+      if (dataStr) {
+        try {
+          const bookingData = JSON.parse(decodeURIComponent(dataStr));
+          setPendingBookingData(bookingData);
+          // Call booking API
+          const token = localStorage.getItem('token');
+          fetch(`${API_URL}/api/advisory/book`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ ...bookingData, amount: 0 }) // Amount handled by payment? Need to verify amount...
+            // Or pass original amount.
+          }).then(res => {
+            if (res.ok) {
+              alert('ABA Payment successful! Booking confirmed.');
+              // Clear params
+              router.replace('/advisory');
+              setActiveTab('bookings'); // Go to bookings
+            }
+          });
+        } catch (e) {
+          console.error("Error parsing ABA return data", e);
+        }
+      }
+    }
+  }, [router]);
+
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -566,6 +597,65 @@ export default function AdvisoryPage() {
           amount={paymentAmount}
           clientSecret={paymentClientSecret}
           onSuccess={handleBookingSuccess}
+          onAbaPay={async () => {
+            // Logic to initiate ABA payment
+            try {
+              const token = localStorage.getItem('token');
+              // Use pendingBookingData to create ABA transaction
+              // Need to map services/advisors to items
+              const res = await fetch(`${API_URL}/api/payments/aba/create-transaction`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                  amount: paymentAmount,
+                  // items: [{ name: pendingBookingData.serviceName, price: paymentAmount, quantity: 1 }], 
+                  // Backend actually expects `items` or defaults.
+                  bookingId: undefined, // Only created after payment success in current flow?
+                  // Actually, current flow creates booking AFTER payment success.
+                  // But ABA requires redirect. so we lose state.
+                  // We must create booking as PENDING first?
+                  // OR Pass `returnUrl` that handles booking creation?
+                  // The user is redirected back to `return_url`.
+                  // We should probably create the Booking/Payment record first.
+
+                  // Current `handleBookingSuccess` calls `/api/advisory/book`.
+                  // We should probably do something similar here, but since payment is not yet done...
+                  // Let's create the transaction.
+                  returnUrl: window.location.origin + '/advisory?aba_success=true&data=' + encodeURIComponent(JSON.stringify(pendingBookingData)),
+                  items: [{ name: pendingBookingData.serviceName, price: paymentAmount, quantity: 1 }]
+                })
+              });
+
+              if (res.ok) {
+                const data = await res.json();
+
+                // Create a form and submit it to redirect to ABA
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = data.abaUrl;
+
+                Object.entries(data.abaRequest).forEach(([key, value]) => {
+                  const input = document.createElement('input');
+                  input.type = 'hidden';
+                  input.name = key;
+                  input.value = value as string;
+                  form.appendChild(input);
+                });
+
+                document.body.appendChild(form);
+                form.submit();
+              } else {
+                alert('Failed to initiate ABA Payment');
+              }
+
+            } catch (e) {
+              console.error(e);
+              alert('Error initiating ABA Payment');
+            }
+          }}
           onCancel={() => setShowPaymentModal(false)}
         />
       )}

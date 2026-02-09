@@ -68,11 +68,13 @@ export default function StripePaymentModal({
     amount,
     clientSecret,
     onSuccess,
+    onAbaPay, // New prop
     onCancel
 }: {
     amount: number
     clientSecret: string
     onSuccess: () => void
+    onAbaPay: () => void // New prop type
     onCancel: () => void
 }) {
     const [isProcessing, setIsProcessing] = useState(false)
@@ -112,19 +114,35 @@ export default function StripePaymentModal({
                         </div>
                     </div>
 
-                    <div className="flex gap-3">
+                    <div className="flex flex-col gap-3">
                         <button
                             onClick={handleMockPayment}
                             disabled={isProcessing}
-                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl disabled:opacity-50 transition-all"
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl disabled:opacity-50 transition-all"
                         >
                             {isProcessing ? 'Processing...' : `Confirm Booking ($${amount})`}
                         </button>
+
+                        <div className="relative flex py-2 items-center">
+                            <div className="flex-grow border-t border-gray-600"></div>
+                            <span className="flex-shrink-0 mx-4 text-gray-400 text-xs">OR PAY WITH</span>
+                            <div className="flex-grow border-t border-gray-600"></div>
+                        </div>
+
+                        <button
+                            onClick={onAbaPay}
+                            disabled={isProcessing}
+                            className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-xl disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+                            Pay with ABA PayWay
+                        </button>
+
                         <button
                             type="button"
                             onClick={onCancel}
                             disabled={isProcessing}
-                            className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-xl transition-all disabled:opacity-50"
+                            className="w-full px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-xl transition-all disabled:opacity-50 mt-2"
                         >
                             Cancel
                         </button>
@@ -147,6 +165,22 @@ export default function StripePaymentModal({
             <div className="bg-gray-800 border border-gray-700 p-8 rounded-2xl w-full max-w-md shadow-2xl">
                 <h2 className="text-2xl font-bold text-white mb-2">Secure Payment</h2>
                 <p className="text-gray-400 mb-8">Confirm your booking for <span className="text-white font-semibold">${amount}</span></p>
+
+                <div className="mb-6">
+                    <button
+                        onClick={onAbaPay}
+                        className="w-full mb-4 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+                        Pay with ABA PayWay
+                    </button>
+
+                    <div className="relative flex py-2 items-center mb-4">
+                        <div className="flex-grow border-t border-gray-600"></div>
+                        <span className="flex-shrink-0 mx-4 text-gray-400 text-xs">OR PAY WITH CARD</span>
+                        <div className="flex-grow border-t border-gray-600"></div>
+                    </div>
+                </div>
 
                 <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: 'night' } }}>
                     <CheckoutForm amount={amount} onSuccess={onSuccess} onCancel={onCancel} />
