@@ -64,7 +64,7 @@ export const ROLE_HIERARCHY: Record<UserRole, UserRole[]> = {
  */
 export const PERMISSIONS: Record<string, string[]> = {
     // ==================== SME Permissions ====================
-    'sme.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR'],
+    'sme.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR', 'SME'],
     'sme.read': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR', 'SME:owner'],
     'sme.create': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
     'sme.update': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SME:owner'],
