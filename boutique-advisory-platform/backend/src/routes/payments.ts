@@ -184,7 +184,7 @@ router.post('/aba/generate-qr', authorize('payment.create'), async (req: Authent
                 userId: user.id,
                 amount: parseFloat(amount),
                 currency: 'USD',
-                method: 'ABA_PAYWAY_QR',
+                method: 'KHQR',
                 provider: 'ABA',
                 providerTxId: shortTranId,
                 status: 'PENDING',
