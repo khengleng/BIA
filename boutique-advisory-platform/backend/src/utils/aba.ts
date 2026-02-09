@@ -3,7 +3,7 @@ import crypto from 'crypto';
 
 const ABA_PAYWAY_API_URL = process.env.ABA_PAYWAY_API_URL || 'https://checkout-sandbox.payway.com.kh/api/payment-gateway/v1/payments/purchase';
 const ABA_PAYWAY_API_KEY = process.env.ABA_PAYWAY_API_KEY || 'aba_api_key';
-const ABA_PAYWAY_MERCHANT_ID = process.env.ABA_PAYWAY_MERCHANT_ID || 'ec438787';
+const ABA_PAYWAY_MERCHANT_ID = process.env.ABA_PAYWAY_MERCHANT_ID || 'ec463700';
 
 export interface ABAPayWayRequest {
     req_time: string;
