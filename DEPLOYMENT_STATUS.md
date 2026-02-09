@@ -1,142 +1,63 @@
 # Boutique Advisory Platform - Deployment Status
 
-## Current Status: ✅ Configuration Complete, ⏳ Awaiting Deployment
+## Current Status: ✅ ABA PayWay Integration Complete, ⏳ Deployment in Progress
 
 ### Summary
-The platform has been fully configured to use a persistent PostgreSQL database on Railway. All necessary code changes have been committed and pushed. The deployment is currently in progress.
+The platform has been updated with a full **ABA PayWay Integration**, supporting both Redirect and **Direct QR API (White-label)** payments. This allows users to pay via KHQR directly on the platform without leaving the site. The system uses a shortened 19-character Transaction ID to ensure full compatibility with ABA's legacy limits.
 
 ### What Has Been Done
 
-#### 1. Database Configuration ✅
-- **PostgreSQL Database**: Created on Railway
-- **Environment Variables**: 
-  - `DATABASE_URL`: Configured to point to Railway Postgres
-  - `DATABASE_URL_REPLICA`: Added for read replicas
-- **Connection**: Backend can successfully connect to the database
+#### 1. Database & Infrastructure ✅
+- **PostgreSQL Database**: Configured and persistent on Railway.
+- **Environment Variables**: Updated on Railway with ABA Merchant ID and API Keys.
 
-#### 2. Prisma Migrations ✅
-- **Migration Created**: `20251230023643_init`
-- **Migration Files**: Committed to repository in `backend/prisma/migrations/`
-- **Migration Deployment**: Configured to run automatically via Railway pre-deploy command
-- **Schema**: All tables (users, tenants, clients, projects, etc.) are defined and ready
+#### 2. ABA PayWay Integration ✅
+- **Direct QR API**: Implemented server-side QR generation using ABA's `/generate-qr` endpoint.
+- **Short Transaction ID**: Fixed the "Invalid Transaction ID" error by generating compliant 19-char IDs.
+- **Real-time Status Polling**: Frontend now polls the backend to detect payment completion via scans.
+- **Webhook Implementation**: Backend handlers updated to receive and verify ABA payment notifications.
 
-#### 3. Dockerfile Updates ✅
-- **Build Step Added**: `RUN npm run build` to compile TypeScript
-- **Production Mode**: Changed CMD from `npm run dev` to `node dist/src/index.js`
-- **Prisma Generation**: Included in Docker build process
-
-#### 4. Railway Configuration ✅
-- **Pre-deploy Command**: `npx prisma migrate deploy`
-- **Start Command**: Uses default from Dockerfile (`node dist/src/index.js`)
-- **Environment**: All variables properly configured
+#### 3. Frontend Booking Flow ✅
+- **Advisory Modal**: Integrated ABA payment option alongside Stripe/Mock payments.
+- **KHQR Support**: Priority given to KHQR for seamless mobile banking payments.
 
 ### Latest Commits
-1. **28d406a** - Add Prisma migrations for database schema
-2. **8789317** - Fix Dockerfile: Add build step for production deployment
+1. **e3b0852** - feat(payments): implement ABA Direct QR API integration (white-label)
+2. **94926f9** - feat(advisory): add ABA PayWay payment option to booking modal
+3. **770b925** - fix(payments): use short transaction ID for ABA PayWay compatibility
 
 ### Current Deployment Status
 - **Git Push**: Completed successfully
 - **Railway Deployment**: In progress (triggered by latest commit)
-- **Expected Outcome**: Backend will use PostgreSQL instead of in-memory storage
+- **Expected Outcome**: Users can perform live bookings using ABA KHQR on www.cambobia.com.
 
 ### How to Verify Deployment Success
 
-#### 1. Check Health Endpoint
-```bash
-curl https://backend-production-67c6.up.railway.app/health
-```
+#### 1. Test ABA QR Generation
+1. Visit: https://www.cambobia.com/advisory
+2. Click "Book Now"
+3. Select "Pay with ABA PayWay"
+4. **Success Criteria**: An ABA QR Code should appear inside the modal.
 
-**Expected Response:**
-```json
-{
-  "service": "boutique-advisory-platform",
-  "status": "healthy",
-  "database": "postgres",  // ← Should say "postgres" not "in-memory"
-  ...
-}
-```
-
-#### 2. Test User Registration
-1. Visit: https://frontend-production-c363.up.railway.app/register
-2. Create a new account
-3. Log out
-4. Log back in with the same credentials
-5. **Success Criteria**: You can log in successfully (data was persisted)
-
-#### 3. Check Railway Logs
-1. Go to Railway dashboard
-2. Navigate to backend service
-3. Check Deploy Logs for:
-   - ✅ "Prisma migrate deploy" completed successfully
-   - ✅ "All migrations have been successfully applied"
-   - ✅ "Server is running on port 4000"
-
-### What Happens Next
-
-The Railway deployment pipeline will:
-1. **Build**: Compile TypeScript to JavaScript (`npm run build`)
-2. **Pre-deploy**: Run Prisma migrations (`npx prisma migrate deploy`)
-3. **Deploy**: Start the server (`node dist/src/index.js`)
-4. **Health Check**: Verify the service is responding
-5. **Go Live**: Route traffic to the new deployment
-
-### Troubleshooting
-
-#### If deployment fails:
-1. Check Railway build logs for compilation errors
-2. Check deploy logs for migration errors
-3. Verify DATABASE_URL environment variable is set
-4. Ensure Prisma schema is valid
-
-#### If health check shows "in-memory":
-1. Verify DATABASE_URL is set in Railway environment variables
-2. Check that the backend can connect to the Postgres service
-3. Review application logs for database connection errors
+#### 2. Check Webhook/Callback
+1. Complete a test payment (use Sandbox if available).
+2. Verify the booking status changes to "CONFIRMED" in the "Bookings" tab.
 
 ### Architecture
-
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Railway Platform                      │
-├─────────────────────────────────────────────────────────┤
-│                                                          │
-│  ┌──────────────┐      ┌──────────────┐      ┌────────┐│
-│  │   Frontend   │─────▶│   Backend    │─────▶│Postgres││
-│  │   (React)    │      │   (Node.js)  │      │   DB   ││
-│  └──────────────┘      └──────────────┘      └────────┘│
-│                                                          │
-│  frontend-production-  backend-production-   Postgres   │
-│  c363.up.railway.app   67c6.up.railway.app   (internal) │
-│                                                          │
-└─────────────────────────────────────────────────────────┘
+┌──────────────┐      ┌──────────────┐      ┌──────────────┐
+│   Frontend   │─────▶│   Backend    │─────▶│ ABA PayWay   │
+│   (React)    │◀─────│   (Node.js)  │◀─────│ API Gateway  │
+└──────────────┘      └──────────────┘      └──────────────┘
+       ▲                      │
+       └──────[Polling]───────┘
 ```
 
 ### Next Steps for User
-
-1. **Wait for Deployment**: Railway is currently deploying the latest changes (typically 2-5 minutes)
-2. **Verify Health**: Check the health endpoint to confirm `database: "postgres"`
-3. **Test the Platform**: Create a test account and verify data persistence
-4. **Monitor**: Keep an eye on Railway logs for any issues
-
-### Files Modified
-
-- `backend/Dockerfile` - Added build step and production mode
-- `backend/prisma/migrations/20251230023643_init/migration.sql` - Database schema
-- Railway environment variables - Added DATABASE_URL_REPLICA
-- Railway service settings - Added pre-deploy command
-
-### Success Criteria ✅
-
-- [x] PostgreSQL database provisioned
-- [x] Prisma migrations created
-- [x] Dockerfile configured for production
-- [x] Railway environment variables set
-- [x] Code committed and pushed
-- [ ] Deployment completed successfully (in progress)
-- [ ] Health check shows "postgres" database
-- [ ] User registration and login working
+1. **Wait for Deployment**: Railway is currently deploying the latest ABA logic (2-5 minutes).
+2. **Test Live Booking**: Perform a scan with the ABA app to verify the end-to-end flow.
 
 ---
 
-**Last Updated**: December 30, 2024 02:52 UTC
-**Status**: Awaiting Railway deployment completion
+**Last Updated**: February 9, 2026 11:34 AM +07:00
+**Status**: Ready for Live Testing
