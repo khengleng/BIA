@@ -53,7 +53,7 @@ FRONTEND_PID=$!
 cd ..
 
 echo "✅ Deployment Successful!"
-echo "   - Backend: http://localhost:3001"
+echo "   - Backend: http://localhost:3003"
 echo "   - Frontend: http://localhost:3005"
 echo "   (Press Ctrl+C to stop both servers)"
 

@@ -91,4 +91,57 @@ router.post('/sumsub', async (req: Request, res: Response) => {
     }
 });
 
+// ABA PayWay Callback (Public)
+router.post('/aba', async (req: Request, res: Response) => {
+    try {
+        const { tran_id, status, hash } = req.body;
+        console.log('💰 Received ABA Callback:', req.body);
+
+        // TODO: Verify Hash (implement verifyAbaCallback import)
+
+        // Status "0" usually means success in ABA PayWay
+        const paymentStatus = status === '0' ? 'COMPLETED' : 'FAILED';
+
+        // We use prisma.$queryRaw or normal access. Assuming 'payment' model exists after generation.
+        // If TS complains, we might need to cast or ignore.
+
+        // Using any cast to avoid TS errors if model update isn't refreshed in IDE
+        const db = prisma as any;
+
+        const payment = await db.payment.findUnique({ where: { id: tran_id } });
+
+        if (payment) {
+            await db.payment.update({
+                where: { id: tran_id },
+                data: {
+                    status: paymentStatus,
+                    metadata: req.body
+                }
+            });
+
+            if (paymentStatus === 'COMPLETED') {
+                if (payment.bookingId) {
+                    await db.booking.update({
+                        where: { id: payment.bookingId },
+                        data: { status: 'CONFIRMED' }
+                    });
+                }
+                if (payment.dealInvestorId) {
+                    await db.dealInvestor.update({
+                        where: { id: payment.dealInvestorId },
+                        data: { status: 'COMPLETED' }
+                    });
+                }
+            }
+        } else {
+            console.error('❌ Payment not found for transaction:', tran_id);
+        }
+
+        res.json({ status: 0, description: 'Success' });
+    } catch (error) {
+        console.error('ABA Callback Error:', error);
+        res.status(500).json({ status: 1, description: 'Internal Error' });
+    }
+});
+
 export default router;
