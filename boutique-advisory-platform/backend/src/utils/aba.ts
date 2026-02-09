@@ -127,6 +127,7 @@ import axios from 'axios';
 // req_time + merchant_id + tran_id + amount + items + first_name + last_name + email + phone + purchase_type + payment_option + callback_url + return_deeplink + currency + custom_fields + return_params + payout + lifetime + qr_image_template
 export const generateAbaQrHash = (
     req_time: string,
+    merchant_id: string,
     tran_id: string,
     amount: string,
     items: string,
@@ -147,7 +148,7 @@ export const generateAbaQrHash = (
 ): string => {
     const dataToSign = [
         req_time,
-        ABA_PAYWAY_MERCHANT_ID,
+        merchant_id,
         tran_id,
         amount,
         items,
@@ -204,8 +205,10 @@ export const generateAbaQr = async (
         const qr_image_template = '';
 
         // Generate Hash using the 19-field logic
+        const mid = ABA_PAYWAY_MERCHANT_ID.toLowerCase();
         const hash = generateAbaQrHash(
             req_time,
+            mid,
             tran_id,
             amountStr,
             itemsBase64,
@@ -227,7 +230,7 @@ export const generateAbaQr = async (
 
         const payload = {
             req_time,
-            merchant_id: ABA_PAYWAY_MERCHANT_ID,
+            merchant_id: mid,
             tran_id,
             amount: amountStr,
             items: itemsBase64,
@@ -254,17 +257,17 @@ export const generateAbaQr = async (
 
         console.log('--- ABA QR REQUEST DEBUG ---');
         console.log('Endpoint:', endpoint);
-        console.log('Merchant ID:', ABA_PAYWAY_MERCHANT_ID);
+        console.log('Merchant ID:', mid);
         console.log('Transaction ID:', tran_id);
         console.log('Amount:', amountStr);
+        // Log hash string components (masked) for verification
+        console.log('Hash Fields Sequence Check: req_time, merchant_id, tran_id, amount, items, first_name, last_name, email, phone, purchase_type, payment_option, callback_url, return_deeplink, currency, custom_fields, return_params, payout, lifetime, qr_image_template');
 
-        // Standard fetch might have issues with SSL or global availability in some Node environments
-        // Using axios for more robust performance and error handling
         const response = await axios.post(endpoint, payload, {
             headers: {
                 'Content-Type': 'application/json'
             },
-            timeout: 10000 // 10s timeout
+            timeout: 10000
         });
 
         const resData = response.data;
@@ -276,16 +279,16 @@ export const generateAbaQr = async (
                 raw: resData
             };
         } else {
-            console.error('ABA QR Gen Failed. Status:', resData.status, 'Desc:', resData.description || resData.message);
-            console.error('Full Error Response:', resData);
+            console.error('ABA QR Gen Declined by API. Status:', resData.status);
+            console.error('API Description:', resData.description || resData.message || 'No description');
+            if (resData.status === 1) console.error('Hint: Status 1 often means invalid hash/signature.');
             return null;
         }
 
     } catch (error: any) {
-        console.error('Error generating ABA QR:', error.message);
+        console.error('ABA QR Generation Error:', error.message);
         if (error.response) {
-            console.error('ABA API Error Response:', error.response.data);
-            console.error('ABA API Error Status:', error.response.status);
+            console.error('ABA API Error Body:', error.response.data);
         }
         return null;
     }
