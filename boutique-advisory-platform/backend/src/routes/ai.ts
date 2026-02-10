@@ -89,7 +89,7 @@ Instructions:
         return res.json({ response: text });
     } catch (error) {
         console.error("Gemini Chat Error:", error);
-        return res.status(500).json({ error: "AI Service Error" });
+        return res.status(500).json({ error: "AI Service Error: " + (error as any).message });
     }
 });
 
