@@ -12,14 +12,15 @@ interface Message {
     timestamp: Date
 }
 
-const SnakeIcon = ({ className }: { className?: string }) => (
+const SupermanIcon = ({ className }: { className?: string }) => (
     <svg
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 24 24"
         fill="currentColor"
         className={className}
     >
-        <path d="M12 2C8.13 2 5 4.9 5 8.5c0 2.2 1.2 4.2 3 5.4V15c0 3.3-2.7 6-6 6v1h20v-1c-3.3 0-6-2.7-6-6v-1.1c1.8-1.2 3-3.2 3-5.4C19 4.9 15.87 2 12 2zm-2 6a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3zm4 0a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3z" />
+        <path d="M12 2L4 7v6c0 5.55 3.84 10.74 8 12 4.16-1.26 8-6.45 8-12V7l-8-5zm0 2.18l6 3.89v4.93c0 4.54-3.13 8.78-6 9.88-2.87-1.1-6-5.34-6-9.88V8.07l6-3.89z" />
+        <path d="M10 10h4v2h-4v2h4v2h-4v2h4c1.1 0 2-.9 2-2v-2c0-1.1-.9-2-2-2h-4v-2h4V8h-4c-1.1 0-2 .9-2 2v2z" transform="scale(0.8) translate(3,3)" />
     </svg>
 )
 
@@ -99,7 +100,7 @@ export default function Chatbot() {
                 className="fixed bottom-6 right-6 p-4 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all z-50 flex items-center justify-center"
                 aria-label="Open AI Chat"
             >
-                <SnakeIcon className="w-6 h-6" />
+                <SupermanIcon className="w-6 h-6" />
             </button>
         )
     }
@@ -110,11 +111,11 @@ export default function Chatbot() {
             <div className="bg-gray-800 p-4 border-b border-gray-700 flex justify-between items-center">
                 <div className="flex items-center space-x-2">
                     <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                        <SnakeIcon className="w-5 h-5 text-white" />
+                        <SupermanIcon className="w-5 h-5 text-white" />
                     </div>
                     <div>
                         <h3 className="text-white font-medium">BIA Assistant</h3>
-                        <p className="text-xs text-gray-400">Powered by Google Gemini</p>
+                        <p className="text-xs text-gray-400">Powered by Claude AI</p>
                     </div>
                 </div>
                 <button
