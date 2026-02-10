@@ -7,29 +7,36 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 export let io: Server;
 
 export function initSocket(server: HttpServer) {
+    const isProduction = process.env.NODE_ENV === 'production';
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     const allowedOrigins = [
         frontendUrl,
-        frontendUrl.replace(/\/$/, ''), // Remove trailing slash
-        frontendUrl.replace('https://', 'https://www.'),
-        frontendUrl.replace('https://www.', 'https://'),
-        'http://localhost:3000',
-        'http://localhost:3001',
-        'http://localhost:3002',
-        'http://localhost:3003'
+        frontendUrl.replace(/\/$/, ''),
     ];
+
+    if (!isProduction) {
+        allowedOrigins.push(
+            'http://localhost:3000',
+            'http://localhost:3001',
+            'http://localhost:3002',
+            'http://localhost:3003',
+            'http://localhost:3005'
+        );
+    }
 
     io = new Server(server, {
         cors: {
             origin: (origin, callback) => {
-                // Allow requests with no origin (like mobile apps or curl)
-                if (!origin) return callback(null, true);
+                // Allow requests with no origin only in development
+                if (!origin) {
+                    return isProduction ? callback(new Error('Origin required'), false) : callback(null, true);
+                }
 
-                if (allowedOrigins.includes(origin) || origin.endsWith('.railway.app')) {
+                if (allowedOrigins.includes(origin)) {
                     callback(null, true);
                 } else {
-                    console.log('Socket CORS blocked:', origin);
-                    callback(null, true); // Temporarily allow all for debugging if strict mode fails
+                    console.warn('Blocked by Socket CORS:', origin);
+                    callback(new Error('Not allowed by CORS'), false);
                 }
             },
             methods: ['GET', 'POST'],

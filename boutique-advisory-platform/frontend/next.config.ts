@@ -20,8 +20,24 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '10mb',
     },
   },
+  poweredByHeader: false,
   async headers() {
-    const isLocal = process.env.NEXTAUTH_URL?.includes('localhost') || !process.env.NEXTAUTH_URL;
+    const isProduction = process.env.NODE_ENV === 'production';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+    const wsUrl = apiUrl.replace(/^http/, 'ws');
+
+    const cspDirectives = [
+      "default-src 'self'",
+      `script-src 'self' ${isProduction ? '' : "'unsafe-eval' 'unsafe-inline'"} https://js.stripe.com https://*.stripe.com https://*.sumsub.com`,
+      `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
+      "font-src 'self' data: https://fonts.gstatic.com",
+      "img-src 'self' blob: data: https://*.stripe.com https://*.sumsub.com",
+      "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://*.stripe.com https://*.sumsub.com",
+      `connect-src 'self' ${isProduction ? '' : apiUrl} ${isProduction ? '' : 'http://localhost:3001 http://127.0.0.1:3001 http://localhost:3003 http://127.0.0.1:3003'} https://api.stripe.com https://maps.googleapis.com https://*.stripe.com https://r.stripe.com https://*.stripe.network https://m.stripe.network https://*.sumsub.com ${wsUrl || 'ws: wss:'}`,
+      "object-src 'none'",
+      "upgrade-insecure-requests"
+    ].join('; ');
+
     const headers = [
       {
         key: 'X-DNS-Prefetch-Control',
@@ -37,15 +53,31 @@ const nextConfig: NextConfig = {
       },
       {
         key: 'Referrer-Policy',
-        value: 'origin-when-cross-origin'
+        value: 'strict-origin-when-cross-origin'
       },
       {
         key: 'Content-Security-Policy',
-        value: `default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com https://*.stripe.com https://*.sumsub.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' blob: data: https://*.stripe.com https://*.sumsub.com; frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://*.stripe.com https://*.sumsub.com; connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003'} http://localhost:3001 http://127.0.0.1:3001 http://localhost:3003 http://127.0.0.1:3003 https://api.stripe.com https://maps.googleapis.com https://*.stripe.com https://r.stripe.com https://*.stripe.network https://m.stripe.network https://*.sumsub.com ws: wss:;`
+        value: cspDirectives
+      },
+      {
+        key: 'Permissions-Policy',
+        value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()'
+      },
+      {
+        key: 'Cross-Origin-Opener-Policy',
+        value: 'same-origin'
+      },
+      {
+        key: 'Cross-Origin-Embedder-Policy',
+        value: 'credentialless'
+      },
+      {
+        key: 'Cross-Origin-Resource-Policy',
+        value: 'same-origin'
       }
     ];
 
-    if (!isLocal) {
+    if (isProduction) {
       headers.push({
         key: 'Strict-Transport-Security',
         value: 'max-age=63072000; includeSubDomains; preload'
@@ -56,9 +88,26 @@ const nextConfig: NextConfig = {
       {
         source: '/:path*',
         headers
+      },
+      {
+        source: '/(dashboard|admin|profile|settings)/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-store, max-age=0, must-revalidate'
+          }
+        ]
       }
     ];
-  }
+  },
+  async rewrites() {
+    return [
+      {
+        source: '/api-proxy/:path*',
+        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003'}/api/:path*`,
+      },
+    ];
+  },
 };
 
 export default withSerwist(nextConfig);

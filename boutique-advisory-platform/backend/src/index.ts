@@ -120,25 +120,28 @@ const isProduction = process.env.NODE_ENV === 'production';
 // Trust proxy (required for rate limiting and secure cookies on most cloud platforms)
 app.set('trust proxy', 1);
 
+// Disable X-Powered-By
+app.disable('x-powered-by');
+
 // Security Headers with Helmet (stricter in production)
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginResourcePolicy: { policy: "same-origin" },
   crossOriginOpenerPolicy: { policy: "same-origin" },
-  crossOriginEmbedderPolicy: false, // Required for some external resources
+  crossOriginEmbedderPolicy: { policy: "credentialless" },
   contentSecurityPolicy: isProduction ? {
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:", "blob:"],
-      connectSrc: ["'self'", process.env.FRONTEND_URL || 'http://localhost:3003'],
+      connectSrc: ["'self'", process.env.FRONTEND_URL || "https://www.cambobia.com"],
       fontSrc: ["'self'"],
       objectSrc: ["'none'"],
       upgradeInsecureRequests: [],
     }
   } : false,
-  hsts: isProduction && !process.env.FRONTEND_URL?.includes('localhost') ? {
-    maxAge: 31536000,
+  hsts: isProduction ? {
+    maxAge: 63072000,
     includeSubDomains: true,
     preload: true
   } : false,

@@ -1,5 +1,8 @@
 // API Configuration
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3001';
+// In production, we use a proxy to hide the backend URL
+export const API_URL = typeof window !== 'undefined' && window.location.hostname !== 'localhost'
+    ? '/api-proxy'
+    : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003');
 
 // CSRF Token Management
 let csrfToken: string | null = null;
