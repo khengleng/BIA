@@ -23,17 +23,17 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   async headers() {
     const isProduction = process.env.NODE_ENV === 'production';
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
-    const wsUrl = apiUrl.replace(/^http/, 'ws');
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend-production-9d40.up.railway.app';
+    const wsUrl = apiBaseUrl.replace(/^http/, 'ws');
 
     const cspDirectives = [
       "default-src 'self'",
-      `script-src 'self' ${isProduction ? '' : "'unsafe-eval' 'unsafe-inline'"} https://js.stripe.com https://*.stripe.com https://*.sumsub.com`,
+      `script-src 'self' 'unsafe-inline' ${isProduction ? '' : "'unsafe-eval'"} https://js.stripe.com https://*.stripe.com https://*.sumsub.com`,
       `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
       "font-src 'self' data: https://fonts.gstatic.com",
       "img-src 'self' blob: data: https://*.stripe.com https://*.sumsub.com",
       "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://*.stripe.com https://*.sumsub.com",
-      `connect-src 'self' ${isProduction ? '' : apiUrl} ${isProduction ? '' : 'http://localhost:3001 http://127.0.0.1:3001 http://localhost:3003 http://127.0.0.1:3003'} https://api.stripe.com https://maps.googleapis.com https://*.stripe.com https://r.stripe.com https://*.stripe.network https://m.stripe.network https://*.sumsub.com ${wsUrl || 'ws: wss:'}`,
+      `connect-src 'self' ${apiBaseUrl} ${wsUrl} ${isProduction ? '' : 'http://localhost:3001 http://127.0.0.1:3001 http://localhost:3003 http://127.0.0.1:3003'} https://api.stripe.com https://maps.googleapis.com https://*.stripe.com https://r.stripe.com https://*.stripe.network https://m.stripe.network https://*.sumsub.com`,
       "object-src 'none'",
       "upgrade-insecure-requests"
     ].join('; ');
