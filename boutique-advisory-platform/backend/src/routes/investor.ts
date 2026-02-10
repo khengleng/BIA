@@ -112,7 +112,16 @@ router.get('/portfolio/stats', authorize('investor.read', { getOwnerId: (req) =>
     });
 
     if (!investor) {
-      return res.status(404).json({ error: 'Investor not found' });
+      return res.json({
+        summary: {
+          totalAum: 0,
+          activePositions: 0,
+          realizedRoi: 0,
+          startDate: new Date()
+        },
+        sectors: [],
+        items: []
+      });
     }
 
     // Calculate Portfolio Metrics
