@@ -387,14 +387,7 @@ router.post('/services', authorize('advisory_service.create'), async (req: Authe
 });
 
 // Update an advisory service
-router.put('/services/:id', authorize('advisory_service.update', {
-    getOwnerId: (req) => {
-        // We'll handle refined ownership check inside since we need to fetch the service first
-        // Or we can use a custom middleware. 
-        // For now, let's keep the internal check but use the authorize decoration for audit.
-        return undefined;
-    }
-}), async (req: AuthenticatedRequest, res: Response) => {
+router.put('/services/:id', authorize('advisory_service.manage'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const userId = req.user?.id;
         const userRole = req.user?.role;
