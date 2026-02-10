@@ -12,6 +12,24 @@ interface Message {
     timestamp: Date
 }
 
+const SnakeIcon = ({ className }: { className?: string }) => (
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={className}
+    >
+        <path d="M12 22a2 2 0 0 0 2-2v-1.1c.1.1.2.1.3.1 3 0 5-2 5-6 0-3-2-5-5-5a5 5 0 0 0-5 5c0 4 2 6 5 6 .1 0 .2 0 .3-.1V20a2 2 0 0 0 2 2Z" />
+        <path d="M12 12c-1.5 0-2.5-1-2.5-3s1-2.5 2.5-2.5S14.5 9 14.5 12" />
+        <circle cx="10.5" cy="9.5" r="1" fill="currentColor" />
+        <circle cx="13.5" cy="9.5" r="1" fill="currentColor" />
+    </svg>
+)
+
 export default function Chatbot() {
     const [isOpen, setIsOpen] = useState(false)
     const [messages, setMessages] = useState<Message[]>([
@@ -88,7 +106,7 @@ export default function Chatbot() {
                 className="fixed bottom-6 right-6 p-4 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all z-50 flex items-center justify-center"
                 aria-label="Open AI Chat"
             >
-                <Bot className="w-6 h-6" />
+                <SnakeIcon className="w-6 h-6" />
             </button>
         )
     }
@@ -99,7 +117,7 @@ export default function Chatbot() {
             <div className="bg-gray-800 p-4 border-b border-gray-700 flex justify-between items-center">
                 <div className="flex items-center space-x-2">
                     <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                        <Bot className="w-5 h-5 text-white" />
+                        <SnakeIcon className="w-5 h-5 text-white" />
                     </div>
                     <div>
                         <h3 className="text-white font-medium">BIA Assistant</h3>
