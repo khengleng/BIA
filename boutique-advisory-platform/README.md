@@ -101,9 +101,10 @@ boutique-advisory-platform/
 | `RESEND_API_KEY` | Optional | Resend API key for email notifications |
 | `EMAIL_FROM` | Optional | Sender email address (default: contact@cambobia.com) |
 | `ENCRYPTION_KEY` | **Required** (Prod) | 32-byte hex string for AES-256-GCM encryption |
+| `ANTHROPIC_API_KEY` | Optional | Anthropic Claude API Key for AI features (v3.0+) |
 | `SUMSUB_APP_TOKEN` | Optional | Sumsub App Token for KYC |
 | `SUMSUB_SECRET_KEY` | Optional | Sumsub Secret Key for KYC |
-| `GEMINI_API_KEY` | Optional | Google Gemini API Key for AI features |
+| `GEMINI_API_KEY` | Deprecated | Replaced by Anthropic |
 
 ### Frontend
 
@@ -155,6 +156,32 @@ The platform is designed to align with **PCI DSS** standards for handling sensit
 3.  **Data Minimization (Requirement 3.4)**:
     - Only essential PII (e.g., National IDs for KYC) is stored, and it is strictly encrypted using AES-256-GCM.
     - Rendered PII is masked (e.g., `********`) wherever possible in the UI.
+
+### 🛡️ Enterprise-Grade Hardening (Audit Fixes)
+
+The platform has been hardened against modern attack vectors following a manual security audit:
+
+1.  **Strict Content Security Policy (CSP)**:
+    - Removed `unsafe-eval` and `unsafe-inline` for scripts in production.
+    - Explicitly defined safe sources (self, Stripe, Sumsub).
+2.  **HSTS & SSL Protection**:
+    - Enforced `Strict-Transport-Security` (2-year max-age, includeSubDomains, preload).
+    - Prevents protocol downgrade (SSL Stripping) attacks.
+3.  **API URL Masking (Internal Proxy)**:
+    - Implemented `/api-proxy` on the frontend.
+    - The direct Railway backend URL is **never** exposed to the client browser or CSP headers.
+4.  **Framework Obscurity**:
+    - `X-Powered-By` header disabled in both Next.js and Express to prevent framework fingerprinting.
+5.  **Hardened Headers**:
+    - Added `Permissions-Policy` (camera=(), microphone=(), etc.).
+    - Implemented `COOP` (Cross-Origin-Opener-Policy), `CORP` (Cross-Origin-Resource-Policy), and `COEP` (Cross-Origin-Embedder-Policy).
+6.  **Authenticated Cache Control**:
+    - Sensitive routes (`/dashboard`, `/admin`, `/profile`) use `Cache-Control: no-store` to prevent data leakage via CDNs or shared devices.
+7.  **WebSocket Security**:
+    - Socket.io origins are strictly validated against production domains.
+8.  **Crawler & SEO Control**:
+    - Added comprehensive `robots.txt` to block indexing of `/admin`, `/api`, and private user routes.
+    - Added `sitemap.xml` for optimized search engine discovery of public pages.
 
 ---
 
