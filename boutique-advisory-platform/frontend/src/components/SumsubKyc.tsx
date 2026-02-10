@@ -60,14 +60,14 @@ export default function SumsubKyc({ onClose, onComplete }: SumsubKycProps) {
 
                 <div className="flex-1 overflow-hidden relative bg-[#F4F7F9]">
                     {isLoading && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4 bg-gray-800">
+                        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center space-y-4 bg-gray-800">
                             <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
                             <p className="text-gray-400 font-medium">Initializing Secure Session...</p>
                         </div>
                     )}
 
-                    {error && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center bg-gray-800">
+                    {error ? (
+                        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center p-8 text-center bg-gray-800">
                             <p className="text-red-400 font-bold mb-4">{error}</p>
                             <button
                                 onClick={fetchToken}
@@ -76,28 +76,28 @@ export default function SumsubKyc({ onClose, onComplete }: SumsubKycProps) {
                                 Retry
                             </button>
                         </div>
-                    )}
-
-                    {token && (
-                        <SumsubWebSdk
-                            accessToken={token}
-                            expirationHandler={fetchToken}
-                            onMessage={onMessage}
-                            onError={onError}
-                            config={{
-                                lang: 'en',
-                                i18n: {
-                                    en: {
-                                        "header.title": "Verification for Boutique Advisory Platform"
+                    ) : token && (
+                        <div className="h-full w-full">
+                            <SumsubWebSdk
+                                accessToken={token}
+                                expirationHandler={fetchToken}
+                                onMessage={onMessage}
+                                onError={onError}
+                                config={{
+                                    lang: 'en',
+                                    i18n: {
+                                        en: {
+                                            "header.title": "Verification for Boutique Advisory Platform"
+                                        }
                                     }
-                                }
-                            }}
-                            options={{
-                                addViewportTag: true,
-                                adaptIframeHeight: true
-                            }}
-                            style={{ height: '100%', width: '100%' }}
-                        />
+                                }}
+                                options={{
+                                    addViewportTag: true,
+                                    adaptIframeHeight: true
+                                }}
+                                style={{ height: '100%', width: '100%' }}
+                            />
+                        </div>
                     )}
                 </div>
             </div>
