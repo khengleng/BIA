@@ -223,6 +223,9 @@ export const PERMISSIONS: Record<string, string[]> = {
     'community.comment_delete': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR:owner', 'INVESTOR:owner', 'SME:owner'],
     'community.manage': ['SUPER_ADMIN', 'ADMIN'],
 
+    // ==================== AI Permissions ====================
+    'ai.chat': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
+
     // ==================== Admin Permissions ====================
     'admin.read': ['SUPER_ADMIN', 'ADMIN'],
     'admin.user_manage': ['SUPER_ADMIN', 'ADMIN'],
