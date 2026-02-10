@@ -49,6 +49,7 @@ export const sumsub = {
      */
     async makeRequest(method: string, url: string, body?: any) {
         if (!SUMSUB_APP_TOKEN || !SUMSUB_SECRET_KEY) {
+            console.error('❌ Sumsub credentials missing! Check .env file.');
             throw new Error('Sumsub credentials missing');
         }
 
@@ -61,20 +62,32 @@ export const sumsub = {
             .update(signatureStr)
             .digest('hex');
 
-        console.log(`📡 Sumsub Request: ${method} ${SUMSUB_BASE_URL + url}`);
-        // Log purely for debugging, mask in production if needed
-        // console.log(`🔑 Sumsub Auth: TS=${timestamp}`);
+        // console.log(`📡 Sumsub Request: ${method} ${SUMSUB_BASE_URL + url}`);
 
-        return axios({
-            method,
-            url: SUMSUB_BASE_URL + url,
-            data: body,
-            headers: {
-                'Content-Type': 'application/json',
-                'X-App-Access-Ts': timestamp,
-                'X-App-Access-Sig': signature,
-                'X-App-Token': SUMSUB_APP_TOKEN,
-            },
-        });
+        try {
+            return await axios({
+                method,
+                url: SUMSUB_BASE_URL + url,
+                data: body || null, // Ensure explicit null if no body, though axios handles undefined
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-App-Access-Ts': timestamp.toString(), // Ensure string
+                    'X-App-Access-Sig': signature,
+                    'X-App-Token': SUMSUB_APP_TOKEN,
+                },
+            });
+        } catch (error: any) {
+            // Log detailed Sumsub error response
+            if (error.response) {
+                console.error('❌ Sumsub API Error:', {
+                    status: error.response.status,
+                    data: error.response.data,
+                    url: url
+                });
+            } else {
+                console.error('❌ Sumsub Network/Unknown Error:', error.message);
+            }
+            throw error; // Re-throw to be caught by caller
+        }
     }
 };

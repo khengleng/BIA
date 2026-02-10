@@ -205,7 +205,7 @@ export const generateAbaQr = async (
         const qr_image_template = '';
 
         // Concatenate parameters for the hash (exactly 19 fields)
-        const mid = ABA_PAYWAY_MERCHANT_ID.toLowerCase();
+        const mid = ABA_PAYWAY_MERCHANT_ID; // Use exactly as provided (case-sensitive)
 
         // Exact order from docs: req_time + merchant_id + tran_id + amount + items + first_name + last_name + email + phone + purchase_type + payment_option + callback_url + return_deeplink + currency + custom_fields + return_params + payout + lifetime + qr_image_template
         const hash = generateAbaQrHash(
@@ -254,7 +254,11 @@ export const generateAbaQr = async (
         };
 
         const isSandbox = ABA_PAYWAY_API_URL.includes('sandbox');
-        const baseUrl = isSandbox ? 'https://pw-api-sandbox.ababank.com' : 'https://api-payway.ababank.com';
+        // Correct Sandbox URL for QR Generation (Direct API)
+        const baseUrl = isSandbox
+            ? 'https://checkout-sandbox.payway.com.kh'
+            : 'https://checkout.payway.com.kh';
+
         const endpoint = `${baseUrl}/api/payment-gateway/v1/payments/generate-qr`;
 
         console.log('--- ABA QR SUBMISSION ---');
