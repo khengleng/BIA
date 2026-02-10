@@ -1,4 +1,5 @@
 
+// BIA Assistant v1.1 - Animated Superman Icon
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react'
