@@ -125,7 +125,7 @@ app.disable('x-powered-by');
 
 // Security Headers with Helmet (stricter in production)
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: "same-origin" },
+  crossOriginResourcePolicy: { policy: "cross-origin" },
   crossOriginOpenerPolicy: { policy: "same-origin" },
   crossOriginEmbedderPolicy: { policy: "credentialless" },
   contentSecurityPolicy: isProduction ? {
