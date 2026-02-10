@@ -91,7 +91,7 @@ router.get('/profile', async (req: any, res: Response) => {
 });
 
 // Get investor portfolio analytics
-router.get('/portfolio/stats', authorize('investor.read'), async (req: AuthenticatedRequest, res: Response) => {
+router.get('/portfolio/stats', authorize('investor.read', { getOwnerId: (req) => req.user?.id }), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user?.id;
 
