@@ -124,4 +124,148 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
     }
 });
 
+/**
+ * Get platform analytics data
+ * GET /api/dashboard/analytics
+ */
+router.get('/analytics', async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const tenantId = req.user?.tenantId || 'default';
+
+        // 1. Fetch KPIs
+        const [
+            totalDeals,
+            activeDeals,
+            totalInvestmentAgg,
+            activeSMEs,
+            activeInvestors,
+            pendingMatches
+        ] = await Promise.all([
+            prisma.deal.count({ where: { tenantId } }),
+            prisma.deal.count({
+                where: {
+                    tenantId,
+                    status: { in: ['PUBLISHED', 'NEGOTIATION', 'FUNDED'] }
+                }
+            }),
+            prisma.deal.aggregate({
+                where: { tenantId },
+                _sum: { amount: true }
+            }),
+            prisma.sME.count({ where: { tenantId, status: 'CERTIFIED' } }),
+            prisma.investor.count({ where: { tenantId, kycStatus: 'VERIFIED' } }),
+            prisma.match.count({ where: { tenantId, status: 'PENDING' } })
+        ]);
+
+        // Fix Investor count: Investor model doesn't have status, but User does.
+        // For now, simple count is fine.
+
+        const totalInvestment = totalInvestmentAgg._sum.amount || 0;
+        const avgDealSize = totalDeals > 0 ? totalInvestment / totalDeals : 0;
+
+        // Mock success rate for now or calculate based on CLOSED deals
+        const closedDeals = await prisma.deal.count({
+            where: { tenantId, status: 'CLOSED' }
+        });
+        const successRate = totalDeals > 0 ? Math.round((closedDeals / totalDeals) * 100) : 0;
+
+        const kpis = {
+            totalDeals,
+            activeDeals,
+            totalInvestment,
+            avgDealSize,
+            successRate,
+            activeSMEs,
+            activeInvestors,
+            pendingMatches
+        };
+
+        // 2. Fetch Monthly Deals (Last 6 months)
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+        const deals = await prisma.deal.findMany({
+            where: {
+                tenantId,
+                createdAt: { gte: sixMonthsAgo }
+            },
+            select: {
+                createdAt: true,
+                amount: true
+            },
+            orderBy: { createdAt: 'asc' }
+        });
+
+        const monthlyDealsMap = new Map<string, { deals: number, value: number }>();
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+        deals.forEach(deal => {
+            const date = new Date(deal.createdAt);
+            const monthKey = monthNames[date.getMonth()];
+
+            const current = monthlyDealsMap.get(monthKey) || { deals: 0, value: 0 };
+            monthlyDealsMap.set(monthKey, {
+                deals: current.deals + 1,
+                value: current.value + deal.amount
+            });
+        });
+
+        const monthlyDeals = Array.from(monthlyDealsMap.entries()).map(([month, data]) => ({
+            month,
+            deals: data.deals,
+            value: data.value
+        }));
+
+        // 3. Sector Distribution
+        const sectors = await prisma.sME.groupBy({
+            by: ['sector'],
+            where: { tenantId },
+            _count: { id: true }
+        });
+
+        const sectorDistribution: { [key: string]: number } = {};
+        sectors.forEach(s => {
+            sectorDistribution[s.sector] = s._count.id;
+        });
+
+        // 4. Stage Distribution
+        const stages = await prisma.deal.groupBy({
+            by: ['status'],
+            where: { tenantId },
+            _count: { id: true }
+        });
+
+        const stageDistribution: { [key: string]: number } = {};
+        stages.forEach(s => {
+            stageDistribution[s.status] = s._count.id;
+        });
+
+        // 5. Recent Activity (Mocked from Deals for now)
+        const recentDeals = await prisma.deal.findMany({
+            where: { tenantId },
+            take: 5,
+            orderBy: { createdAt: 'desc' },
+            include: { sme: { select: { name: true } } }
+        });
+
+        const recentActivity = recentDeals.map(deal => ({
+            type: 'DEAL_CREATED',
+            description: `New deal posted by ${deal.sme.name}: ${deal.title}`,
+            timestamp: deal.createdAt.toISOString()
+        }));
+
+        res.json({
+            kpis,
+            monthlyDeals,
+            sectorDistribution,
+            stageDistribution,
+            recentActivity
+        });
+
+    } catch (error) {
+        console.error('Analytics dashboard error:', error);
+        res.status(500).json({ error: 'Failed to fetch analytics data' });
+    }
+});
+
 export default router;
