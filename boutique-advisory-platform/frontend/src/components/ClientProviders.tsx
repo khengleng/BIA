@@ -6,6 +6,7 @@ import { ToastProvider } from '../contexts/ToastContext'
 import PWAInstallPrompt from './PWAInstallPrompt'
 import BottomNavigation from './BottomNavigation'
 import PushNotifications from './PushNotifications'
+import { SocketProvider } from '../contexts/SocketContext'
 
 interface Props {
     children: React.ReactNode
@@ -30,10 +31,12 @@ export default function ClientProviders({ children }: Props) {
     return (
         <ErrorBoundary>
             <ToastProvider>
-                {children}
-                <PWAInstallPrompt />
-                <PushNotifications />
-                <BottomNavigation />
+                <SocketProvider>
+                    {children}
+                    <PWAInstallPrompt />
+                    <PushNotifications />
+                    <BottomNavigation />
+                </SocketProvider>
             </ToastProvider>
         </ErrorBoundary>
     )

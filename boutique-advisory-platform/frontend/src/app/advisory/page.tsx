@@ -402,7 +402,9 @@ export default function AdvisoryPage() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-400">Advisor:</span>
-                        <span className="text-white">{service.advisor}</span>
+                        <span className="text-white">
+                          {typeof service.advisor === 'object' ? service.advisor?.name : service.advisor}
+                        </span>
                       </div>
                     </div>
 
