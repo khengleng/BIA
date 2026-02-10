@@ -41,7 +41,7 @@ const nextConfig: NextConfig = {
       },
       {
         key: 'Content-Security-Policy',
-        value: `default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com https://*.stripe.com https://*.sumsub.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' blob: data: https://*.stripe.com https://*.sumsub.com; frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://*.sumsub.com; connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003'} http://localhost:3001 http://127.0.0.1:3001 http://localhost:3003 http://127.0.0.1:3003 https://api.stripe.com https://maps.googleapis.com https://*.stripe.com https://r.stripe.com https://*.sumsub.com ws: wss:;`
+        value: `default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com https://*.stripe.com https://*.sumsub.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' blob: data: https://*.stripe.com https://*.sumsub.com; frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://*.stripe.com https://*.sumsub.com; connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003'} http://localhost:3001 http://127.0.0.1:3001 http://localhost:3003 http://127.0.0.1:3003 https://api.stripe.com https://maps.googleapis.com https://*.stripe.com https://*.stripe.network https://*.sumsub.com ws: wss:;`
       }
     ];
 
