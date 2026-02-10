@@ -37,6 +37,7 @@ import { API_URL, authorizedRequest } from '@/lib/api'
 import NotificationCenter from '../NotificationCenter'
 import LanguageSwitcher from '../LanguageSwitcher'
 import Chatbot from '../Chatbot'
+import BottomNavigation from '../BottomNavigation'
 
 interface DashboardLayoutProps {
     children: React.ReactNode
@@ -152,19 +153,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
     return (
         <div className="min-h-screen bg-gray-900 flex flex-col md:flex-row">
-            {/* Mobile Header */}
-            <div className="md:hidden bg-gray-800 border-b border-gray-700 p-4 flex justify-between items-center">
+            {/* Mobile Header - Glassmorphism */}
+            <div className="md:hidden sticky top-0 z-40 bg-gray-900/80 backdrop-blur-lg border-b border-gray-800 p-4 flex justify-between items-center px-6">
                 <div className="flex items-center space-x-2">
                     <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                         <Building2 className="w-5 h-5 text-white" />
                     </div>
-                    <span className="font-bold text-white">Boutique Advisory</span>
+                    <span className="font-bold text-white text-lg tracking-tight">BIA Platform</span>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-3">
                     <LanguageSwitcher />
                     <button
                         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                        className="text-gray-400 hover:text-white"
+                        className="text-gray-400 hover:text-white p-1"
                     >
                         {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
                     </button>
@@ -256,15 +257,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             )}
 
             {/* Main Content */}
-            <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-                {/* Top Header for Desktop (User info is in sidebar now for cleaner layout, but let's keep it consistent or clean)
-             Actually, let's keep the content area clean.
-             The design in original code had a top header.
-             I moved user info to sidebar bottom for better mobile/desktop parity or keep it top?
-             Original had top header.
-             Let's stick to a clean top bar or just padded content.
-             I'll add a simple top bar for breadcrumbs or title if needed, but for now just the content container.
-         */}
+            <main className="flex-1 flex flex-col min-w-0 overflow-hidden pb-24 md:pb-0">
                 <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
                     {children}
                 </div>

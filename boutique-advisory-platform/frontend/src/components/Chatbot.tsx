@@ -96,7 +96,7 @@ export default function Chatbot() {
 
     if (!isOpen) {
         return (
-            <div className="fixed bottom-6 right-6 z-50 group">
+            <div className="fixed bottom-24 sm:bottom-6 right-6 z-50 group">
                 {/* Pulsing ring effect */}
                 <div className="absolute inset-0 bg-blue-500 rounded-full animate-ping opacity-25 group-hover:opacity-0 transition-opacity"></div>
 
@@ -124,7 +124,7 @@ export default function Chatbot() {
     }
 
     return (
-        <div className="fixed bottom-6 right-6 w-96 max-w-[calc(100vw-2rem)] h-[500px] max-h-[80vh] bg-gray-900 border border-gray-700 rounded-lg shadow-2xl z-50 flex flex-col overflow-hidden">
+        <div className="fixed bottom-24 sm:bottom-6 right-6 w-96 max-w-[calc(100vw-2rem)] h-[500px] max-h-[80vh] bg-gray-900 border border-gray-700 rounded-lg shadow-2xl z-50 flex flex-col overflow-hidden">
             {/* Header */}
             <div className="bg-gray-800 p-4 border-b border-gray-700 flex justify-between items-center">
                 <div className="flex items-center space-x-2">
