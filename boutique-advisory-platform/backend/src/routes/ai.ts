@@ -4,6 +4,7 @@ import { prisma } from '../database';
 import { ai } from '../utils/ai';
 import Anthropic from '@anthropic-ai/sdk';
 
+// Initialize Anthropic Claude AI
 const router = Router();
 
 // Initialize Anthropic
