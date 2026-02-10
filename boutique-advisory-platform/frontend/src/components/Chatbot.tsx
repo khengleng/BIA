@@ -95,13 +95,30 @@ export default function Chatbot() {
 
     if (!isOpen) {
         return (
-            <button
-                onClick={() => setIsOpen(true)}
-                className="fixed bottom-6 right-6 p-4 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all z-50 flex items-center justify-center"
-                aria-label="Open AI Chat"
-            >
-                <SupermanIcon className="w-6 h-6" />
-            </button>
+            <div className="fixed bottom-6 right-6 z-50 group">
+                {/* Pulsing ring effect */}
+                <div className="absolute inset-0 bg-blue-500 rounded-full animate-ping opacity-25 group-hover:opacity-0 transition-opacity"></div>
+
+                <button
+                    onClick={() => setIsOpen(true)}
+                    className="relative p-4 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 hover:scale-110 transition-all duration-300 flex items-center justify-center animate-bounce-subtle"
+                    aria-label="Open AI Chat"
+                    style={{
+                        animation: 'float 3s ease-in-out infinite'
+                    }}
+                >
+                    <SupermanIcon className="w-6 h-6" />
+
+                    {/* Style block for custom float animation */}
+                    <style jsx>{`
+                        @keyframes float {
+                            0% { transform: translateY(0px); }
+                            50% { transform: translateY(-10px); }
+                            100% { transform: translateY(0px); }
+                        }
+                    `}</style>
+                </button>
+            </div>
         )
     }
 
