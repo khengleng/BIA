@@ -104,7 +104,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/api-proxy/:path*',
-        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003'}/api/:path*`,
+        destination: `${process.env.NEXT_PUBLIC_API_URL || 'https://backend-production-9d40.up.railway.app'}/:path*`,
       },
     ];
   },
