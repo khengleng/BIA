@@ -133,10 +133,10 @@ export const PERMISSIONS: Record<string, string[]> = {
     'certification.approve': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
 
     // ==================== Report Permissions ====================
-    'report.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
-    'report.read': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
+    'report.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
+    'report.read': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
     'report.create': ['SUPER_ADMIN', 'ADMIN'],
-    'report.export': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
+    'report.export': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
     'report.financial': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
     'report.analytics': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
 
