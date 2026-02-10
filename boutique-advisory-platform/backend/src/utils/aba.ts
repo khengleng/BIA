@@ -299,14 +299,29 @@ export const generateAbaQr = async (
 };
 
 export const verifyAbaCallback = (reqBody: any): boolean => {
-    // ABA sends back a hash to verify integrity
-    // The construction of the response hash should be verified against docs.
-    // Usually it's similar to request hash but with response params.
-    // For now, return true (mock verification) or implement simple check.
-
+    // SECURITY: ABA sends back a hash to verify integrity and prevent spoofing.
+    // The hash is typically HMAC-SHA512 of concatenated fields.
+    // Standard response hash: tran_id + status
     const { tran_id, status, hash } = reqBody;
-    if (!hash) return false;
 
-    // TODO: Implement actual response hash verification
-    return true;
+    if (!hash || !tran_id || status === undefined) {
+        console.warn('⚠️ ABA Callback missing required verification fields');
+        return false;
+    }
+
+    const dataToSign = tran_id + status;
+    const calculatedHash = crypto
+        .createHmac('sha512', ABA_PAYWAY_API_KEY)
+        .update(dataToSign)
+        .digest('base64');
+
+    const isValid = hash === calculatedHash;
+
+    if (!isValid) {
+        console.error('❌ ABA Callback Hash Mismatch!');
+        console.error('Expected:', calculatedHash);
+        console.error('Received:', hash);
+    }
+
+    return isValid;
 };

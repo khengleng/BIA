@@ -72,34 +72,43 @@ import {
 // Helper to ensure admin account is synced with .env
 async function ensureAdminAccount() {
   const adminEmail = 'admin@boutique-advisory.com';
-  const adminPassword = process.env.INITIAL_ADMIN_PASSWORD || 'BIA_Local_Admin_123!';
+  let adminPassword = process.env.INITIAL_ADMIN_PASSWORD;
+
+  if (!adminPassword) {
+    // SECURITY: Never use hardcoded fallback passwords in production
+    const crypto = require('crypto');
+    adminPassword = crypto.randomBytes(16).toString('hex') + 'A!1';
+    console.error('CRITICAL SECURITY NOTICE: INITIAL_ADMIN_PASSWORD not set.');
+    console.error(`A secure random password has been generated for ${adminEmail}: ${adminPassword}`);
+    console.error('Please change this password immediately after first login or set INITIAL_ADMIN_PASSWORD env var.');
+  }
 
   try {
     const user = await prisma.user.findFirst({ where: { email: adminEmail } });
-    const hashedPassword = await bcrypt.hash(adminPassword, 10);
+    const hashedPassword = await bcrypt.hash(adminPassword, 12); // Use higher cost factor
 
     if (user) {
       await prisma.user.update({
         where: { id: user.id },
         data: { password: hashedPassword, status: 'ACTIVE' }
       });
-      console.log(`✅ Admin account synced with password from .env`);
+      console.log(`✅ Admin account synced with password from environment`);
     } else {
       await prisma.user.create({
         data: {
           email: adminEmail,
           password: hashedPassword,
-          role: 'ADMIN',
-          firstName: 'Admin',
-          lastName: 'User',
+          role: 'SUPER_ADMIN', // Ensure initial admin is SUPER_ADMIN
+          firstName: 'System',
+          lastName: 'Administrator',
           tenantId: 'default',
           status: 'ACTIVE'
         }
       });
-      console.log(`✅ Admin account created with password from .env`);
+      console.log(`✅ Initial SUPER_ADMIN account created successfully`);
     }
   } catch (error: any) {
-    console.warn('⚠️ Could not sync admin account:', error.message);
+    console.error('❌ FATAL: Could not initialize admin account:', error.message);
   }
 }
 

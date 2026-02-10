@@ -78,6 +78,7 @@ export const PERMISSIONS: Record<string, string[]> = {
     'investor.create': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
     'investor.update': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR:owner'],
     'investor.delete': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
+    'investor.verify': ['SUPER_ADMIN', 'ADMIN'],
     'investor.export': ['SUPER_ADMIN', 'ADMIN'],
 
     // ==================== Advisor Permissions ====================

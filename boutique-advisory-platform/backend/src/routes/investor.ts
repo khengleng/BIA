@@ -276,9 +276,10 @@ router.put('/:id', authorize('investor.update'), validateBody(updateInvestorSche
 });
 
 // Verify Investor KYC (Mock)
-router.post('/:id/kyc', async (req: any, res: Response) => {
+router.post('/:id/kyc', authorize('investor.verify'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
+    const userId = req.user?.id;
     const userRole = req.user?.role;
 
     // Only Admin or the Investor themselves (via self-service) can trigger KYC

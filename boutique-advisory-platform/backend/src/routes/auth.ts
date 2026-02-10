@@ -73,12 +73,30 @@ router.post('/register', async (req: Request, res: Response) => {
     // Hash password with strong hashing
     const hashedPassword = await bcrypt.hash(password, 12);
 
+    // SECURITY: Restrict roles for public registration to prevent privilege escalation
+    // Roles like ADVISOR, ADMIN, and SUPER_ADMIN have elevated permissions and must be manually assigned
+    const allowedPublicRoles = ['SME', 'INVESTOR'];
+    if (!allowedPublicRoles.includes(role)) {
+      await logAuditEvent({
+        userId: 'anonymous',
+        action: 'REGISTER_BLOCKED',
+        resource: 'user',
+        details: { email: sanitizedEmail, attemptedRole: role },
+        ipAddress: clientIp,
+        success: false,
+        errorMessage: 'Unauthorized role registration'
+      });
+      return res.status(403).json({
+        error: 'Unauthorized role. Please contact support for administrative access.'
+      });
+    }
+
     // Create user
     const user = await prisma.user.create({
       data: {
         email,
         password: hashedPassword,
-        role,
+        role: role as any,
         firstName,
         lastName,
         tenantId,
