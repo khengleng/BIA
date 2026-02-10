@@ -36,12 +36,16 @@ export const generateQrCode = async (otpauthUrl: string): Promise<string> => {
 /**
  * Verify a time-based token against a secret
  */
-export const verifyMfaToken = (secret: string, token: string): boolean => {
-    return speakeasy.totp.verify({
+export const verifyMfaToken = (secret: string, token: string, window: number = 2): boolean => {
+    // Basic verification
+    const verified = speakeasy.totp.verify({
         secret,
         encoding: 'base32',
         token,
+        window // Allow time drift (2 steps = +/- 60 seconds)
     });
+
+    return verified;
 };
 
 /**
