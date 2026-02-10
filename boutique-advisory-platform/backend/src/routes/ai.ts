@@ -10,7 +10,7 @@ const router = Router();
 // Note: ANTHROPIC_API_KEY should be set in .env
 const apiKey = process.env.ANTHROPIC_API_KEY;
 const anthropic = apiKey ? new Anthropic({ apiKey }) : null;
-const MODEL_NAME = "claude-3-5-sonnet-20240620";
+const MODEL_NAME = "claude-3-haiku-20240307";
 
 // Helper to get platform context
 async function getPlatformContext() {
