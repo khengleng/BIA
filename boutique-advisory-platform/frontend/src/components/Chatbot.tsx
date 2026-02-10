@@ -73,7 +73,7 @@ export default function Chatbot() {
 
             const botMessage: Message = {
                 id: (Date.now() + 1).toString(),
-                text: data.response || "I'm sorry, I couldn't process that request.",
+                text: data.error || data.response || "I'm sorry, I couldn't process that request.",
                 sender: 'bot',
                 timestamp: new Date()
             }
