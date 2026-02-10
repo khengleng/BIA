@@ -9,7 +9,7 @@ const router = Router();
 // Initialize Gemini
 const apiKey = process.env.GEMINI_API_KEY;
 const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
-const model = genAI ? genAI.getGenerativeModel({ model: "gemini-1.5-flash" }) : null;
+const model = genAI ? genAI.getGenerativeModel({ model: "gemini-pro" }) : null;
 
 // Helper to get platform context
 async function getPlatformContext() {
