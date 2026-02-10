@@ -16,17 +16,10 @@ const SnakeIcon = ({ className }: { className?: string }) => (
     <svg
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        fill="currentColor"
         className={className}
     >
-        <path d="M12 22a2 2 0 0 0 2-2v-1.1c.1.1.2.1.3.1 3 0 5-2 5-6 0-3-2-5-5-5a5 5 0 0 0-5 5c0 4 2 6 5 6 .1 0 .2 0 .3-.1V20a2 2 0 0 0 2 2Z" />
-        <path d="M12 12c-1.5 0-2.5-1-2.5-3s1-2.5 2.5-2.5S14.5 9 14.5 12" />
-        <circle cx="10.5" cy="9.5" r="1" fill="currentColor" />
-        <circle cx="13.5" cy="9.5" r="1" fill="currentColor" />
+        <path d="M12 2C8.13 2 5 4.9 5 8.5c0 2.2 1.2 4.2 3 5.4V15c0 3.3-2.7 6-6 6v1h20v-1c-3.3 0-6-2.7-6-6v-1.1c1.8-1.2 3-3.2 3-5.4C19 4.9 15.87 2 12 2zm-2 6a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3zm4 0a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3z" />
     </svg>
 )
 
