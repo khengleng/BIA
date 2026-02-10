@@ -31,17 +31,21 @@ export const sumsub = {
     /**
      * Generate an SDK Access Token for an applicant
      */
+    /**
+     * Generate an SDK Access Token for an applicant
+     */
     async generateAccessToken(externalUserId: string, levelName: string = SUMSUB_LEVEL_NAME) {
-        try {
-            const method = 'POST';
-            const url = `/resources/accessTokens?userId=${externalUserId}&levelName=${levelName}`;
+        // Correct URL structure for Sumsub Access Token
+        // POST /resources/accessTokens?userId=...&levelName=...&ttlInSecs=...
+        const method = 'POST';
+        const url = `/resources/accessTokens?userId=${encodeURIComponent(externalUserId)}&levelName=${encodeURIComponent(levelName)}`;
 
-            const response = await this.makeRequest(method, url);
-            return response.data; // { token: "...", userId: "..." }
-        } catch (error: any) {
-            console.error('Sumsub Token Error:', error.response?.data || error.message);
-            throw error;
-        }
+        // We do NOT pass a body for this request; query params are sufficient.
+        // Important: 'this' context might be lost if destructured. 
+        // Safer to refer to sumsub.makeRequest if kept in object, or better yet, use the internal helper if we refactor.
+        // For now, assuming standard object usage:
+        const response = await this.makeRequest(method, url);
+        return response.data;
     },
 
     /**
