@@ -36,6 +36,7 @@ import { User } from '../../types'
 import { API_URL, authorizedRequest } from '@/lib/api'
 import NotificationCenter from '../NotificationCenter'
 import LanguageSwitcher from '../LanguageSwitcher'
+import Chatbot from '../Chatbot'
 
 interface DashboardLayoutProps {
     children: React.ReactNode
@@ -268,6 +269,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     {children}
                 </div>
             </main>
+
+            {/* AI Chatbot Widget */}
+            <Chatbot />
         </div>
     )
 }
