@@ -33,7 +33,7 @@ interface DataRoom {
     createdBy: string
     accessList: string[]
     documents: DataRoomDocument[]
-    activityLog: { action: string; documentId: string; userId: string; timestamp: string }[]
+    activityLog: { action: string; documentId: string; userName: string; timestamp: string }[]
     createdAt: string
 }
 
@@ -616,8 +616,8 @@ export default function DataRoomPage() {
                                         <div
                                             key={doc.id}
                                             className={`bg-gray-800 rounded-xl p-4 border transition-colors ${selectedDocuments.has(doc.id)
-                                                    ? 'border-blue-500 bg-blue-500/10'
-                                                    : 'border-gray-700 hover:border-gray-600'
+                                                ? 'border-blue-500 bg-blue-500/10'
+                                                : 'border-gray-700 hover:border-gray-600'
                                                 }`}
                                         >
                                             <div className="flex items-start gap-3 sm:gap-4">
@@ -724,7 +724,7 @@ export default function DataRoomPage() {
                                                         )}
                                                     </div>
                                                     <span className="text-gray-300 truncate flex-1">
-                                                        {(log.action || '').charAt(0) + (log.action || '').slice(1).toLowerCase()} document
+                                                        <span className="font-medium text-white">{log.userName}</span> {(log.action || '').toLowerCase()} document
                                                     </span>
                                                     <span className="text-gray-500 hidden sm:inline">•</span>
                                                     <span className="text-gray-400 text-xs whitespace-nowrap">
@@ -790,8 +790,8 @@ export default function DataRoomPage() {
                                     onDrop={handleDrop}
                                     onClick={() => fileInputRef.current?.click()}
                                     className={`p-8 sm:p-6 border-2 border-dashed rounded-lg text-center cursor-pointer transition-colors touch-manipulation ${isDragging
-                                            ? 'border-blue-500 bg-blue-500/10'
-                                            : 'border-gray-600 hover:border-gray-500'
+                                        ? 'border-blue-500 bg-blue-500/10'
+                                        : 'border-gray-600 hover:border-gray-500'
                                         }`}
                                 >
                                     <input

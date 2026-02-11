@@ -37,6 +37,7 @@ import auditRoutes from './routes/audit';
 import adminRoutes from './routes/admin';
 import adminActionCenterRoutes from './routes/admin-action-center';
 import aiRoutes from './routes/ai';
+import disputeRoutes from './routes/disputes';
 
 // Core Feature Routes
 import authRoutes from './routes/auth';
@@ -313,6 +314,7 @@ app.use('/api/analytics', authenticateToken, analyticsRoutes);
 app.use('/api/payments', authenticateToken, paymentRoutes);
 app.use('/api/admin', authenticateToken, adminRoutes);
 app.use('/api/ai', authenticateToken, aiRoutes);
+app.use('/api/disputes', authenticateToken, disputeRoutes);
 app.use('/api/admin/action-center', authenticateToken, adminActionCenterRoutes);
 
 // Migration endpoints - PROTECTED: Only available in development or with SUPER_ADMIN role (Fix #2)

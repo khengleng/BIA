@@ -5,6 +5,8 @@ import { PieChart, TrendingUp, TrendingDown, DollarSign, Briefcase, ChevronRight
 import { authorizedRequest } from '../lib/api'
 import SumsubKyc from './SumsubKyc'
 import { useToast } from '../contexts/ToastContext'
+import FileDisputeModal from './FileDisputeModal'
+import { ShieldAlert } from 'lucide-react'
 
 interface PortfolioSummary {
     totalAum: number
@@ -42,6 +44,8 @@ export default function PortfolioOverview() {
     })
     const [sectors, setSectors] = useState<SectorAllocation[]>([])
     const [items, setItems] = useState<PortfolioItem[]>([])
+    const [showDisputeModal, setShowDisputeModal] = useState(false)
+    const [selectedDeal, setSelectedDeal] = useState<{ id: string; name: string } | null>(null)
 
     useEffect(() => {
         fetchPortfolioData()
@@ -183,7 +187,20 @@ export default function PortfolioOverview() {
                                         {item.returns >= 0 ? '+' : ''}{item.returns}%
                                     </p>
                                 </div>
-                                <ArrowUpRight className="w-4 h-4 text-gray-600 ml-2" />
+                                <div className="flex items-center gap-2 ml-4">
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setSelectedDeal({ id: item.id, name: item.name });
+                                            setShowDisputeModal(true);
+                                        }}
+                                        className="p-2 hover:bg-red-500/20 text-red-400/60 hover:text-red-400 rounded-lg transition-colors"
+                                        title="File Dispute"
+                                    >
+                                        <ShieldAlert className="w-4 h-4" />
+                                    </button>
+                                    <ArrowUpRight className="w-4 h-4 text-gray-600" />
+                                </div>
                             </div>
                         )) : (
                             <div className="text-center py-8 text-gray-500">
@@ -193,13 +210,22 @@ export default function PortfolioOverview() {
                     </div>
                 </div>
             </div>
-
             {showSumsub && (
                 <SumsubKyc
                     onClose={() => setShowSumsub(false)}
                     onComplete={() => {
                         setShowSumsub(false);
                         addToast('success', 'KYC Verification Completed');
+                    }}
+                />
+            )}
+            {showDisputeModal && selectedDeal && (
+                <FileDisputeModal
+                    dealId={selectedDeal.id}
+                    dealTitle={selectedDeal.name}
+                    onClose={() => setShowDisputeModal(false)}
+                    onSuccess={() => {
+                        setShowDisputeModal(false);
                     }}
                 />
             )}

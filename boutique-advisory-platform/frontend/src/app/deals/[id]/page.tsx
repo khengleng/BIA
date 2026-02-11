@@ -31,6 +31,8 @@ import {
 import DealAnalysis from '@/components/DealAnalysis'
 import DataroomChat from '@/components/DataroomChat'
 import TemplateGenerator from '@/components/TemplateGenerator'
+import FileDisputeModal from '@/components/FileDisputeModal'
+import { ShieldAlert } from 'lucide-react'
 
 interface User {
   id: string
@@ -54,6 +56,7 @@ export default function DealDetailPage() {
   const [showUploadDocumentModal, setShowUploadDocumentModal] = useState(false)
   const [showAddActivityModal, setShowAddActivityModal] = useState(false)
   const [showAiChat, setShowAiChat] = useState(false)
+  const [showDisputeModal, setShowDisputeModal] = useState(false)
   const [editForm, setEditForm] = useState({
     title: '',
     description: '',
@@ -599,6 +602,17 @@ export default function DealDetailPage() {
                       Update Status
                     </button>
                   </>
+                )}
+
+                {/* File Dispute button - for SME and INVESTOR */}
+                {(user?.role === 'SME' || user?.role === 'INVESTOR') && (
+                  <button
+                    onClick={() => setShowDisputeModal(true)}
+                    className="bg-red-900/40 hover:bg-red-900/60 text-red-400 border border-red-900/50 px-4 py-2 rounded-lg flex items-center transition-all"
+                  >
+                    <ShieldAlert className="w-4 h-4 mr-2" />
+                    File Dispute
+                  </button>
                 )}
               </div>
             </div>
@@ -1626,6 +1640,15 @@ export default function DealDetailPage() {
           </div>
         )}
       </div>
+
+      {showDisputeModal && (
+        <FileDisputeModal
+          dealId={params.id as string}
+          dealTitle={deal.title}
+          onClose={() => setShowDisputeModal(false)}
+          onSuccess={() => { }}
+        />
+      )}
     </div>
   )
 }

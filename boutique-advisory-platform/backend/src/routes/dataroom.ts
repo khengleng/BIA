@@ -100,7 +100,7 @@ router.get('/', authorize('dataroom.list'), async (req: AuthenticatedRequest, re
                 createdBy: deal.sme.name,
                 accessList,
                 documents,
-                activityLog: [], // TODO: Implement activity logging
+                activityLog: [], // Will be fetched in detail route
                 createdAt: deal.createdAt.toISOString()
             };
         });
@@ -200,9 +200,21 @@ router.post('/:dealId/documents/:docId/access', authorize('dataroom.read'), asyn
             return res.status(404).json({ error: 'Document not found' });
         }
 
-        // TODO: Create ActivityLog table and record access
-        // For now, just return success
-        console.log(`Document ${docId} ${action} by user ${req.user?.id}`);
+        // Create persistent activity log
+        await (prisma as any).activityLog.create({
+            data: {
+                tenantId: req.user?.tenantId || 'default',
+                userId: req.user!.id,
+                action: action || 'VIEWED',
+                entityId: docId,
+                entityType: 'DOCUMENT',
+                metadata: {
+                    dealId: req.params.dealId,
+                    ip: req.ip,
+                    userAgent: req.get('User-Agent')
+                }
+            }
+        });
 
         return res.json({
             success: true,
@@ -233,7 +245,19 @@ router.get('/:dealId', authorize('dataroom.read'), async (req: AuthenticatedRequ
                     }
                 },
                 documents: {
-                    orderBy: { createdAt: 'desc' }
+                    orderBy: { createdAt: 'desc' },
+                    select: {
+                        id: true,
+                        name: true,
+                        type: true,
+                        size: true,
+                        mimeType: true,
+                        uploadedBy: true,
+                        createdAt: true,
+                        url: true,
+                        accessLevel: true,
+                        isLocked: true
+                    } as any
                 },
                 investors: {
                     select: {
@@ -255,45 +279,90 @@ router.get('/:dealId', authorize('dataroom.read'), async (req: AuthenticatedRequ
 
         // Check access
         const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
-        const isSmeOwner = deal.sme.userId === userId;
-        const isInvestor = deal.investors.some(inv => inv.investor.userId === userId);
+        const isSmeOwner = (deal as any).sme.userId === userId;
+        const isInvestor = (deal as any).investors.some((inv: any) => inv.investor.userId === userId);
 
         if (!isAdmin && !isSmeOwner && !isInvestor) {
             return res.status(403).json({ error: 'Access denied to this data room' });
         }
 
+        // Filter documents based on access level
+        const filteredDocumentsMetadata = (deal as any).documents.filter((doc: any) => {
+            if (isAdmin || isSmeOwner) return true;
+            if (doc.isLocked) return false;
+
+            switch (doc.accessLevel) {
+                case 'PUBLIC':
+                    return true;
+                case 'QUALIFIED':
+                    // Investor must have started due diligence or some other condition
+                    return deal.status !== 'PUBLISHED'; // Example: Only show after it moves past initial listing
+                case 'CONFIDENTIAL':
+                    // Only show if deal is in deep negotiation
+                    return deal.status === ('NEGOTIATION' as any) || deal.status === ('DUE_DILIGENCE' as any);
+                case 'ADMIN_ONLY':
+                    return false;
+                default:
+                    return true;
+            }
+        });
+
         // Format response
         const accessList = [
-            deal.sme.userId,
-            ...deal.investors.map(inv => inv.investor.userId)
+            (deal as any).sme.userId,
+            ...(deal as any).investors.map((inv: any) => inv.investor.userId)
         ].filter(Boolean);
 
-        // Group documents by name to handle versioning
-        const docsByName = new Map<string, any[]>();
+        // Get activity logs for documents in this deal
+        const docIds = (deal as any).documents.map((d: any) => d.id);
+        const activityLogs = await (prisma as any).activityLog.findMany({
+            where: {
+                entityId: { in: docIds },
+                entityType: 'DOCUMENT'
+            },
+            include: {
+                user: {
+                    select: { firstName: true, lastName: true, email: true }
+                }
+            },
+            orderBy: { timestamp: 'desc' },
+            take: 50
+        });
 
-        deal.documents.forEach(doc => {
-            const key = doc.name; // Group by filename
-            if (!docsByName.has(key)) {
-                docsByName.set(key, []);
+        // Group activity by document for access counts
+        const activityByDoc = new Map<string, { count: number, lastAccessedAt: string, lastAccessedBy: string }>();
+        activityLogs.forEach((log: any) => {
+            if (!activityByDoc.has(log.entityId)) {
+                activityByDoc.set(log.entityId, {
+                    count: 0,
+                    lastAccessedAt: log.timestamp.toISOString(),
+                    lastAccessedBy: `${log.user.firstName} ${log.user.lastName}`
+                });
             }
+            const stats = activityByDoc.get(log.entityId)!;
+            stats.count++;
+        });
+
+        // Format documents with history and real stats
+        const docsByName = new Map<string, any[]>();
+        (deal as any).documents.forEach((doc: any) => {
+            const key = doc.name;
+            if (!docsByName.has(key)) docsByName.set(key, []);
             docsByName.get(key)!.push(doc);
         });
 
         const documents = Array.from(docsByName.entries()).map(([name, versions]) => {
-            // Sort versions by date desc (latest first)
             versions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
             const latest = versions[0];
+            const stats = activityByDoc.get(latest.id) || { count: 0, lastAccessedAt: null, lastAccessedBy: null };
+
             const previousVersions = versions.slice(1).map((v, index) => ({
-                version: versions.length - index - 1, // Calculate version number
+                version: versions.length - index - 1,
                 id: v.id,
                 uploadedAt: v.createdAt.toISOString(),
                 uploadedBy: v.uploadedBy,
                 size: `${(v.size / 1024 / 1024).toFixed(2)} MB`
             }));
-
-            // Current version is the latest
-            const currentVersionNum = versions.length;
 
             return {
                 id: latest.id,
@@ -302,13 +371,13 @@ router.get('/:dealId', authorize('dataroom.read'), async (req: AuthenticatedRequ
                 size: `${(latest.size / 1024 / 1024).toFixed(2)} MB`,
                 uploadedBy: latest.uploadedBy,
                 uploadedAt: latest.createdAt.toISOString(),
-                version: currentVersionNum, // Add version number
-                accessCount: 0,
-                lastAccessedBy: null,
-                lastAccessedAt: null,
+                version: versions.length,
+                accessCount: stats.count,
+                lastAccessedBy: stats.lastAccessedBy,
+                lastAccessedAt: stats.lastAccessedAt,
                 url: latest.url,
                 mimeType: latest.mimeType,
-                versions: previousVersions // Include history
+                versions: previousVersions
             };
         });
 
@@ -317,10 +386,15 @@ router.get('/:dealId', authorize('dataroom.read'), async (req: AuthenticatedRequ
             dealId: deal.id,
             name: `${deal.title} - Data Room`,
             status: deal.status === 'PUBLISHED' || deal.status === 'NEGOTIATION' ? 'ACTIVE' : 'CLOSED',
-            createdBy: deal.sme.name,
+            createdBy: (deal as any).sme.name,
             accessList,
             documents,
-            activityLog: [],
+            activityLog: activityLogs.map((log: any) => ({
+                action: log.action,
+                documentId: log.entityId,
+                userName: `${log.user.firstName} ${log.user.lastName}`,
+                timestamp: log.timestamp.toISOString()
+            })),
             createdAt: deal.createdAt.toISOString()
         };
 
