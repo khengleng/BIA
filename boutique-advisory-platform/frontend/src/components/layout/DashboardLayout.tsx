@@ -29,7 +29,8 @@ import {
     LayoutDashboard,
     UserCog,
     History,
-    Briefcase
+    Briefcase,
+    Palette
 } from 'lucide-react'
 import { useTranslations } from '../../hooks/useTranslations'
 import { User } from '../../types'
@@ -126,6 +127,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         { href: '', label: '― Administration ―', icon: null, divider: true, roles: ['ADMIN', 'SUPER_ADMIN'] },
         { href: '/admin/dashboard', label: 'Admin Panel', icon: LayoutDashboard, roles: ['ADMIN', 'SUPER_ADMIN'] },
         { href: '/admin/users', label: 'User Management', icon: UserCog, roles: ['ADMIN', 'SUPER_ADMIN'] },
+        { href: '/admin/settings/branding', label: 'Platform Branding', icon: Palette, roles: ['ADMIN', 'SUPER_ADMIN'] },
         { href: '/admin/audit', label: 'System Audit', icon: History, roles: ['ADMIN', 'SUPER_ADMIN'] },
         // New Features Section
         { href: '', label: '― New Features ―', icon: null, divider: true, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },

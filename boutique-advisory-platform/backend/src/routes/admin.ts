@@ -158,4 +158,64 @@ router.get('/stats', authorize('admin.read'), async (req: AuthenticatedRequest, 
     }
 });
 
+// ==================== Tenant Settings (Branding) ====================
+
+// Get tenant settings
+router.get('/tenant/settings', authorize('admin.config'), async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const tenantId = req.user?.tenantId || 'default';
+        const tenant = await prisma.tenant.findUnique({
+            where: { id: tenantId }
+        });
+
+        if (!tenant) {
+            return res.status(404).json({ error: 'Tenant not found' });
+        }
+
+        return res.json({ settings: tenant.settings });
+    } catch (error) {
+        console.error('Error fetching tenant settings:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Update tenant settings
+router.put('/tenant/settings', authorize('admin.config'), async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const tenantId = req.user?.tenantId || 'default';
+        const { branding } = req.body;
+
+        if (!branding) {
+            return res.status(400).json({ error: 'Branding settings are required' });
+        }
+
+        // Get existing settings to merge
+        const tenant = await prisma.tenant.findUnique({
+            where: { id: tenantId }
+        });
+
+        const currentSettings = (tenant?.settings as any) || {};
+        const updatedSettings = {
+            ...currentSettings,
+            branding: {
+                ...currentSettings.branding,
+                ...branding
+            }
+        };
+
+        const updatedTenant = await prisma.tenant.update({
+            where: { id: tenantId },
+            data: { settings: updatedSettings }
+        });
+
+        return res.json({
+            message: 'Branding settings updated successfully',
+            settings: updatedTenant.settings
+        });
+    } catch (error) {
+        console.error('Error updating tenant settings:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 export default router;
