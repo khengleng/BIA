@@ -90,7 +90,11 @@ async function ensureAdminAccount() {
     if (user) {
       await prisma.user.update({
         where: { id: user.id },
-        data: { password: hashedPassword, status: 'ACTIVE' }
+        data: {
+          password: hashedPassword,
+          status: 'ACTIVE',
+          role: 'SUPER_ADMIN' // Force role update
+        }
       });
       console.log(`✅ Admin account synced with password from environment`);
     } else {

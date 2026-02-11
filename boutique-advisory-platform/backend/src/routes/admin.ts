@@ -1,4 +1,5 @@
 import { Router, Response } from 'express';
+import bcrypt from 'bcryptjs';
 import { AuthenticatedRequest, authorize } from '../middleware/authorize';
 import { prisma } from '../database';
 
@@ -65,6 +66,58 @@ router.put('/users/:userId/role', authorize('admin.user_manage'), async (req: Au
         return res.json({ message: `User role updated to ${role}`, user });
     } catch (error) {
         console.error('Error updating user role:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Create new user (Admin only)
+router.post('/users', authorize('admin.user_manage'), async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const { email, password, firstName, lastName, role } = req.body;
+
+        if (!email || !password || !firstName || !lastName || !role) {
+            return res.status(400).json({ error: 'All fields are required' });
+        }
+
+        const tenantId = req.user?.tenantId || 'default';
+
+        // Check if user exists in this tenant
+        const existingUser = await prisma.user.findFirst({
+            where: {
+                email,
+                tenantId
+            }
+        });
+
+        if (existingUser) {
+            return res.status(400).json({ error: 'User with this email already exists in this tenant' });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 12);
+
+        const newUser = await prisma.user.create({
+            data: {
+                email,
+                password: hashedPassword,
+                firstName,
+                lastName,
+                role: role as any,
+                tenantId,
+                status: 'ACTIVE',
+                language: 'EN'
+            }
+        });
+
+        // Remove password from response
+        const { password: _, ...userWithoutPassword } = newUser;
+
+        return res.status(201).json({
+            message: 'User created successfully',
+            user: userWithoutPassword
+        });
+
+    } catch (error) {
+        console.error('Error creating user:', error);
         return res.status(500).json({ error: 'Internal server error' });
     }
 });
