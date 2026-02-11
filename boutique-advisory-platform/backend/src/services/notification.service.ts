@@ -32,7 +32,7 @@ export async function sendNotification(
 ) {
     if (!shouldUseDatabase()) {
         console.log(`[Mock Notification] To: ${userId} | ${title}: ${message}`);
-        return;
+        return Promise.resolve();
     }
 
     try {
@@ -55,6 +55,7 @@ export async function sendNotification(
     } catch (error) {
         console.error('Error sending notification:', error);
         // Don't throw, just log. Notifications shouldn't break the main flow.
+        return Promise.resolve();
     }
 }
 
