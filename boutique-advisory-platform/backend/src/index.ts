@@ -35,6 +35,7 @@ import notificationRoutes from './routes/notifications';
 import dashboardRoutes from './routes/dashboard';
 import auditRoutes from './routes/audit';
 import adminRoutes from './routes/admin';
+import adminActionCenterRoutes from './routes/admin-action-center';
 import aiRoutes from './routes/ai';
 
 // Core Feature Routes
@@ -312,6 +313,7 @@ app.use('/api/analytics', authenticateToken, analyticsRoutes);
 app.use('/api/payments', authenticateToken, paymentRoutes);
 app.use('/api/admin', authenticateToken, adminRoutes);
 app.use('/api/ai', authenticateToken, aiRoutes);
+app.use('/api/admin/action-center', authenticateToken, adminActionCenterRoutes);
 
 // Migration endpoints - PROTECTED: Only available in development or with SUPER_ADMIN role (Fix #2)
 const migrationAuthMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
