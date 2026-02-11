@@ -97,7 +97,8 @@ function SMEDashboard({ user, t, stats }: { user: User; t: any; stats: any }) {
     { label: t('navigation.profile'), value: stats?.profileCompleteness ? `${stats.profileCompleteness}%` : '75%', icon: Target, color: 'text-blue-500' },
     { label: t('advisory.fundingRequired'), value: stats?.fundingGoal ? `$${(stats.fundingGoal / 1000).toFixed(0)}K` : '$0K', icon: DollarSign, color: 'text-green-500' },
     { label: t('advisory.certified'), value: stats?.activeBookings > 0 ? 'In Review' : 'Pending', icon: CheckCircle, color: 'text-yellow-500' },
-    { label: t('navigation.deals'), value: stats?.totalDeals || '0', icon: TrendingUp, color: 'text-purple-500' }
+    { label: t('navigation.deals'), value: stats?.totalDeals || '0', icon: TrendingUp, color: 'text-purple-500' },
+    { label: 'Active Disputes', value: stats?.activeDisputes || '0', icon: AlertCircle, color: 'text-red-500' }
   ]
 
   return (
@@ -158,6 +159,15 @@ function SMEDashboard({ user, t, stats }: { user: User; t: any; stats: any }) {
                 <p className="text-sm text-gray-400">Required for certification</p>
               </div>
             </Link>
+            {stats?.activeDisputes > 0 && (
+              <Link href="/payments" className="flex items-center space-x-3 p-3 rounded-lg bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-colors group">
+                <AlertCircle className="w-5 h-5 text-red-500" />
+                <div>
+                  <p className="text-white font-bold">Unresolved Disputes Found</p>
+                  <p className="text-sm text-red-400/80">Check payment history for details</p>
+                </div>
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -307,6 +317,7 @@ function AdminDashboard({ t, stats }: { t: any; stats: any }) {
     { label: 'Total Users', value: stats?.totalUsers || '0', icon: Users, color: 'text-blue-500' },
     { label: 'SMEs', value: stats?.totalSMEs || '0', icon: Building2, color: 'text-green-500' },
     { label: 'Active Deals', value: stats?.activeDeals || '0', icon: Handshake, color: 'text-purple-500' },
+    { label: 'Active Disputes', value: stats?.activeDisputes || '0', icon: AlertCircle, color: 'text-red-500' },
     { label: 'Revenue', value: stats?.platformRevenue ? `$${stats.platformRevenue}` : '$0', icon: CheckCircle, color: 'text-green-500' },
     { label: 'Deleted Users', value: stats?.deletedUsers || '0', icon: UserX, color: 'text-red-500' }
   ]

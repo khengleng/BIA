@@ -19,7 +19,8 @@ interface Dispute {
     };
     deal: {
         title: string;
-    }
+    },
+    resolution?: string;
 }
 
 export default function DisputesPage() {
@@ -48,6 +49,24 @@ export default function DisputesPage() {
         fetchDisputes()
     }, [])
 
+    const handleStartMediation = async (id: string) => {
+        try {
+            const response = await authorizedRequest(`/api/admin/action-center/disputes/${id}/start-mediation`, {
+                method: 'POST'
+            })
+
+            if (response.ok) {
+                toast.success('Mediation started')
+                setDisputes(prev => prev.map(d => d.id === id ? { ...d, status: 'IN_PROGRESS' } : d))
+            } else {
+                toast.error('Failed to start mediation')
+            }
+        } catch (error) {
+            console.error('Error starting mediation:', error)
+            toast.error('Error starting mediation')
+        }
+    }
+
     const handleResolve = async (id: string) => {
         if (!resolutionText.trim()) {
             toast.error('Please provide a resolution description')
@@ -63,7 +82,7 @@ export default function DisputesPage() {
 
             if (response.ok) {
                 toast.success('Dispute resolved')
-                setDisputes(prev => prev.filter(d => d.id !== id))
+                setDisputes(prev => prev.map(d => d.id === id ? { ...d, status: 'RESOLVED', resolution: resolutionText } : d))
                 setResolvingId(null)
                 setResolutionText('')
             } else {
@@ -116,8 +135,12 @@ export default function DisputesPage() {
                                 <div className="p-6">
                                     <div className="flex justify-between items-start mb-4">
                                         <div>
-                                            <span className="text-xs font-bold text-red-400 bg-red-400/10 px-2 py-1 rounded-full uppercase tracking-wider mb-2 inline-block">
-                                                {dispute.status}
+                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-tighter mb-2 inline-block ${dispute.status === 'OPEN' ? 'text-red-400 bg-red-400/10' :
+                                                    dispute.status === 'IN_PROGRESS' ? 'text-orange-400 bg-orange-400/10' :
+                                                        dispute.status === 'RESOLVED' ? 'text-green-400 bg-green-400/10' :
+                                                            'text-gray-400 bg-gray-400/10'
+                                                }`}>
+                                                {dispute.status.replace('_', ' ')}
                                             </span>
                                             <h3 className="text-xl font-bold text-white">{dispute.deal.title}</h3>
                                             <p className="text-gray-400 text-sm mt-1">
@@ -134,8 +157,18 @@ export default function DisputesPage() {
                                             <AlertCircle className="w-4 h-4 text-orange-400" />
                                             Reason: {dispute.reason}
                                         </p>
-                                        <p className="text-gray-400 text-sm">{dispute.description}</p>
+                                        <p className="text-gray-400 text-sm whitespace-pre-wrap">{dispute.description}</p>
                                     </div>
+
+                                    {dispute.resolution && (
+                                        <div className="bg-green-600/10 p-4 rounded-xl border border-green-600/20 mb-6">
+                                            <p className="text-green-400 font-bold mb-1 flex items-center gap-2">
+                                                <CheckCircle className="w-4 h-4" />
+                                                Resolution
+                                            </p>
+                                            <p className="text-gray-300 text-sm whitespace-pre-wrap">{dispute.resolution}</p>
+                                        </div>
+                                    )}
 
                                     {resolvingId === dispute.id ? (
                                         <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
@@ -162,14 +195,24 @@ export default function DisputesPage() {
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className="flex justify-end">
-                                            <button
-                                                onClick={() => setResolvingId(dispute.id)}
-                                                className="bg-gray-700 hover:bg-gray-600 text-white font-bold px-6 py-2 rounded-xl transition-all flex items-center gap-2"
-                                            >
-                                                <MessageSquare className="w-4 h-4" />
-                                                Resolve Dispute
-                                            </button>
+                                        <div className="flex justify-end gap-3">
+                                            {dispute.status === 'OPEN' && (
+                                                <button
+                                                    onClick={() => handleStartMediation(dispute.id)}
+                                                    className="bg-orange-600/20 hover:bg-orange-600/30 text-orange-400 font-bold px-6 py-2 rounded-xl border border-orange-600/30 transition-all flex items-center gap-2"
+                                                >
+                                                    Start Mediation
+                                                </button>
+                                            )}
+                                            {dispute.status !== 'RESOLVED' && dispute.status !== 'REJECTED' && (
+                                                <button
+                                                    onClick={() => setResolvingId(dispute.id)}
+                                                    className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-2 rounded-xl transition-all shadow-lg shadow-blue-900/20 flex items-center gap-2"
+                                                >
+                                                    <MessageSquare className="w-4 h-4" />
+                                                    {dispute.status === 'IN_PROGRESS' ? 'Resolve Now' : 'Resolve Early'}
+                                                </button>
+                                            )}
                                         </div>
                                     )}
                                 </div>

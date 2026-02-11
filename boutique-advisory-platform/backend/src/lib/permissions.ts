@@ -39,6 +39,7 @@ export type Resource =
     | 'dataroom'
     | 'due_diligence'
     | 'community'
+    | 'dispute'
     | 'admin';
 
 // Special permission modifiers
@@ -226,6 +227,12 @@ export const PERMISSIONS: Record<string, string[]> = {
 
     // ==================== AI Permissions ====================
     'ai.chat': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
+
+    // ==================== Dispute Permissions ====================
+    'dispute.list': ['SUPER_ADMIN', 'ADMIN', 'INVESTOR:owner', 'SME:owner'],
+    'dispute.read': ['SUPER_ADMIN', 'ADMIN', 'INVESTOR:owner', 'SME:owner'],
+    'dispute.update': ['SUPER_ADMIN', 'ADMIN'],
+    'dispute.delete': ['SUPER_ADMIN'],
 
     // ==================== Admin Permissions ====================
     'admin.read': ['SUPER_ADMIN', 'ADMIN'],

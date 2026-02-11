@@ -13,6 +13,11 @@ const createDisputeSchema = z.object({
     description: z.string().min(20)
 });
 
+const updateDisputeSchema = z.object({
+    status: z.enum(['OPEN', 'IN_PROGRESS', 'RESOLVED', 'REJECTED']),
+    resolution: z.string().optional()
+});
+
 // POST /api/disputes - File a new dispute
 router.post('/', authorize('payment.read'), validateBody(createDisputeSchema), async (req: AuthenticatedRequest, res: Response) => {
     try {
@@ -115,6 +120,137 @@ router.get('/my', authorize('payment.read'), async (req: AuthenticatedRequest, r
         return res.json(disputes);
     } catch (error) {
         console.error('Error fetching my disputes:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// GET /api/disputes - List all disputes (with role-based filtering)
+router.get('/', authorize('dispute.list'), async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        const userRole = req.user?.role;
+        const tenantId = req.user?.tenantId || 'default';
+
+        let where: any = { tenantId };
+
+        // If not Admin/Super Admin, only show disputes they initiated or for their deals
+        if (userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
+            where = {
+                ...where,
+                OR: [
+                    { initiatorId: userId },
+                    { deal: { sme: { userId: userId } } }
+                ]
+            };
+        }
+
+        const disputes = await prisma.dispute.findMany({
+            where,
+            include: {
+                deal: {
+                    select: { title: true, id: true }
+                },
+                initiator: {
+                    select: { firstName: true, lastName: true, email: true }
+                },
+                resolver: {
+                    select: { firstName: true, lastName: true }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        return res.json(disputes);
+    } catch (error) {
+        console.error('Error fetching disputes:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// GET /api/disputes/:id - Get dispute details
+router.get('/:id', authorize('dispute.read'), async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user?.id;
+        const userRole = req.user?.role;
+
+        const dispute = await (prisma as any).dispute.findUnique({
+            where: { id },
+            include: {
+                deal: {
+                    include: {
+                        sme: { include: { user: true } }
+                    }
+                },
+                initiator: true,
+                resolver: true
+            }
+        });
+
+        if (!dispute) {
+            return res.status(404).json({ error: 'Dispute not found' });
+        }
+
+        // Verify access: Admin or Initiator or SME Owner
+        const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
+        const isInitiator = dispute.initiatorId === userId;
+        const isSmeOwner = (dispute.deal as any).sme.userId === userId;
+
+        if (!isAdmin && !isInitiator && !isSmeOwner) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        return res.json(dispute);
+    } catch (error) {
+        console.error('Error fetching dispute detail:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// PATCH /api/disputes/:id - Resolve or update dispute (Admin only)
+router.patch('/:id', authorize('dispute.update'), validateBody(updateDisputeSchema), async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user?.id;
+        const { status, resolution } = req.body;
+
+        const dispute = await (prisma as any).dispute.findUnique({
+            where: { id }
+        });
+
+        if (!dispute) {
+            return res.status(404).json({ error: 'Dispute not found' });
+        }
+
+        const updatedDispute = await (prisma as any).dispute.update({
+            where: { id },
+            data: {
+                status,
+                resolution,
+                resolverId: userId,
+                updatedAt: new Date()
+            },
+            include: {
+                initiator: true,
+                deal: true
+            }
+        });
+
+        // Notify Initiator
+        await sendNotification(
+            updatedDispute.initiatorId,
+            'Dispute Status Updated',
+            `Your dispute for "${updatedDispute.deal.title}" is now ${status}.`,
+            status === 'RESOLVED' ? 'SUCCESS' : 'INFO',
+            `/investor/portfolio` // Link to portfolio/disputes
+        );
+
+        return res.json({
+            message: 'Dispute updated successfully',
+            dispute: updatedDispute
+        });
+    } catch (error) {
+        console.error('Error updating dispute:', error);
         return res.status(500).json({ error: 'Internal server error' });
     }
 });

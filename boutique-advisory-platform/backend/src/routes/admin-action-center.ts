@@ -18,14 +18,14 @@ router.get('/stats', authorize('admin.dashboard_view'), async (req: Authenticate
                 }
             }),
             // Open Disputes
-            prisma.dispute.count({
+            (prisma as any).dispute.count({
                 where: {
                     tenantId,
                     status: 'OPEN'
                 }
             }),
             // In Progress Disputes (Manual Mediation)
-            prisma.dispute.count({
+            (prisma as any).dispute.count({
                 where: {
                     tenantId,
                     status: 'IN_PROGRESS'
@@ -81,11 +81,11 @@ router.get('/disputes', authorize('admin.user_manage'), async (req: Authenticate
     try {
         const tenantId = req.user?.tenantId || 'default';
 
-        const disputes = await prisma.dispute.findMany({
+        const disputes = await (prisma as any).dispute.findMany({
             where: {
                 tenantId,
                 status: {
-                    in: ['OPEN', 'IN_PROGRESS']
+                    in: ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'REJECTED']
                 }
             },
             include: {
@@ -97,7 +97,7 @@ router.get('/disputes', authorize('admin.user_manage'), async (req: Authenticate
                 }
             },
             orderBy: { createdAt: 'desc' },
-            take: 20
+            take: 100
         });
 
         return res.json(disputes);
@@ -172,7 +172,7 @@ router.post('/disputes/:id/resolve', authorize('admin.user_manage'), async (req:
             return res.status(400).json({ error: 'Resolution description is required' });
         }
 
-        const dispute = await prisma.dispute.update({
+        const dispute = await (prisma as any).dispute.update({
             where: { id: disputeId },
             data: {
                 status: 'RESOLVED',
@@ -198,6 +198,33 @@ router.post('/disputes/:id/resolve', authorize('admin.user_manage'), async (req:
         return res.json({ message: 'Dispute resolved successfully', dispute });
     } catch (error) {
         console.error('Error resolving dispute:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Start Mediation (Mark as IN_PROGRESS)
+router.post('/disputes/:id/start-mediation', authorize('admin.user_manage'), async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const disputeId = req.params.id;
+
+        const dispute = await (prisma as any).dispute.update({
+            where: { id: disputeId },
+            data: { status: 'IN_PROGRESS' },
+            include: { initiator: true, deal: true }
+        });
+
+        // Notify initiator
+        await sendNotification(
+            dispute.initiatorId,
+            'Mediation Started',
+            `An administrator has started reviewing your dispute regarding "${dispute.deal.title}".`,
+            'INFO',
+            `/investor/portfolio`
+        );
+
+        return res.json({ message: 'Mediation started', dispute });
+    } catch (error) {
+        console.error('Error starting mediation:', error);
         return res.status(500).json({ error: 'Internal server error' });
     }
 });
