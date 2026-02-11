@@ -590,184 +590,279 @@ export default function SettingsPage() {
               {activeTab === 'notifications' && (
                 <div className="space-y-6">
                   <h2 className="text-xl font-semibold text-white">Notification Preferences</h2>
-                  <div className="text-gray-400">Notification settings content...</div>
+                  <div className="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
+                    {[
+                      {
+                        id: 'deals',
+                        title: 'Deal Updates',
+                        description: 'Receive notifications about new deals, status changes, and investments.',
+                      },
+                      {
+                        id: 'messages',
+                        title: 'Messages',
+                        description: 'Get notified when you receive a new message or reply.',
+                      },
+                      {
+                        id: 'security',
+                        title: 'Security Alerts',
+                        description: 'Important notifications about your account security and login attempts.',
+                      },
+                      {
+                        id: 'marketing',
+                        title: 'Marketing & News',
+                        description: 'Receive updates about platform features, newsletters, and promotions.',
+                      }
+                    ].map((item) => (
+                      <div key={item.id} className="p-6 border-b border-gray-700 last:border-0 flex items-start justify-between">
+                        <div>
+                          <h3 className="text-white font-medium">{item.title}</h3>
+                          <p className="text-gray-400 text-sm mt-1">{item.description}</p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <label className="flex items-center cursor-pointer">
+                            <div className="relative">
+                              <input type="checkbox" className="sr-only peer" defaultChecked={true} />
+                              <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </div>
+                            <span className="ml-3 text-sm font-medium text-gray-300">Email</span>
+                          </label>
+                          <label className="flex items-center cursor-pointer">
+                            <div className="relative">
+                              <input type="checkbox" className="sr-only peer" defaultChecked={item.id !== 'marketing'} />
+                              <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </div>
+                            <span className="ml-3 text-sm font-medium text-gray-300">Push</span>
+                          </label>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex justify-end">
+                    <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg" onClick={() => alert('Preferences saved!')}>
+                      Save Preferences
+                    </button>
+                  </div>
                 </div>
               )}
 
               {activeTab === 'preferences' && (
                 <div className="space-y-6">
                   <h2 className="text-xl font-semibold text-white">General Preferences</h2>
-                  <div className="text-gray-400">Preference settings content...</div>
+
+                  <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 space-y-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Language</label>
+                      <select className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="en">English (US)</option>
+                        <option value="fr">Français</option>
+                        <option value="km">Khmer</option>
+                      </select>
+                      <p className="text-xs text-gray-500 mt-1">Select the language for the platform interface.</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Timezone</label>
+                      <select className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="UTC+7">Indochina Time (ICT) - UTC+07:00</option>
+                        <option value="UTC+0">Coordinated Universal Time (UTC)</option>
+                        <option value="UTC+8">Singapore Standard Time (SST) - UTC+08:00</option>
+                        <option value="UTC-5">Eastern Standard Time (EST) - UTC-05:00</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Currency Display</label>
+                      <select className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="USD">USD ($)</option>
+                        <option value="KHR">KHR (៛)</option>
+                      </select>
+                      <p className="text-xs text-gray-500 mt-1">Preferred currency for financial reports and deal values.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg" onClick={() => alert('Preferences saved!')}>
+                      Save Preferences
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
           </div>
         </main>
-      </div>
+      </div >
 
       {/* Enable 2FA Modal */}
-      {show2faModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-gray-800 rounded-2xl max-w-md w-full border border-gray-700 shadow-2xl p-6">
-            <h3 className="text-xl font-bold text-white mb-4">Set up 2FA</h3>
+      {
+        show2faModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <div className="bg-gray-800 rounded-2xl max-w-md w-full border border-gray-700 shadow-2xl p-6">
+              <h3 className="text-xl font-bold text-white mb-4">Set up 2FA</h3>
 
-            <div className="space-y-6">
-              <div className="flex justify-center bg-white p-4 rounded-xl">
-                <img src={qrCode} alt="2FA QR Code" className="w-48 h-48" />
-              </div>
+              <div className="space-y-6">
+                <div className="flex justify-center bg-white p-4 rounded-xl">
+                  <img src={qrCode} alt="2FA QR Code" className="w-48 h-48" />
+                </div>
 
-              <div className="text-center space-y-2">
-                <p className="text-gray-300 text-sm">1. Scan this QR code with your authenticator app</p>
-                <p className="text-gray-300 text-sm">2. Enter the 6-digit code below to verify.</p>
-              </div>
+                <div className="text-center space-y-2">
+                  <p className="text-gray-300 text-sm">1. Scan this QR code with your authenticator app</p>
+                  <p className="text-gray-300 text-sm">2. Enter the 6-digit code below to verify.</p>
+                </div>
 
-              <input
-                type="text"
-                maxLength={6}
-                value={verificationCode}
-                onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
-                placeholder="000000"
-                className="w-full text-center text-3xl tracking-[0.5em] py-3 bg-gray-900 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder-gray-600"
-              />
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShow2faModal(false)}
-                  className="flex-1 py-3 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleVerify2FA}
-                  disabled={verificationCode.length !== 6}
-                  className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Verify & Enable
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Disable 2FA Modal */}
-      {showDisableModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-gray-800 rounded-2xl max-w-sm w-full border border-gray-700 shadow-2xl p-6">
-            <h3 className="text-xl font-bold text-white mb-2">Disable 2FA?</h3>
-            <p className="text-gray-400 text-sm mb-6">Are you sure? This will decrease your account security.</p>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Confirm Password</label>
-                <input
-                  type="password"
-                  value={disablePassword}
-                  onChange={(e) => setDisablePassword(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                />
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowDisableModal(false)}
-                  className="flex-1 py-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDisable2FA}
-                  className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium"
-                >
-                  Disable 2FA
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Backup Codes Modal */}
-      {showBackupCodesModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-gray-800 rounded-2xl max-w-md w-full border border-gray-700 shadow-2xl p-6">
-            <h3 className="text-xl font-bold text-white mb-4">Backup Codes</h3>
-            <p className="text-gray-300 text-sm mb-4">
-              Save these backup codes in a safe place. You can use them to log in if you lose access to your authenticator app.
-              Each code can only be used once.
-            </p>
-            <div className="bg-gray-900 p-4 rounded-lg grid grid-cols-2 gap-2 mb-6">
-              {backupCodes.map((code, index) => (
-                <code key={index} className="text-blue-400 font-mono text-center block bg-gray-800/50 p-1 rounded">
-                  {code}
-                </code>
-              ))}
-            </div>
-            <button
-              onClick={() => setShowBackupCodesModal(false)}
-              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium"
-            >
-              I have saved these codes
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Account Modal */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-gray-800 rounded-2xl max-w-md w-full border border-red-500/30 shadow-2xl p-6">
-            <div className="flex items-center gap-3 mb-4 text-red-400">
-              <LogOut className="w-6 h-6" />
-              <h3 className="text-xl font-bold">Delete Account?</h3>
-            </div>
-
-            <p className="text-gray-300 text-sm mb-6">
-              This action cannot be undone. This will permanently delete your account,
-              remove your data from our servers, and cancel your active subscriptions.
-            </p>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Type <span className="font-mono font-bold text-white">DELETE</span> to confirm
-                </label>
                 <input
                   type="text"
-                  value={deleteConfirmation}
-                  onChange={(e) => setDeleteConfirmation(e.target.value)}
-                  placeholder="DELETE"
-                  className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  maxLength={6}
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
+                  placeholder="000000"
+                  className="w-full text-center text-3xl tracking-[0.5em] py-3 bg-gray-900 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder-gray-600"
                 />
-              </div>
 
-              <div className="flex gap-3 pt-2">
-                <button
-                  onClick={() => {
-                    setShowDeleteModal(false)
-                    setDeleteConfirmation('')
-                  }}
-                  disabled={isDeleting}
-                  className="flex-1 py-3 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDeleteAccount}
-                  disabled={deleteConfirmation !== 'DELETE' || isDeleting}
-                  className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center"
-                >
-                  {isDeleting ? (
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  ) : (
-                    'Delete Account'
-                  )}
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShow2faModal(false)}
+                    className="flex-1 py-3 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleVerify2FA}
+                    disabled={verificationCode.length !== 6}
+                    className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Verify & Enable
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+
+      {/* Disable 2FA Modal */}
+      {
+        showDisableModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <div className="bg-gray-800 rounded-2xl max-w-sm w-full border border-gray-700 shadow-2xl p-6">
+              <h3 className="text-xl font-bold text-white mb-2">Disable 2FA?</h3>
+              <p className="text-gray-400 text-sm mb-6">Are you sure? This will decrease your account security.</p>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Confirm Password</label>
+                  <input
+                    type="password"
+                    value={disablePassword}
+                    onChange={(e) => setDisablePassword(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowDisableModal(false)}
+                    className="flex-1 py-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDisable2FA}
+                    className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium"
+                  >
+                    Disable 2FA
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Backup Codes Modal */}
+      {
+        showBackupCodesModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <div className="bg-gray-800 rounded-2xl max-w-md w-full border border-gray-700 shadow-2xl p-6">
+              <h3 className="text-xl font-bold text-white mb-4">Backup Codes</h3>
+              <p className="text-gray-300 text-sm mb-4">
+                Save these backup codes in a safe place. You can use them to log in if you lose access to your authenticator app.
+                Each code can only be used once.
+              </p>
+              <div className="bg-gray-900 p-4 rounded-lg grid grid-cols-2 gap-2 mb-6">
+                {backupCodes.map((code, index) => (
+                  <code key={index} className="text-blue-400 font-mono text-center block bg-gray-800/50 p-1 rounded">
+                    {code}
+                  </code>
+                ))}
+              </div>
+              <button
+                onClick={() => setShowBackupCodesModal(false)}
+                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium"
+              >
+                I have saved these codes
+              </button>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Delete Account Modal */}
+      {
+        showDeleteModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <div className="bg-gray-800 rounded-2xl max-w-md w-full border border-red-500/30 shadow-2xl p-6">
+              <div className="flex items-center gap-3 mb-4 text-red-400">
+                <LogOut className="w-6 h-6" />
+                <h3 className="text-xl font-bold">Delete Account?</h3>
+              </div>
+
+              <p className="text-gray-300 text-sm mb-6">
+                This action cannot be undone. This will permanently delete your account,
+                remove your data from our servers, and cancel your active subscriptions.
+              </p>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Type <span className="font-mono font-bold text-white">DELETE</span> to confirm
+                  </label>
+                  <input
+                    type="text"
+                    value={deleteConfirmation}
+                    onChange={(e) => setDeleteConfirmation(e.target.value)}
+                    placeholder="DELETE"
+                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => {
+                      setShowDeleteModal(false)
+                      setDeleteConfirmation('')
+                    }}
+                    disabled={isDeleting}
+                    className="flex-1 py-3 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDeleteAccount}
+                    disabled={deleteConfirmation !== 'DELETE' || isDeleting}
+                    className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center"
+                  >
+                    {isDeleting ? (
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    ) : (
+                      'Delete Account'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+    </div >
   )
 }
