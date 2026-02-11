@@ -41,8 +41,8 @@ export const authenticateToken = async (req: AuthenticatedRequest, res: Response
             where: { id: decoded.userId }
         });
 
-        if (!user) {
-            res.status(401).json({ error: 'Invalid token' });
+        if (!user || user.status === 'DELETED') {
+            res.status(401).json({ error: 'User not found or account deleted' });
             return;
         }
 

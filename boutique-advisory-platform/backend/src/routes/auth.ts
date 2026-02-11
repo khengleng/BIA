@@ -902,5 +902,61 @@ router.post('/2fa/disable', authenticateToken, async (req: AuthenticatedRequest,
   }
 });
 
+// Delete account (Soft Delete)
+router.post('/delete-account', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+
+  try {
+    const user = req.user;
+
+    if (!user) {
+      return res.status(401).json({ error: 'User not found' });
+    }
+
+    // New unique email to free up the original email
+    // Format: deleted_<timestamp>_<original_email>
+    const timestamp = Date.now();
+    const deletedEmail = `deleted_${timestamp}_${user.email}`;
+
+    // Update user status and email
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        status: 'DELETED' as any, // Soft delete, cast as any due to TS lag
+        email: deletedEmail
+      }
+    });
+
+    await logAuditEvent({
+      userId: user.id,
+      action: 'ACCOUNT_DELETED',
+      resource: 'user',
+      details: {
+        originalEmail: user.email,
+        newEmail: deletedEmail
+      },
+      ipAddress: clientIp,
+      success: true
+    });
+
+    return res.json({
+      message: 'Account deleted successfully. You have been logged out.',
+      success: true
+    });
+
+  } catch (error) {
+    console.error('Delete account error:', error);
+    await logAuditEvent({
+      userId: req.user?.id || 'unknown',
+      action: 'ACCOUNT_DELETE_ERROR',
+      resource: 'user',
+      ipAddress: clientIp,
+      success: false,
+      errorMessage: error instanceof Error ? error.message : 'Unknown error'
+    });
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
 
