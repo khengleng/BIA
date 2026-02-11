@@ -583,7 +583,7 @@ model DueDiligenceItem {
 
   task        String
   description String?
-  status      DueDiligenceStatus @default(PENDING)
+  status      ChecklistStatus @default(PENDING)
   assignedTo  String? 
 
   completedBy String?
@@ -596,10 +596,10 @@ model DueDiligenceItem {
 
   deal        Deal     @relation(fields: [dealId], references: [id])
 
-  @@map("due_diligence_items")
+  @@map("deal_checklist_items")
 }
 
-enum DueDiligenceStatus {
+enum ChecklistStatus {
   PENDING
   IN_PROGRESS
   COMPLETED
