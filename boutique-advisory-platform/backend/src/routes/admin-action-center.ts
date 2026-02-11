@@ -107,4 +107,58 @@ router.get('/disputes', authorize('admin.user_manage'), async (req: Authenticate
     }
 });
 
+// Approve KYC
+import { sendNotification } from '../services/notification.service';
+
+router.post('/kyc/:id/approve', authorize('admin.user_manage'), async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const investorId = req.params.id;
+        const investor = await prisma.investor.update({
+            where: { id: investorId },
+            data: { kycStatus: 'APPROVED' },
+            include: { user: true }
+        });
+
+        await sendNotification(
+            investor.userId,
+            'KYC Approved',
+            'Your investor profile has been verified. You can now access deal details.',
+            'SUCCESS',
+            '/investor/dashboard'
+        );
+
+        return res.json({ message: 'KYC Approved', investor });
+    } catch (error) {
+        console.error('Error approving KYC:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Reject KYC
+router.post('/kyc/:id/reject', authorize('admin.user_manage'), async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const investorId = req.params.id;
+        const { reason } = req.body;
+
+        const investor = await prisma.investor.update({
+            where: { id: investorId },
+            data: { kycStatus: 'REJECTED' },
+            include: { user: true }
+        });
+
+        await sendNotification(
+            investor.userId,
+            'KYC Rejected',
+            `Your verification was rejected: ${reason || 'Incomplete information'}. Please update your profile.`,
+            'alert' as any, // Using 'alert' or 'SYSTEM' based on enum availability, fallback to cast if needed
+            '/settings/profile'
+        );
+
+        return res.json({ message: 'KYC Rejected', investor });
+    } catch (error) {
+        console.error('Error rejecting KYC:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 export default router;
