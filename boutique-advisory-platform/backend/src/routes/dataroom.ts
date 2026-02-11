@@ -405,4 +405,98 @@ router.get('/:dealId', authorize('dataroom.read'), async (req: AuthenticatedRequ
     }
 });
 
+// GET /api/dataroom/:id/analytics
+// Compute engagement metrics for SME dashboard
+router.get('/:id/analytics', authorize('dataroom.read'), async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const dealId = req.params.id;
+        const tenantId = req.user?.tenantId || 'default';
+
+        // 1. Get all activity for this deal's documents
+        const deal = await prisma.deal.findUnique({
+            where: { id: dealId },
+            include: { documents: { select: { id: true, name: true } } }
+        });
+
+        if (!deal) return res.status(404).json({ error: 'Deal not found' });
+
+        const docIds = deal.documents.map(d => d.id);
+        const logs = await (prisma as any).activityLog.findMany({
+            where: {
+                tenantId,
+                entityId: { in: docIds },
+                entityType: 'DOCUMENT'
+            },
+            include: {
+                user: {
+                    select: { id: true, firstName: true, lastName: true, email: true, role: true }
+                }
+            }
+        });
+
+        // 2. Compute Visitor Stats
+        const uniqueVisitors = new Set(logs.map((l: any) => l.userId)).size;
+        const totalViews = logs.filter((l: any) => l.action === 'VIEWED').length;
+        const totalDownloads = logs.filter((l: any) => l.action === 'DOWNLOADED').length;
+
+        // 3. Document Heatmap (Most popular docs)
+        const docStats = new Map<string, { views: number, downloads: number, name: string }>();
+        deal.documents.forEach(d => {
+            docStats.set(d.id, { views: 0, downloads: 0, name: d.name });
+        });
+
+        logs.forEach((l: any) => {
+            const stats = docStats.get(l.entityId);
+            if (stats) {
+                if (l.action === 'VIEWED') stats.views++;
+                if (l.action === 'DOWNLOADED') stats.downloads++;
+            }
+        });
+
+        const topDocuments = Array.from(docStats.values())
+            .sort((a, b) => (b.views + b.downloads * 2) - (a.views + a.downloads * 2))
+            .slice(0, 5);
+
+        // 4. Investor Engagement Scoring
+        // Score = (Views * 1) + (Downloads * 5)
+        const investorScores = new Map<string, { name: string, email: string, score: number, lastActive: Date }>();
+
+        logs.forEach((l: any) => {
+            if (l.user.role === 'INVESTOR') {
+                const key = l.userId;
+                if (!investorScores.has(key)) {
+                    investorScores.set(key, {
+                        name: `${l.user.firstName} ${l.user.lastName}`,
+                        email: l.user.email,
+                        score: 0,
+                        lastActive: new Date(0) // epoch
+                    });
+                }
+                const inv = investorScores.get(key)!;
+                if (l.action === 'VIEWED') inv.score += 1;
+                if (l.action === 'DOWNLOADED') inv.score += 5;
+                if (new Date(l.timestamp) > inv.lastActive) inv.lastActive = new Date(l.timestamp);
+            }
+        });
+
+        const topInvestors = Array.from(investorScores.values())
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 5);
+
+        return res.json({
+            visitorStats: {
+                uniqueVisitors,
+                totalViews,
+                totalDownloads
+            },
+            topDocuments,
+            topInvestors
+        });
+
+    } catch (error) {
+        console.error('Error computing dataroom analytics:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 export default router;

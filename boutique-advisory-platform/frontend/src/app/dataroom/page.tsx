@@ -63,6 +63,8 @@ export default function DataRoomPage() {
     const [uploadProgress, setUploadProgress] = useState(0)
     const [isUploading, setIsUploading] = useState(false)
     const [isRefreshing, setIsRefreshing] = useState(false)
+    const [showAnalytics, setShowAnalytics] = useState(false)
+    const [analyticsData, setAnalyticsData] = useState<any>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
     const dropZoneRef = useRef<HTMLDivElement>(null)
     const touchStartX = useRef(0)
@@ -139,6 +141,30 @@ export default function DataRoomPage() {
     useEffect(() => {
         fetchDataRooms()
     }, [])
+
+    const fetchAnalytics = async () => {
+        if (!selectedRoom) return
+
+        try {
+            const token = localStorage.getItem('token')
+            const response = await fetch(`${API_URL}/api/dataroom/${selectedRoom.dealId}/analytics`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+
+            if (response.ok) {
+                const data = await response.json()
+                setAnalyticsData(data)
+            }
+        } catch (error) {
+            console.error('Error fetching analytics:', error)
+        }
+    }
+
+    useEffect(() => {
+        if (showAnalytics && selectedRoom) {
+            fetchAnalytics()
+        }
+    }, [showAnalytics, selectedRoom])
 
     // Drag and drop handlers
     const handleDragEnter = (e: React.DragEvent) => {
@@ -582,7 +608,84 @@ export default function DataRoomPage() {
                                                 <Activity className="w-4 h-4" />
                                                 <span className="text-xs sm:text-sm">{selectedRoom.activityLog.length} activities</span>
                                             </div>
+                                            {(user?.role === 'SME' || user?.role === 'ADMIN') && (
+                                                <button
+                                                    onClick={() => setShowAnalytics(!showAnalytics)}
+                                                    className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium transition-colors ${showAnalytics ? 'bg-blue-600 text-white' : 'bg-gray-700 text-blue-400 hover:bg-gray-600'
+                                                        }`}
+                                                >
+                                                    <BarChart3 className="w-3 h-3" />
+                                                    Analytics
+                                                </button>
+                                            )}
                                         </div>
+
+                                        {/* Analytics Dashboard */}
+                                        {showAnalytics && analyticsData && (
+                                            <div className="bg-gray-700/50 rounded-lg p-4 mb-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                                                    <div className="bg-gray-800 p-4 rounded-lg border border-gray-600">
+                                                        <p className="text-gray-400 text-xs uppercase font-medium">Unique Visitors</p>
+                                                        <p className="text-2xl font-bold text-white mt-1">{analyticsData.visitorStats.uniqueVisitors}</p>
+                                                    </div>
+                                                    <div className="bg-gray-800 p-4 rounded-lg border border-gray-600">
+                                                        <p className="text-gray-400 text-xs uppercase font-medium">Total Views</p>
+                                                        <p className="text-2xl font-bold text-blue-400 mt-1">{analyticsData.visitorStats.totalViews}</p>
+                                                    </div>
+                                                    <div className="bg-gray-800 p-4 rounded-lg border border-gray-600">
+                                                        <p className="text-gray-400 text-xs uppercase font-medium">Total Downloads</p>
+                                                        <p className="text-2xl font-bold text-green-400 mt-1">{analyticsData.visitorStats.totalDownloads}</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <div>
+                                                        <h4 className="text-sm font-semibold text-white mb-3">Top Documents</h4>
+                                                        <div className="space-y-2">
+                                                            {analyticsData.topDocuments.map((doc: any, i: number) => (
+                                                                <div key={i} className="flex justify-between items-center bg-gray-800 p-2 rounded text-sm">
+                                                                    <div className="flex items-center gap-2 truncate flex-1">
+                                                                        <span className="text-gray-500 w-4 text-xs font-mono">{i + 1}</span>
+                                                                        <FileText className="w-3 h-3 text-blue-400" />
+                                                                        <span className="text-gray-300 truncate">{doc.name}</span>
+                                                                    </div>
+                                                                    <div className="flex gap-3 text-xs text-gray-400">
+                                                                        <span className="flex items-center gap-1"><Eye className="w-3 h-3" /> {doc.views}</span>
+                                                                        <span className="flex items-center gap-1"><Download className="w-3 h-3" /> {doc.downloads}</span>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+
+                                                    <div>
+                                                        <h4 className="text-sm font-semibold text-white mb-3">Top Interested Investors</h4>
+                                                        <div className="space-y-2">
+                                                            {analyticsData.topInvestors.map((inv: any, i: number) => (
+                                                                <div key={i} className="flex justify-between items-center bg-gray-800 p-2 rounded text-sm">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${i === 0 ? 'bg-yellow-500/20 text-yellow-500' : 'bg-gray-700 text-gray-400'
+                                                                            }`}>
+                                                                            {i + 1}
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="text-white text-xs font-medium">{inv.name}</p>
+                                                                            <p className="text-gray-500 text-[10px]">Score: {inv.score}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="px-2 py-1 bg-green-500/10 text-green-400 rounded text-xs">
+                                                                        Active {new Date(inv.lastActive).toLocaleDateString()}
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                            {analyticsData.topInvestors.length === 0 && (
+                                                                <p className="text-gray-500 text-xs italic">No investor activity yet.</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
 
                                         {/* Search and Filter */}
                                         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
