@@ -93,7 +93,7 @@ export const PERMISSIONS: Record<string, string[]> = {
     'deal.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR', 'SME'],
     'deal.read': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR', 'SME:owner'],
     'deal.create': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR'],
-    'deal.update': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR:owner'],
+    'deal.update': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR:owner', 'SME:owner'],
     'deal.delete': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
     'deal.approve': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
 

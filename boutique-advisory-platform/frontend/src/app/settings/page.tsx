@@ -654,8 +654,8 @@ export default function SettingsPage() {
                       <label className="block text-sm font-medium text-gray-300 mb-2">Language</label>
                       <select className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="en">English (US)</option>
-                        <option value="fr">Français</option>
-                        <option value="km">Khmer</option>
+                        <option value="km">Khmer (ភាសាខ្មែរ)</option>
+                        <option value="zh">Chinese (中文)</option>
                       </select>
                       <p className="text-xs text-gray-500 mt-1">Select the language for the platform interface.</p>
                     </div>

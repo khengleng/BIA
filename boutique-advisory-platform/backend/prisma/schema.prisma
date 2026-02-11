@@ -196,7 +196,7 @@ model Deal {
   syndicates      Syndicate[]  // New: Syndicates for this deal
   conversations   Conversation[]
   disputes        Dispute[]
-
+  dueDiligenceItems DueDiligenceItem[]
 
   @@map("deals")
 }
@@ -446,6 +446,37 @@ model SecondaryListing {
   trades          SecondaryTrade[]
 
   @@map("secondary_listings")
+}
+
+// Due Diligence Checklist
+model DueDiligenceItem {
+  id          String   @id @default(cuid())
+  tenantId    String
+  dealId      String
+
+  task        String
+  description String?
+  status      DueDiligenceStatus @default(PENDING)
+  assignedTo  String? 
+
+  completedBy String?
+  completedAt DateTime?
+
+  order       Int      @default(0)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  deal        Deal     @relation(fields: [dealId], references: [id])
+
+  @@map("due_diligence_items")
+}
+
+enum DueDiligenceStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  WAIVED
 }
 
 model SecondaryTrade {

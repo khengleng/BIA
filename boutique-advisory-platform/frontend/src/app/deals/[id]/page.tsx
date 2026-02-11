@@ -26,8 +26,10 @@ import {
   X,
   MapPin,
   User,
-  Sparkles as SparklesIcon
+  Sparkles as SparklesIcon,
+  ClipboardCheck
 } from 'lucide-react'
+import DueDiligenceChecklist from '@/components/DueDiligenceChecklist'
 import DealAnalysis from '@/components/DealAnalysis'
 import DataroomChat from '@/components/DataroomChat'
 import TemplateGenerator from '@/components/TemplateGenerator'
@@ -438,6 +440,7 @@ export default function DealDetailPage() {
     { id: 'overview', name: 'Overview', icon: Eye },
     { id: 'timeline', name: 'Timeline', icon: Clock },
     { id: 'documents', name: 'Documents', icon: DocumentIcon },
+    { id: 'due-diligence', name: 'Due Diligence', icon: ClipboardCheck },
     { id: 'activities', name: 'Activities', icon: Calendar },
     { id: 'analytics', name: 'Analytics', icon: TrendingUp }
   ]
@@ -797,6 +800,12 @@ export default function DealDetailPage() {
                 </div>
               )}
 
+              {activeTab === 'due-diligence' && (
+                <DueDiligenceChecklist
+                  dealId={params.id as string}
+                  userRole={user?.role}
+                />
+              )}
 
               {activeTab === 'timeline' && (
                 <div className="space-y-6">

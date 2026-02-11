@@ -29,6 +29,7 @@ import {
 // New Feature Routes
 import syndicateRoutes from './routes/syndicates';
 import dueDiligenceRoutes from './routes/duediligence';
+import dealDueDiligenceRoutes from './routes/deal-due-diligence';
 import communityRoutes from './routes/community';
 import secondaryTradingRoutes from './routes/secondary-trading';
 import notificationRoutes from './routes/notifications';
@@ -294,6 +295,7 @@ app.use('/api/documents', authenticateToken, documentRoutes);
 app.use('/api/syndicates', authenticateToken, syndicateRoutes);
 app.use('/api/due-diligence', authenticateToken, dueDiligenceRoutes);
 app.use('/api/duediligence', authenticateToken, dueDiligenceRoutes);
+app.use('/api/deal-due-diligence', authenticateToken, dealDueDiligenceRoutes);
 app.use('/api/community', authenticateToken, communityRoutes);
 app.use('/api/secondary-trading', authenticateToken, secondaryTradingRoutes);
 app.use('/api/notifications', authenticateToken, notificationRoutes);
