@@ -164,7 +164,11 @@ router.post('/upload', upload.single('file'), async (req: AuthenticatedRequest, 
         });
     } catch (error: any) {
         console.error('Error uploading message file:', error);
-        return res.status(500).json({ error: error.message || 'Upload failed' });
+        return res.status(500).json({
+            error: 'Upload failed',
+            details: error.message || 'Unknown error during file upload',
+            code: 'UPLOAD_ERROR'
+        });
     }
 });
 

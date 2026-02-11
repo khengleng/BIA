@@ -78,7 +78,8 @@ export async function uploadFile(
         Body: file.buffer,
         ContentType: file.mimetype,
         Metadata: {
-            originalName: file.originalname,
+            // Sanitize original name to avoid non-ASCII metadata issues
+            originalName: encodeURIComponent(file.originalname),
             uploadedAt: new Date().toISOString(),
         },
     });
