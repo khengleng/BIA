@@ -104,7 +104,7 @@ router.post('/register', async (req: Request, res: Response) => {
         firstName,
         lastName,
         tenantId,
-        status: 'd' ? 'ACTIVE' : 'ACTIVE', // Keep active for now but require email verification logic
+        status: 'ACTIVE', // Require email verification logic if status is PENDING
         isEmailVerified: false,
         verificationToken: hashedVerificationToken,
         verificationTokenExpiry: verificationExpires,

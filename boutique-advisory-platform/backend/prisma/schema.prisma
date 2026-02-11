@@ -33,6 +33,7 @@ model Tenant {
   conversations Conversation[]
   matches       Match[]
   payments      Payment[]
+  disputes      Dispute[]
 
   @@map("tenants")
 }
@@ -624,6 +625,7 @@ model Dispute {
   updatedAt   DateTime @updatedAt
 
   deal        Deal     @relation(fields: [dealId], references: [id])
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   initiator   User     @relation("DisputeInitiator", fields: [initiatorId], references: [id])
   resolver    User?    @relation("DisputeResolver", fields: [resolverId], references: [id])
 

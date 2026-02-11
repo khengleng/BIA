@@ -115,13 +115,13 @@ router.post('/kyc/:id/approve', authorize('admin.user_manage'), async (req: Auth
         const investorId = req.params.id;
         const investor = await prisma.investor.update({
             where: { id: investorId },
-            data: { kycStatus: 'APPROVED' },
+            data: { kycStatus: 'VERIFIED' },
             include: { user: true }
         });
 
         await sendNotification(
             investor.userId,
-            'KYC Approved',
+            'KYC Verified',
             'Your investor profile has been verified. You can now access deal details.',
             'SUCCESS',
             '/investor/dashboard'
