@@ -40,6 +40,7 @@ import adminActionCenterRoutes from './routes/admin-action-center';
 import aiRoutes from './routes/ai';
 import disputeRoutes from './routes/disputes';
 import escrowRoutes from './routes/escrow';
+import agreementRoutes from './routes/agreements';
 
 // Core Feature Routes
 import authRoutes from './routes/auth';
@@ -319,6 +320,7 @@ app.use('/api/admin', authenticateToken, adminRoutes);
 app.use('/api/ai', authenticateToken, aiRoutes);
 app.use('/api/disputes', authenticateToken, disputeRoutes);
 app.use('/api/escrow', authenticateToken, escrowRoutes);
+app.use('/api/agreements', authenticateToken, agreementRoutes);
 app.use('/api/admin/action-center', authenticateToken, adminActionCenterRoutes);
 
 // Migration endpoints - PROTECTED: Only available in development or with SUPER_ADMIN role (Fix #2)

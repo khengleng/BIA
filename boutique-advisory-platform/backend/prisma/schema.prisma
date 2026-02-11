@@ -198,6 +198,7 @@ model Deal {
   disputes        Dispute[]
   dueDiligenceItems DueDiligenceItem[]
   escrowAccount   EscrowAccount?
+  agreements      Agreement[]
 
   @@map("deals")
 }
@@ -516,6 +517,61 @@ enum TransactionStatus {
   COMPLETED
   FAILED
   CANCELLED
+}
+
+// Digital Signatures / Contracts
+model Agreement {
+  id          String   @id @default(cuid())
+  dealId      String
+  tenantId    String
+  title       String
+  content     String   @db.Text // HTML/Markdown contract content
+  status      AgreementStatus @default(DRAFT)
+  version     Int      @default(1)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  deal        Deal     @relation(fields: [dealId], references: [id])
+  signers     AgreementSigner[]
+
+  @@map("agreements")
+}
+
+model AgreementSigner {
+  id          String   @id @default(cuid())
+  agreementId String
+  userId      String
+  
+  role        String   // e.g., "SME", "INVESTOR", "WITNESS"
+  status      SigningStatus @default(PENDING)
+  
+  signedAt    DateTime?
+  signature   String?  // Base64 Signature Image or Text
+  ipAddress   String?  // Security Audit
+  userAgent   String?  // Security Audit
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  agreement   Agreement @relation(fields: [agreementId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
+
+  @@unique([agreementId, userId]) // One signature per user per agreement
+  @@map("agreement_signers")
+}
+
+enum AgreementStatus {
+  DRAFT
+  PENDING_SIGNATURES
+  COMPLETED
+  CANCELLED
+}
+
+enum SigningStatus {
+  PENDING
+  SIGNED
+  REJECTED
 }
 
 // Due Diligence Checklist

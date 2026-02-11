@@ -28,10 +28,12 @@ import {
   User,
   Sparkles as SparklesIcon,
   ClipboardCheck,
-  Wallet
+  Wallet,
+  Scroll
 } from 'lucide-react'
 import DueDiligenceChecklist from '@/components/DueDiligenceChecklist'
 import DealFunding from '@/components/DealFunding'
+import AgreementSigning from '@/components/AgreementSigning'
 import DealAnalysis from '@/components/DealAnalysis'
 import DataroomChat from '@/components/DataroomChat'
 import TemplateGenerator from '@/components/TemplateGenerator'
@@ -443,6 +445,7 @@ export default function DealDetailPage() {
     { id: 'timeline', name: 'Timeline', icon: Clock },
     { id: 'documents', name: 'Documents', icon: DocumentIcon },
     { id: 'due-diligence', name: 'Due Diligence', icon: ClipboardCheck },
+    { id: 'agreements', name: 'Agreements', icon: Scroll },
     { id: 'funding', name: 'Funding', icon: Wallet },
     { id: 'activities', name: 'Activities', icon: Calendar },
     { id: 'analytics', name: 'Analytics', icon: TrendingUp }
@@ -812,6 +815,13 @@ export default function DealDetailPage() {
 
               {activeTab === 'funding' && (
                 <DealFunding
+                  dealId={params.id as string}
+                  userRole={user?.role}
+                />
+              )}
+
+              {activeTab === 'agreements' && (
+                <AgreementSigning
                   dealId={params.id as string}
                   userRole={user?.role}
                 />
