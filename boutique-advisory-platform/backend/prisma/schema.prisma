@@ -361,7 +361,7 @@ model DueDiligence {
   recommendations     String[]
   redFlags            String[]
   
-  status              DueDiligenceStatus @default(PENDING)
+  status              AssessmentStatus @default(PENDING)
   completedAt         DateTime?
   expiresAt           DateTime?
   
@@ -803,11 +803,12 @@ enum DisputeStatus {
   REJECTED
 }
 
-enum DueDiligenceStatus {
+enum AssessmentStatus {
   PENDING
   IN_PROGRESS
   COMPLETED
   EXPIRED
+  WAIVED
 }
 
 enum RiskLevel {
