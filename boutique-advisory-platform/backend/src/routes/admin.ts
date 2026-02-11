@@ -161,7 +161,7 @@ router.get('/stats', authorize('admin.read'), async (req: AuthenticatedRequest, 
 // ==================== Tenant Settings (Branding) ====================
 
 // Get tenant settings
-router.get('/tenant/settings', authorize('admin.config'), async (req: AuthenticatedRequest, res: Response) => {
+router.get('/tenant/settings', authorize('settings.read'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const tenantId = req.user?.tenantId || 'default';
         const tenant = await prisma.tenant.findUnique({
@@ -180,7 +180,7 @@ router.get('/tenant/settings', authorize('admin.config'), async (req: Authentica
 });
 
 // Update tenant settings
-router.put('/tenant/settings', authorize('admin.config'), async (req: AuthenticatedRequest, res: Response) => {
+router.put('/tenant/settings', authorize('settings.update'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const tenantId = req.user?.tenantId || 'default';
         const { branding } = req.body;
