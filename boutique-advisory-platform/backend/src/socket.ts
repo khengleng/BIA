@@ -84,11 +84,18 @@ export function initSocket(server: HttpServer) {
         });
 
         // Handle sending messages
-        socket.on('send_message', (data: { conversationId: string; content: string }) => {
+        socket.on('send_message', (data: {
+            conversationId: string;
+            content: string;
+            type?: string;
+            attachments?: any[]
+        }) => {
             // Broadcast to conversation room (excluding sender)
             socket.to(`conversation_${data.conversationId}`).emit('new_message', {
                 conversationId: data.conversationId,
                 content: data.content,
+                type: data.type || 'TEXT',
+                attachments: data.attachments || [],
                 senderId: user.id,
                 senderName: user.firstName,
                 createdAt: new Date().toISOString()

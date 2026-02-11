@@ -7,7 +7,7 @@ interface SocketContextType {
     socket: Socket | null
     isConnected: boolean
     lastNotification: any
-    sendMessage: (conversationId: string, content: string) => void
+    sendMessage: (conversationId: string, content: string, type?: string, attachments?: any[]) => void
     joinConversation: (conversationId: string) => void
     leaveConversation: (conversationId: string) => void
 }
@@ -118,9 +118,9 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         }
     }, [token])
 
-    const sendMessage = (conversationId: string, content: string) => {
+    const sendMessage = (conversationId: string, content: string, type: string = 'TEXT', attachments: any[] = []) => {
         if (socketRef.current) {
-            socketRef.current.emit('send_message', { conversationId, content })
+            socketRef.current.emit('send_message', { conversationId, content, type, attachments })
         }
     }
 

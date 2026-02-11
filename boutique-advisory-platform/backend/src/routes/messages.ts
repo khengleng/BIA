@@ -1,6 +1,8 @@
 import { Router, Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/jwt-auth';
 import { prisma } from '../database';
+import { upload } from '../middleware/upload';
+import { uploadFile } from '../utils/fileUpload';
 
 const router = Router();
 
@@ -146,6 +148,26 @@ router.get('/conversations', async (req: AuthenticatedRequest, res: Response) =>
     }
 });
 
+// Upload message attachment
+router.post('/upload', upload.single('file'), async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+
+        const uploadedFile = await uploadFile(req.file, 'messages');
+        return res.json({
+            name: req.file.originalname,
+            url: uploadedFile.url,
+            type: req.file.mimetype,
+            size: req.file.size
+        });
+    } catch (error: any) {
+        console.error('Error uploading message file:', error);
+        return res.status(500).json({ error: error.message || 'Upload failed' });
+    }
+});
+
 // Get messages for a specific conversation
 router.get('/conversations/:id', async (req: AuthenticatedRequest, res: Response) => {
     try {
@@ -181,6 +203,8 @@ router.get('/conversations/:id', async (req: AuthenticatedRequest, res: Response
             senderName: `${m.sender.firstName} ${m.sender.lastName}`,
             senderType: m.sender.role,
             content: m.content,
+            type: m.type,
+            attachments: m.attachments,
             read: m.read,
             createdAt: m.createdAt
         }));
@@ -195,7 +219,7 @@ router.get('/conversations/:id', async (req: AuthenticatedRequest, res: Response
 // Send a message
 router.post('/', async (req: AuthenticatedRequest, res: Response) => {
     try {
-        const { conversationId, content } = req.body;
+        const { conversationId, content, type, attachments } = req.body;
         const userId = req.user?.id;
 
         // Verify participation first
@@ -212,7 +236,9 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
             data: {
                 conversationId,
                 senderId: userId,
-                content,
+                content: content || '',
+                type: type || 'TEXT',
+                attachments: attachments || undefined,
                 read: false
             },
             include: {
@@ -233,6 +259,8 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
             senderName: `${newMessage.sender.firstName} ${newMessage.sender.lastName}`,
             senderType: newMessage.sender.role,
             content: newMessage.content,
+            type: newMessage.type,
+            attachments: newMessage.attachments,
             read: newMessage.read,
             createdAt: newMessage.createdAt
         });

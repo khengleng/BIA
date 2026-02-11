@@ -15,7 +15,12 @@ import {
     CheckCheck,
     Users,
     Building2,
-    Clock
+    Clock,
+    File,
+    Download,
+    ExternalLink,
+    X,
+    Loader2
 } from 'lucide-react'
 import DashboardLayout from '../../components/layout/DashboardLayout'
 import { useToast } from '../../contexts/ToastContext'
@@ -29,6 +34,8 @@ interface Message {
     senderName: string
     senderType: string
     content: string
+    type?: 'TEXT' | 'IMAGE' | 'FILE'
+    attachments?: { name: string; url: string; type: string; size: number }[]
     read: boolean
     createdAt: string
 }
@@ -63,7 +70,10 @@ export default function MessagesPage() {
     const [isLoading, setIsLoading] = useState(true)
     const [isSending, setIsSending] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
+    const [isUploading, setIsUploading] = useState(false)
     const messagesEndRef = useRef<HTMLDivElement>(null)
+    const fileInputRef = useRef<HTMLInputElement>(null)
+    const imageInputRef = useRef<HTMLInputElement>(null)
 
     const { socket, joinConversation, leaveConversation, sendMessage: socketSendMessage } = useSocket(token)
 
@@ -141,7 +151,11 @@ export default function MessagesPage() {
             // Update conversation list item
             setConversations(prev => prev.map(c =>
                 c.id === data.conversationId
-                    ? { ...c, lastMessage: data.content, lastMessageAt: data.createdAt }
+                    ? {
+                        ...c,
+                        lastMessage: data.type === 'IMAGE' ? '[Image]' : (data.type === 'FILE' ? `[File]` : data.content),
+                        lastMessageAt: data.createdAt
+                    }
                     : c
             ))
         }
@@ -154,7 +168,67 @@ export default function MessagesPage() {
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }, [messages])
+    }, [messages, isUploading])
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, isImage: boolean = false) => {
+        const file = e.target.files?.[0]
+        if (!file || !selectedConversation) return
+
+        setIsUploading(true)
+        const formData = new FormData()
+        formData.append('file', file)
+
+        try {
+            const response = await authorizedRequest('/api/messages/upload', {
+                method: 'POST',
+                body: formData
+            })
+
+            if (response.ok) {
+                const attachment = await response.json()
+
+                // Now send the message with this attachment
+                const msgResponse = await authorizedRequest('/api/messages', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        conversationId: selectedConversation.id,
+                        content: isImage ? '' : `Sent a file: ${file.name}`,
+                        type: isImage ? 'IMAGE' : 'FILE',
+                        attachments: [attachment]
+                    })
+                })
+
+                if (msgResponse.ok) {
+                    const sentMessage = await msgResponse.json()
+                    setMessages(prev => [...prev, sentMessage])
+
+                    // Notify other participants via WebSocket
+                    socketSendMessage(
+                        selectedConversation.id,
+                        isImage ? '[Image]' : `[File: ${file.name}]`,
+                        isImage ? 'IMAGE' : 'FILE',
+                        [attachment]
+                    )
+
+                    // Update conversation list item
+                    setConversations(prev => prev.map(c =>
+                        c.id === selectedConversation.id
+                            ? { ...c, lastMessage: isImage ? 'Sent an image' : `File: ${file.name}`, lastMessageAt: new Date().toISOString() }
+                            : c
+                    ))
+                }
+            } else {
+                addToast('error', 'Failed to upload file')
+            }
+        } catch (error) {
+            console.error('Error uploading file:', error)
+            addToast('error', 'Error uploading file')
+        } finally {
+            setIsUploading(false)
+            if (fileInputRef.current) fileInputRef.current.value = ''
+            if (imageInputRef.current) imageInputRef.current.value = ''
+        }
+    }
 
     const handleSendMessage = async () => {
         if (!newMessage.trim() || !selectedConversation) return
@@ -176,7 +250,7 @@ export default function MessagesPage() {
                 setNewMessage('')
 
                 // Notify other participants via WebSocket
-                socketSendMessage(selectedConversation.id, content)
+                socketSendMessage(selectedConversation.id, content, 'TEXT', [])
 
                 // Update conversation last message locally
                 setConversations(prev => prev.map(c =>
@@ -363,7 +437,49 @@ export default function MessagesPage() {
                                                     ? 'bg-blue-600 text-white rounded-br-sm'
                                                     : 'bg-gray-700 text-white rounded-bl-sm'
                                                     }`}>
-                                                    <p>{message.content}</p>
+                                                    {message.type === 'IMAGE' && message.attachments && message.attachments.length > 0 ? (
+                                                        <div className="space-y-2">
+                                                            {message.attachments.map((att, idx) => (
+                                                                <a key={idx} href={att.url} target="_blank" rel="noopener noreferrer" className="block relative group">
+                                                                    <img
+                                                                        src={att.url}
+                                                                        alt={att.name}
+                                                                        className="max-w-full rounded-lg border border-white/10 hover:opacity-90 transition-opacity"
+                                                                    />
+                                                                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/20 transition-opacity">
+                                                                        <ExternalLink className="w-6 h-6 text-white" />
+                                                                    </div>
+                                                                </a>
+                                                            ))}
+                                                            {message.content && <p className="mt-2">{message.content}</p>}
+                                                        </div>
+                                                    ) : message.type === 'FILE' && message.attachments && message.attachments.length > 0 ? (
+                                                        <div className="space-y-2">
+                                                            {message.attachments.map((att, idx) => (
+                                                                <div key={idx} className={`flex items-center gap-3 p-3 rounded-xl border border-white/10 ${isOwn ? 'bg-blue-700/50' : 'bg-gray-800/50'}`}>
+                                                                    <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center">
+                                                                        <File className="w-5 h-5" />
+                                                                    </div>
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <p className="text-sm font-medium truncate">{att.name}</p>
+                                                                        <p className="text-[10px] opacity-60">{(att.size / 1024).toFixed(1)} KB</p>
+                                                                    </div>
+                                                                    <a
+                                                                        href={att.url}
+                                                                        download
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                                                                    >
+                                                                        <Download className="w-4 h-4" />
+                                                                    </a>
+                                                                </div>
+                                                            ))}
+                                                            {message.content && <p className="mt-2 text-sm">{message.content}</p>}
+                                                        </div>
+                                                    ) : (
+                                                        <p>{message.content}</p>
+                                                    )}
                                                 </div>
                                                 <div className={`flex items-center gap-1 mt-1 px-2 ${isOwn ? 'justify-end' : 'justify-start'}`}>
                                                     <span className="text-xs text-gray-500">
@@ -381,16 +497,47 @@ export default function MessagesPage() {
                                         </div>
                                     )
                                 })}
+                                {isUploading && (
+                                    <div className="flex justify-end">
+                                        <div className="bg-blue-600/20 px-4 py-2 rounded-2xl flex items-center gap-3">
+                                            <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
+                                            <span className="text-xs text-blue-400 font-medium tracking-wide">Uploading file...</span>
+                                        </div>
+                                    </div>
+                                )}
                                 <div ref={messagesEndRef} />
                             </div>
 
                             {/* Input Area */}
                             <div className="p-4 border-t border-gray-700 bg-gray-800">
+                                {/* Hidden Inputs */}
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    className="hidden"
+                                    onChange={(e) => handleFileUpload(e, false)}
+                                />
+                                <input
+                                    type="file"
+                                    ref={imageInputRef}
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={(e) => handleFileUpload(e, true)}
+                                />
+
                                 <div className="flex items-center gap-2">
-                                    <button className="p-2 hover:bg-gray-700 rounded-lg transition-colors">
+                                    <button
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+                                        title="Attach file"
+                                    >
                                         <Paperclip className="w-5 h-5 text-gray-400" />
                                     </button>
-                                    <button className="p-2 hover:bg-gray-700 rounded-lg transition-colors">
+                                    <button
+                                        onClick={() => imageInputRef.current?.click()}
+                                        className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+                                        title="Attach image"
+                                    >
                                         <Image className="w-5 h-5 text-gray-400" />
                                     </button>
                                     <div className="flex-1 relative">

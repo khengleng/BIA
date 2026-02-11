@@ -745,7 +745,9 @@ model Message {
   conversationId String
   senderId       String
   content        String
-  read           Boolean      @default(false) // Simple read status (refine with participants if needed)
+  type           String       @default("TEXT") // TEXT, IMAGE, FILE
+  attachments    Json?        // [{ name, url, type, size }]
+  read           Boolean      @default(false)
   
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
