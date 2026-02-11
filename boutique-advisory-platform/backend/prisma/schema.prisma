@@ -82,6 +82,7 @@ model User {
   initiatedDisputes Dispute[] @relation("DisputeInitiator")
   resolvedDisputes  Dispute[] @relation("DisputeResolver")
   activityLogs      ActivityLog[]
+  agreementSignatures AgreementSigner[]
 
   @@unique([tenantId, email])
   @@map("users")
