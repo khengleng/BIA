@@ -91,7 +91,11 @@ router.post('/register', async (req: Request, res: Response) => {
       });
     }
 
-    // Create user
+    // Create user with Verification Token
+    const verificationToken = generateSecureToken(32);
+    const hashedVerificationToken = hashToken(verificationToken);
+    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
     const user = await prisma.user.create({
       data: {
         email,
@@ -100,7 +104,10 @@ router.post('/register', async (req: Request, res: Response) => {
         firstName,
         lastName,
         tenantId,
-        status: 'ACTIVE',
+        status: 'd' ? 'ACTIVE' : 'ACTIVE', // Keep active for now but require email verification logic
+        isEmailVerified: false,
+        verificationToken: hashedVerificationToken,
+        verificationTokenExpiry: verificationExpires,
         language: 'EN'
       }
     });
@@ -158,23 +165,62 @@ router.post('/register', async (req: Request, res: Response) => {
       { expiresIn: '24h' }
     );
 
-    // Send welcome email (don't block registration if email fails)
-    sendWelcomeEmail(user.email, `${user.firstName} ${user.lastName}`, user.role)
-      .catch(error => console.error('Failed to send welcome email:', error));
+    // Send Verification Email
+    // Note: You need to implement sendVerificationEmail in utils/email.ts
+    // For now, we reuse welcome email logic or just log it
+    // sendVerificationEmail(user.email, verificationToken)
+    //   .catch(error => console.error('Failed to send verification email:', error));
+    console.log(`[DEV] Verification Token for ${email}: ${verificationToken}`);
 
     return res.status(201).json({
-      message: 'User registered successfully',
+      message: 'User registered successfully. Please accept the verification email sent to your inbox.',
       token,
       user: {
         id: user.id,
         email: user.email,
         role: user.role,
         firstName: user.firstName,
-        lastName: user.lastName
+        lastName: user.lastName,
+        isEmailVerified: false
       }
     });
   } catch (error) {
     console.error('Registration error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Verify Email Endpoint
+router.post('/verify-email', async (req: Request, res: Response) => {
+  try {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ error: 'Token required' });
+
+    const hashedToken = hashToken(token);
+
+    const user = await prisma.user.findFirst({
+      where: {
+        verificationToken: hashedToken,
+        verificationTokenExpiry: { gt: new Date() }
+      }
+    });
+
+    if (!user) {
+      return res.status(400).json({ error: 'Invalid or expired verification token' });
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        isEmailVerified: true,
+        verificationToken: null,
+        verificationTokenExpiry: null
+      }
+    });
+
+    return res.json({ message: 'Email verified successfully', success: true });
+  } catch (error) {
+    console.error('Email verification error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

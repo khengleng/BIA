@@ -57,6 +57,11 @@ model User {
   twoFactorEnabled     Boolean   @default(false)
   twoFactorBackupCodes String[]  @default([])
 
+  // Email Verification
+  isEmailVerified      Boolean   @default(false)
+  verificationToken    String?
+  verificationTokenExpiry DateTime?
+
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -72,6 +77,8 @@ model User {
   bookings          Booking[]
   matchInterests    MatchInterest[]
   payments          Payment[]
+  initiatedDisputes Dispute[] @relation("DisputeInitiator")
+  resolvedDisputes  Dispute[] @relation("DisputeResolver")
 
   @@unique([tenantId, email])
   @@map("users")
@@ -597,6 +604,35 @@ enum SyndicateMemberStatus {
   APPROVED
   REJECTED
   WITHDRAWN
+}
+
+model Dispute {
+  id          String   @id @default(cuid())
+  tenantId    String
+  dealId      String
+  initiatorId String
+  resolverId  String?
+  
+  reason      String
+  description String
+  status      DisputeStatus @default(OPEN)
+  resolution  String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  deal        Deal     @relation(fields: [dealId], references: [id])
+  initiator   User     @relation("DisputeInitiator", fields: [initiatorId], references: [id])
+  resolver    User?    @relation("DisputeResolver", fields: [resolverId], references: [id])
+
+  @@map("disputes")
+}
+
+enum DisputeStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  REJECTED
 }
 
 enum DueDiligenceStatus {
