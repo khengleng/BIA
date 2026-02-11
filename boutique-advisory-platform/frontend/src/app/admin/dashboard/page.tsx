@@ -18,15 +18,26 @@ import { authorizedRequest } from '../../../lib/api'
 
 export default function AdminDashboardPage() {
     const [stats, setStats] = useState<any>(null)
+    const [actionStats, setActionStats] = useState<any>(null)
     const [isLoading, setIsLoading] = useState(true)
 
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                const response = await authorizedRequest('/api/admin/stats')
-                if (response.ok) {
-                    const data = await response.json()
-                    setStats(data.stats)
+                setIsLoading(true);
+                const [generalRes, actionRes] = await Promise.all([
+                    authorizedRequest('/api/admin/stats'),
+                    authorizedRequest('/api/admin/action-center/stats')
+                ]);
+
+                if (generalRes.ok) {
+                    const data = await generalRes.json();
+                    setStats(data.stats || data)
+                }
+
+                if (actionRes.ok) {
+                    const actionData = await actionRes.json();
+                    setActionStats(actionData);
                 }
             } catch (error) {
                 console.error('Error fetching admin stats:', error)
@@ -139,20 +150,34 @@ export default function AdminDashboardPage() {
                         <div className="bg-orange-500/10 border border-orange-500/30 rounded-2xl p-6">
                             <h3 className="text-orange-400 font-bold flex items-center gap-2 mb-4">
                                 <AlertTriangle className="w-5 h-5" />
-                                Attention Required
+                                Action Center
                             </h3>
                             <div className="space-y-4">
-                                <div className="text-sm bg-gray-900/50 p-3 rounded-lg border border-orange-500/20">
-                                    <p className="text-white font-medium">12 KYC Requests</p>
-                                    <p className="text-gray-400 text-xs mt-1">Investors waiting for verification</p>
+                                <div className="text-sm bg-gray-900/50 p-4 rounded-xl border border-orange-500/20 flex justify-between items-center group hover:bg-gray-800 transition-all cursor-pointer">
+                                    <div>
+                                        <p className="text-white font-bold text-lg">{actionStats?.kycRequests || 0}</p>
+                                        <p className="text-gray-400 text-xs">Pending KYC Requests</p>
+                                    </div>
+                                    <button
+                                        onClick={() => window.location.href = '/admin/kyc-requests'}
+                                        className="text-xs bg-orange-500/10 text-orange-400 px-2 py-1 rounded border border-orange-500/20 group-hover:bg-orange-500 group-hover:text-white transition-all">
+                                        Review
+                                    </button>
                                 </div>
-                                <div className="text-sm bg-gray-900/50 p-3 rounded-lg border border-orange-500/20">
-                                    <p className="text-white font-medium">3 Deal Disputes</p>
-                                    <p className="text-gray-400 text-xs mt-1">Requires manual mediation</p>
+
+                                <div className="text-sm bg-gray-900/50 p-4 rounded-xl border border-red-500/20 flex justify-between items-center group hover:bg-gray-800 transition-all cursor-pointer">
+                                    <div>
+                                        <p className="text-white font-bold text-lg">{actionStats?.dealDisputes || 0}</p>
+                                        <p className="text-gray-400 text-xs">Open Disputes</p>
+                                    </div>
+                                    <button className="text-xs bg-red-500/10 text-red-400 px-2 py-1 rounded border border-red-500/20 group-hover:bg-red-500 group-hover:text-white transition-all">Resolve</button>
                                 </div>
                             </div>
-                            <button className="w-full mt-6 bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 rounded-xl transition-all">
-                                Action Center
+                            <button
+                                onClick={() => console.log('Navigating to action center...')}
+                                className="w-full mt-6 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-orange-900/20"
+                            >
+                                View All Actions
                             </button>
                         </div>
                     </div>
