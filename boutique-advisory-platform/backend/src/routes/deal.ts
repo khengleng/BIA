@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { prisma } from '../database';
 import { validateBody, createDealSchema, updateDealSchema } from '../middleware/validation';
 import { authorize, AuthenticatedRequest } from '../middleware/authorize';
+import { sendNotification } from '../services/notification.service';
 
 const router = Router();
 
@@ -159,6 +160,58 @@ router.put('/:id', authorize('deal.update'), validateBody(updateDealSchema), asy
         sme: true
       }
     });
+
+    // --- NOTIFICATIONS ---
+    if (updateData.status && updateData.status !== existingDeal.status) {
+      const status = updateData.status;
+      const smeUserId = deal.sme.userId;
+
+      // 1. Notify SME Owner
+      if (status === 'PUBLISHED') {
+        await sendNotification(
+          smeUserId,
+          'Deal Published',
+          `Your deal "${deal.title}" is now live and visible to investors!`,
+          'DEAL_UPDATE',
+          `/deals/${deal.id}`
+        );
+
+        // 2. Notify ALL Investors (Broadcast)
+        // In a real app, filter by sector/preferences
+        const investors = await prisma.user.findMany({
+          where: { role: 'INVESTOR', status: 'ACTIVE' },
+          select: { id: true }
+        });
+
+        for (const investor of investors) {
+          await sendNotification(
+            investor.id,
+            'New Deal Opportunity',
+            `New deal in ${deal.sme.sector}: ${deal.title}`,
+            'DEAL_UPDATE',
+            `/deals/${deal.id}`
+          );
+        }
+
+      } else if (status === 'FUNDED') {
+        await sendNotification(
+          smeUserId,
+          'Deal Funded!',
+          `Congratulations! Your deal "${deal.title}" has been successfully funded.`,
+          'DEAL_UPDATE',
+          `/deals/${deal.id}`
+        );
+      } else if (status === 'CLOSED') {
+        await sendNotification(
+          smeUserId,
+          'Deal Closed',
+          `Your deal "${deal.title}" is now closed.`,
+          'DEAL_UPDATE',
+          `/deals/${deal.id}`
+        );
+      }
+    }
+    // ---------------------
 
     return res.json(deal);
   } catch (error) {

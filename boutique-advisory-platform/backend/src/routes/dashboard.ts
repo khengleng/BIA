@@ -33,13 +33,36 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
                     const deals = await prisma.deal.findMany({ where: { smeId: sme.id } });
                     const totalFunding = deals.reduce((acc, deal) => acc + deal.amount, 0);
 
+                    // Calculate Profile Completeness
+                    let filledFields = 0;
+                    const totalFields = 6; // description, website, location, sector, stage, documents
+                    if (sme.description) filledFields++;
+                    if (sme.website) filledFields++;
+                    if (sme.location) filledFields++;
+                    if (sme.sector) filledFields++;
+                    if (sme.stage) filledFields++;
+                    if (documentCount > 0) filledFields++;
+
+                    const profileCompleteness = Math.round((filledFields / totalFields) * 100);
+
+                    // Real Match Interest (Investors interested in this SME)
+                    const interestCount = await prisma.matchInterest.count({
+                        where: {
+                            match: { smeId: sme.id },
+                            interest: true,
+                            // Ensure the interest comes from an investor, not the SME itself
+                            user: { role: 'INVESTOR' }
+                        }
+                    });
+
                     stats = {
                         totalDeals: dealsCount,
                         activeBookings,
                         documents: documentCount,
                         fundingGoal: totalFunding,
-                        profileCompleteness: 75, // Placeholder for logic
-                        matchCount: await prisma.match.count({ where: { smeId: sme.id } })
+                        profileCompleteness,
+                        matchCount: await prisma.match.count({ where: { smeId: sme.id } }),
+                        interestExpressed: interestCount
                     };
                 }
                 break;
@@ -54,12 +77,22 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
                         prisma.dealInvestor.count({ where: { investorId: investor.id, status: 'PENDING' } })
                     ]);
 
+                    // Calculate Portfolio Value
+                    const completedInvestments = await prisma.dealInvestor.findMany({
+                        where: {
+                            investorId: investor.id,
+                            status: 'COMPLETED'
+                        },
+                        select: { amount: true }
+                    });
+                    const portfolioValue = completedInvestments.reduce((sum, inv) => sum + inv.amount, 0);
+
                     stats = {
                         totalMatches: matchCount,
                         activeInvestments: investmentCount,
                         pendingOffers: activeOffers,
-                        portfolioValue: 0, // Would need more complex calculation
-                        avgMatchScore: 85
+                        portfolioValue,
+                        avgMatchScore: 85 // This would require complex aggregation of match scores
                     };
                 }
                 break;

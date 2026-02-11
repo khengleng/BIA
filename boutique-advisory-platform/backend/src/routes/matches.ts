@@ -147,6 +147,11 @@ router.post('/recompute', authorize('matchmaking.create_match'), async (req: Aut
 });
 
 // Express Interest
+import { sendNotification } from '../services/notification.service';
+
+// ... (existing imports)
+
+// Express Interest
 router.post('/:id/interest', authorize('matchmaking.express_interest'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const { interest } = req.body; // true = like, false = dislike
@@ -160,6 +165,58 @@ router.post('/:id/interest', authorize('matchmaking.express_interest'), async (r
             update: { interest },
             create: { matchId, userId, interest }
         });
+
+        // --- NOTIFICATIONS & MUTUAL CHECK ---
+        if (interest) {
+            const match = await prisma.match.findUnique({
+                where: { id: matchId },
+                include: { sme: true, investor: true }
+            });
+
+            if (match) {
+                const isInvestor = userId === match.investor.userId;
+                const targetUserId = isInvestor ? match.sme.userId : match.investor.userId;
+                const actorName = isInvestor ? 'An Investor' : 'An SME';
+
+                // 1. Notify the passed party
+                await sendNotification(
+                    targetUserId,
+                    'New Interest Received',
+                    `${actorName} is interested in connecting with you!`,
+                    'INTEREST_RECEIVED',
+                    `/matches`
+                );
+
+                // 2. Check for Mutual Interest
+                const otherInterest = await prisma.matchInterest.findUnique({
+                    where: {
+                        matchId_userId: {
+                            matchId,
+                            userId: targetUserId
+                        }
+                    }
+                });
+
+                if (otherInterest?.interest) {
+                    // Mutual Match! Notify both!
+                    await sendNotification(
+                        userId,
+                        "It's a Match! 🎉",
+                        `You have a new mutual match with ${isInvestor ? match.sme.name : match.investor.name}.`,
+                        'MATCH_FOUND',
+                        `/matches`
+                    );
+
+                    await sendNotification(
+                        targetUserId,
+                        "It's a Match! 🎉",
+                        `You have a new mutual match with ${isInvestor ? match.investor.name : match.sme.name}.`,
+                        'MATCH_FOUND',
+                        `/matches`
+                    );
+                }
+            }
+        }
 
         return res.json({ message: 'Interest recorded', interest: updatedInterest });
     } catch (error) {
