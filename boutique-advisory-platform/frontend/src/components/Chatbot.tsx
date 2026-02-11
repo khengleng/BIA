@@ -63,11 +63,16 @@ export default function Chatbot() {
         setInputValue('')
         setIsLoading(true)
 
+        const currentLanguage = localStorage.getItem('selectedLanguage') || 'en'
+
         try {
             const response = await authorizedRequest('/api/ai/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: userMessage.text })
+                body: JSON.stringify({
+                    message: userMessage.text,
+                    language: currentLanguage
+                })
             })
 
             const data = await response.json()

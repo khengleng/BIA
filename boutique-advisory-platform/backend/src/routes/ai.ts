@@ -58,16 +58,28 @@ Sample Advisors: ${topAdvisors.map(a => `${a.name} (${Array.isArray(a.specializa
 // General Platform Chatbot
 router.post('/chat', authorize('ai.chat'), async (req: AuthenticatedRequest, res: Response) => {
     try {
-        const { message } = req.body;
+        const { message, language = 'en' } = req.body;
         if (!message) return res.status(400).json({ error: "Message required" });
 
         if (!anthropic) {
+            const noAiMessage: { [key: string]: string } = {
+                en: "I am the AI Assistant (Claude). Please configure ANTHROPIC_API_KEY to enable real intelligence.",
+                km: "ខ្ញុំគឺជាជំនួយការ AI (Claude)។ សូមកំណត់ ANTHROPIC_API_KEY ដើម្បីបើកដំណើរការភាពវៃឆ្លាតពិតប្រាកដ។",
+                zh: "我是 AI 助手 (Claude)。请配置 ANTHROPIC_API_KEY 以启用真正的智能。"
+            };
             return res.json({
-                response: "I am the AI Assistant (Claude). Please configure ANTHROPIC_API_KEY to enable real intelligence. I see you are asking about: " + message
+                response: (noAiMessage[language] || noAiMessage['en']) + " \n[dev note: API Key missing]"
             });
         }
 
         const context = await getPlatformContext();
+
+        // Language-specific system prompt instructions
+        const langInstructions: { [key: string]: string } = {
+            en: "Respond in English.",
+            km: "Respond in Khmer (Cambodian language). Use formal and professional Khmer.",
+            zh: "Respond in Simplified Chinese (Mandarin). Use professional business terminology."
+        };
 
         const systemPrompt = `
 You are the AI Assistant for the Boutique Advisory Platform.
@@ -75,13 +87,14 @@ Your role is to help users (Investors, SMEs, Advisors) navigate the platform, un
 Context Data:
 ${context}
 Instructions:
+- ${langInstructions[language] || "Respond in English."}
 - Provide a helpful, professional answer based on the context.
 - If asking about specific people not in the summary, encourage them to use the search feature.
 - Be concise (max 3 sentences unless detailed info is requested).
         `;
 
         const msg = await anthropic.messages.create({
-            model: MODEL_NAME,
+            model: "claude-3-haiku-20240307",
             max_tokens: 1024,
             system: systemPrompt,
             messages: [
