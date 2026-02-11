@@ -197,6 +197,7 @@ model Deal {
   conversations   Conversation[]
   disputes        Dispute[]
   dueDiligenceItems DueDiligenceItem[]
+  escrowAccount   EscrowAccount?
 
   @@map("deals")
 }
@@ -446,6 +447,75 @@ model SecondaryListing {
   trades          SecondaryTrade[]
 
   @@map("secondary_listings")
+}
+
+// Escrow System
+model EscrowAccount {
+  id              String   @id @default(cuid())
+  dealId          String   @unique
+  tenantId        String
+  
+  balance         Float    @default(0)
+  currency        String   @default("USD")
+  status          EscrowStatus @default(OPEN)
+  
+  bankName        String?
+  accountNumber   String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  deal            Deal     @relation(fields: [dealId], references: [id])
+  transactions    EscrowTransaction[]
+
+  @@map("escrow_accounts")
+}
+
+model EscrowTransaction {
+  id              String   @id @default(cuid())
+  escrowAccountId String
+  tenantId        String
+  
+  amount          Float
+  currency        String   @default("USD")
+  type            EscrowTransactionType
+  status          TransactionStatus @default(PENDING)
+  
+  reference       String?  // External reference (e.g. Stripe ID, Bank Tx ID)
+  description     String?
+  
+  requestedBy     String   // User ID
+  approvedBy      String?  // User ID (for release/refund)
+  approvedAt      DateTime?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  escrowAccount   EscrowAccount @relation(fields: [escrowAccountId], references: [id])
+
+  @@map("escrow_transactions")
+}
+
+enum EscrowStatus {
+  OPEN
+  LOCKED
+  RELEASED
+  REFUNDED
+  DISPUTED
+}
+
+enum EscrowTransactionType {
+  DEPOSIT
+  RELEASE
+  REFUND
+  FEE
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
 }
 
 // Due Diligence Checklist
