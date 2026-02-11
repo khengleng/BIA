@@ -14,7 +14,8 @@ import {
   Target,
   CheckCircle,
   AlertCircle,
-  Clock
+  Clock,
+  UserX
 } from 'lucide-react'
 import { useTranslations } from '../../hooks/useTranslations'
 import { authorizedRequest } from '../../lib/api'
@@ -306,7 +307,8 @@ function AdminDashboard({ t, stats }: { t: any; stats: any }) {
     { label: 'Total Users', value: stats?.totalUsers || '0', icon: Users, color: 'text-blue-500' },
     { label: 'SMEs', value: stats?.totalSMEs || '0', icon: Building2, color: 'text-green-500' },
     { label: 'Active Deals', value: stats?.activeDeals || '0', icon: Handshake, color: 'text-purple-500' },
-    { label: 'Revenue', value: stats?.platformRevenue ? `$${stats.platformRevenue}` : '$0', icon: CheckCircle, color: 'text-green-500' }
+    { label: 'Revenue', value: stats?.platformRevenue ? `$${stats.platformRevenue}` : '$0', icon: CheckCircle, color: 'text-green-500' },
+    { label: 'Deleted Users', value: stats?.deletedUsers || '0', icon: UserX, color: 'text-red-500' }
   ]
 
   return (

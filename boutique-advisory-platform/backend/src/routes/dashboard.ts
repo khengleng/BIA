@@ -95,7 +95,7 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
 
             case 'ADMIN':
             case 'SUPER_ADMIN': {
-                const [users, smes, investors, deals, revenue] = await Promise.all([
+                const [users, smes, investors, deals, revenue, deletedUsers] = await Promise.all([
                     prisma.user.count({ where: { tenantId } }),
                     prisma.sME.count({ where: { tenantId } }),
                     prisma.investor.count({ where: { tenantId } }),
@@ -103,7 +103,8 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
                     prisma.booking.aggregate({
                         where: { status: 'CONFIRMED' },
                         _sum: { amount: true }
-                    })
+                    }),
+                    prisma.user.count({ where: { status: 'DELETED' as any, tenantId } })
                 ]);
 
                 stats = {
@@ -111,7 +112,8 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
                     totalSMEs: smes,
                     totalInvestors: investors,
                     activeDeals: deals,
-                    platformRevenue: revenue._sum.amount || 0
+                    platformRevenue: revenue._sum.amount || 0,
+                    deletedUsers: deletedUsers
                 };
                 break;
             }
