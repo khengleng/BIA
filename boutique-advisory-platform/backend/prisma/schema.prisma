@@ -192,6 +192,8 @@ model Deal {
   workflows       Workflow[]
   syndicates      Syndicate[]  // New: Syndicates for this deal
   conversations   Conversation[]
+  disputes        Dispute[]
+
 
   @@map("deals")
 }
