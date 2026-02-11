@@ -8,7 +8,7 @@ import { Router, Response } from 'express';
 import { AuthenticatedRequest, authorize } from '../middleware/authorize';
 import { prisma, prismaReplica } from '../database';
 import { shouldUseDatabase } from '../migration-manager';
-import { RiskLevel, DueDiligenceStatus } from '@prisma/client';
+import { RiskLevel, AssessmentStatus } from '@prisma/client';
 
 const router = Router();
 
@@ -75,7 +75,7 @@ router.get('/', authorize('due_diligence.list'), async (req: AuthenticatedReques
         const dueDiligences = await prismaReplica.dueDiligence.findMany({
             where: {
                 ...(smeId ? { smeId: smeId as string } : {}),
-                ...(status ? { status: status as DueDiligenceStatus } : {}),
+                ...(status ? { status: status as AssessmentStatus } : {}),
                 ...(riskLevel ? { riskLevel: riskLevel as RiskLevel } : {})
             },
             include: {
