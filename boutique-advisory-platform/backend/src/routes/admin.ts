@@ -9,7 +9,15 @@ const router = Router();
 // List all users (System-wide)
 router.get('/users', authorize('admin.user_manage'), async (req: AuthenticatedRequest, res: Response) => {
     try {
+        const status = req.query.status as string;
+
+        const where: any = {};
+        if (status) {
+            where.status = status;
+        }
+
         const users = await prisma.user.findMany({
+            where,
             include: {
                 sme: { select: { id: true, name: true, status: true } },
                 investor: { select: { id: true, name: true, kycStatus: true } },

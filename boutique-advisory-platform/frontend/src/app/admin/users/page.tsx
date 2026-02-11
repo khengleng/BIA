@@ -26,15 +26,19 @@ export default function UserManagementPage() {
     const [isLoading, setIsLoading] = useState(true)
     const [searchQuery, setSearchQuery] = useState('')
     const [roleFilter, setRoleFilter] = useState('ALL')
+    const [statusFilter, setStatusFilter] = useState('')
 
     useEffect(() => {
         fetchUsers()
-    }, [])
+    }, [statusFilter])
 
     const fetchUsers = async () => {
         setIsLoading(true)
         try {
-            const response = await authorizedRequest('/api/admin/users')
+            const queryParams = new URLSearchParams()
+            if (statusFilter) queryParams.append('status', statusFilter)
+
+            const response = await authorizedRequest(`/api/admin/users?${queryParams.toString()}`)
             if (response.ok) {
                 const data = await response.json()
                 setUsers(data.users || [])
@@ -113,6 +117,21 @@ export default function UserManagementPage() {
                         />
                     </div>
                     <div className="flex gap-4">
+                        <div className="flex bg-gray-900 p-1 rounded-xl">
+                            {['ALL', 'ACTIVE', 'SUSPENDED', 'DELETED'].map((status) => (
+                                <button
+                                    key={status}
+                                    onClick={() => setStatusFilter(status === 'ALL' ? '' : status)}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${(statusFilter === status || (status === 'ALL' && statusFilter === ''))
+                                        ? 'bg-blue-600 text-white shadow-lg'
+                                        : 'text-gray-400 hover:text-white'
+                                        }`}
+                                >
+                                    {status === 'ALL' ? 'All' : status.charAt(0) + status.slice(1).toLowerCase()}
+                                </button>
+                            ))}
+                        </div>
+
                         <select
                             className="bg-gray-900 border-gray-700 rounded-xl text-white px-4 py-2 focus:ring-blue-500"
                             value={roleFilter}
@@ -125,10 +144,6 @@ export default function UserManagementPage() {
                             <option value="INVESTOR">Investor</option>
                             <option value="SME">SME</option>
                         </select>
-                        <button className="bg-gray-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-gray-600">
-                            <Filter className="w-5 h-5" />
-                            More Filters
-                        </button>
                     </div>
                 </div>
 
@@ -178,10 +193,10 @@ export default function UserManagementPage() {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span className={`flex items-center gap-1.5 text-xs font-medium ${user.status === 'ACTIVE' ? 'text-green-400' :
-                                                        user.status === 'SUSPENDED' ? 'text-red-400' : 'text-gray-400'
+                                                    user.status === 'SUSPENDED' ? 'text-red-400' : 'text-gray-400'
                                                     }`}>
                                                     <span className={`w-2 h-2 rounded-full ${user.status === 'ACTIVE' ? 'bg-green-400' :
-                                                            user.status === 'SUSPENDED' ? 'bg-red-400' : 'bg-gray-400'
+                                                        user.status === 'SUSPENDED' ? 'bg-red-400' : 'bg-gray-400'
                                                         }`} />
                                                     {user.status}
                                                 </span>
