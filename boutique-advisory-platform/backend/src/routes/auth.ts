@@ -12,7 +12,7 @@ import {
   clearFailedAttempts,
   sanitizeEmail
 } from '../utils/security';
-import { sendWelcomeEmail, sendPasswordResetEmail } from '../utils/email';
+import { sendWelcomeEmail, sendPasswordResetEmail, sendVerificationEmail } from '../utils/email';
 import { generateMfaSecret, generateQrCode, verifyMfaToken, generateBackupCodes } from '../utils/mfa';
 import {
   authenticateToken,
@@ -166,10 +166,10 @@ router.post('/register', async (req: Request, res: Response) => {
     );
 
     // Send Verification Email
-    // Note: You need to implement sendVerificationEmail in utils/email.ts
-    // For now, we reuse welcome email logic or just log it
-    // sendVerificationEmail(user.email, verificationToken)
-    //   .catch(error => console.error('Failed to send verification email:', error));
+    // Use the implemented email utility
+    sendVerificationEmail(user.email, verificationToken)
+      .catch(error => console.error('Failed to send verification email:', error));
+
     console.log(`[DEV] Verification Token for ${email}: ${verificationToken}`);
 
     return res.status(201).json({

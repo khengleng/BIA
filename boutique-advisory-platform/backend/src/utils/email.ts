@@ -268,6 +268,61 @@ export async function sendBookingConfirmation(
   }
 }
 
+// Email Verification
+export async function sendVerificationEmail(to: string, verificationToken: string) {
+  const verificationUrl = `${FRONTEND_URL}/auth/verify-email?token=${verificationToken}`;
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: [to],
+      subject: 'Verify Your Email Address',
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+              .header { background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+              .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+              .button { display: inline-block; padding: 12px 30px; background: #48bb78; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+              .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1>✅ Verify Email</h1>
+              </div>
+              <div class="content">
+                <p>Welcome to Boutique Advisory Platform!</p>
+                <p>Please click the button below to verify your email address and activate your account:</p>
+                <a href="${verificationUrl}" class="button">Verify Email</a>
+                <p>If you didn't create an account, you can safely ignore this email.</p>
+              </div>
+              <div class="footer">
+                <p>© ${new Date().getFullYear()} Boutique Advisory Platform. All rights reserved.</p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      console.error('Error sending verification email:', error);
+      return { success: false, error };
+    }
+
+    console.log('✅ Verification email sent to:', to);
+    return { success: true, data };
+  } catch (error) {
+    console.error('Failed to send verification email:', error);
+    return { success: false, error };
+  }
+}
+
 // Password reset email
 export async function sendPasswordResetEmail(to: string, resetToken: string) {
   const resetUrl = `${FRONTEND_URL}/auth/reset-password?token=${resetToken}`;

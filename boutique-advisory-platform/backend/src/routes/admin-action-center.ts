@@ -161,4 +161,45 @@ router.post('/kyc/:id/reject', authorize('admin.user_manage'), async (req: Authe
     }
 });
 
+// Resolve Dispute
+router.post('/disputes/:id/resolve', authorize('admin.user_manage'), async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const disputeId = req.params.id;
+        const { resolution } = req.body;
+        const resolverId = req.user?.id;
+
+        if (!resolution) {
+            return res.status(400).json({ error: 'Resolution description is required' });
+        }
+
+        const dispute = await prisma.dispute.update({
+            where: { id: disputeId },
+            data: {
+                status: 'RESOLVED',
+                resolution,
+                resolverId,
+                updatedAt: new Date()
+            },
+            include: {
+                initiator: true,
+                deal: true
+            }
+        });
+
+        // Notify initiator
+        await sendNotification(
+            dispute.initiatorId,
+            'Dispute Resolved',
+            `Your dispute regarding deal "${dispute.deal.title}" has been resolved: ${resolution}`,
+            'SUCCESS',
+            `/deals/${dispute.dealId}`
+        );
+
+        return res.json({ message: 'Dispute resolved successfully', dispute });
+    } catch (error) {
+        console.error('Error resolving dispute:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 export default router;

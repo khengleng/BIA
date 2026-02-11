@@ -170,7 +170,11 @@ export default function AdminDashboardPage() {
                                         <p className="text-white font-bold text-lg">{actionStats?.dealDisputes || 0}</p>
                                         <p className="text-gray-400 text-xs">Open Disputes</p>
                                     </div>
-                                    <button className="text-xs bg-red-500/10 text-red-400 px-2 py-1 rounded border border-red-500/20 group-hover:bg-red-500 group-hover:text-white transition-all">Resolve</button>
+                                    <button
+                                        onClick={() => window.location.href = '/admin/disputes'}
+                                        className="text-xs bg-red-500/10 text-red-400 px-2 py-1 rounded border border-red-500/20 group-hover:bg-red-500 group-hover:text-white transition-all">
+                                        Resolve
+                                    </button>
                                 </div>
                             </div>
                             <button
