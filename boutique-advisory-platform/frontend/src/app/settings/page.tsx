@@ -206,6 +206,9 @@ export default function SettingsPage() {
       })
 
       if (response.ok) {
+        // Show success message
+        alert('Your account has been successfully deleted.')
+
         // Clear local storage
         localStorage.removeItem('token')
         localStorage.removeItem('user')
