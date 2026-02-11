@@ -47,6 +47,11 @@ export default function SettingsPage() {
   const [backupCodes, setBackupCodes] = useState<string[]>([])
   const [showBackupCodesModal, setShowBackupCodesModal] = useState(false)
 
+  // Delete Account State
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteConfirmation, setDeleteConfirmation] = useState('')
+  const [isDeleting, setIsDeleting] = useState(false)
+
   const handleUpdatePassword = async () => {
     if (newPassword !== confirmPassword) {
       alert('New passwords do not match')
@@ -185,6 +190,40 @@ export default function SettingsPage() {
     }
   }
 
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmation !== 'DELETE') {
+      return
+    }
+
+    setIsDeleting(true)
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`${API_URL}/api/auth/delete-account`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (response.ok) {
+        // Clear local storage
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+
+        // Build URL relative to window location if possible, or just redirect
+        window.location.href = '/'
+      } else {
+        const data = await response.json()
+        alert(data.error || 'Failed to delete account')
+        setIsDeleting(false)
+      }
+    } catch (error) {
+      console.error('Error deleting account:', error)
+      alert('An error occurred while deleting your account')
+      setIsDeleting(false)
+    }
+  }
+
   useEffect(() => {
     // Get user data from localStorage
     const fetchUser = async () => {
@@ -205,12 +244,6 @@ export default function SettingsPage() {
         const meResponse = await fetch(`${API_URL}/api/auth/me`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
-
-        // Note: The /me endpoint needs to exist or be inferred. 
-        // If it doesn't exist, we rely on the localStorage data initially, 
-        // but ideally we should refresh it. 
-        // Assuming /me exists or we can check via another means. 
-        // If /me fails, we fallback to parsedUser.twoFactorEnabled if available.
 
         if (meResponse.ok) {
           const meData = await meResponse.json()
@@ -524,6 +557,30 @@ export default function SettingsPage() {
                       </div>
                     )}
                   </div>
+
+                  {/* Danger Zone - Delete Account */}
+                  <div className="bg-red-900/10 border border-red-500/20 p-6 rounded-lg mt-8">
+                    <h3 className="text-lg font-medium text-red-400 mb-2 flex items-center gap-2">
+                      <LogOut className="w-5 h-5" />
+                      Danger Zone
+                    </h3>
+                    <p className="text-gray-400 text-sm mb-4">
+                      Once you delete your account, there is no going back. Please be certain.
+                    </p>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-white font-medium">Delete Account</p>
+                        <p className="text-sm text-gray-500">Permanently remove your account and all of its content.</p>
+                      </div>
+                      <button
+                        onClick={() => setShowDeleteModal(true)}
+                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium text-sm"
+                      >
+                        Delete Account
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -649,6 +706,62 @@ export default function SettingsPage() {
             >
               I have saved these codes
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Account Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-gray-800 rounded-2xl max-w-md w-full border border-red-500/30 shadow-2xl p-6">
+            <div className="flex items-center gap-3 mb-4 text-red-400">
+              <LogOut className="w-6 h-6" />
+              <h3 className="text-xl font-bold">Delete Account?</h3>
+            </div>
+
+            <p className="text-gray-300 text-sm mb-6">
+              This action cannot be undone. This will permanently delete your account,
+              remove your data from our servers, and cancel your active subscriptions.
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Type <span className="font-mono font-bold text-white">DELETE</span> to confirm
+                </label>
+                <input
+                  type="text"
+                  value={deleteConfirmation}
+                  onChange={(e) => setDeleteConfirmation(e.target.value)}
+                  placeholder="DELETE"
+                  className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => {
+                    setShowDeleteModal(false)
+                    setDeleteConfirmation('')
+                  }}
+                  disabled={isDeleting}
+                  className="flex-1 py-3 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteAccount}
+                  disabled={deleteConfirmation !== 'DELETE' || isDeleting}
+                  className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center"
+                >
+                  {isDeleting ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  ) : (
+                    'Delete Account'
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
