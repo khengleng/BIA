@@ -128,6 +128,7 @@ model Investor {
   name            String
   type            InvestorType
   kycStatus       KYCStatus @default(PENDING)
+  status          InvestorStatus @default(ACTIVE)
   preferences     Json     @default("{}")
   portfolio       Json     @default("[]")
   createdAt       DateTime @default(now())
@@ -687,6 +688,7 @@ enum SMEStatus {
   UNDER_REVIEW
   CERTIFIED
   REJECTED
+  DELETED
 }
 
 enum InvestorType {
@@ -708,6 +710,14 @@ enum AdvisorStatus {
   ACTIVE
   INACTIVE
   SUSPENDED
+  DELETED
+}
+
+enum InvestorStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  DELETED
 }
 
 enum DealStatus {

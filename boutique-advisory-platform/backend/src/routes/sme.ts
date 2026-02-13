@@ -112,19 +112,16 @@ router.delete('/:id', authorize('sme.delete'), async (req: AuthenticatedRequest,
       return res.status(404).json({ error: 'SME not found' });
     }
 
-    await prisma.sME.delete({
-      where: { id }
+    await prisma.sME.update({
+      where: { id },
+      data: { status: 'DELETED' as any }
     });
 
-    return res.status(200).json({ message: 'SME deleted successfully' });
+    return res.status(200).json({ message: 'SME soft deleted successfully' });
   } catch (error: any) {
     console.error('Delete SME error:', error);
-    if (error.code === 'P2003') { // Foreign key constraint failed
-      return res.status(400).json({ error: 'Cannot delete SME because it has related records (deals, documents, etc.)' });
-    }
     return res.status(500).json({ error: 'Failed to delete SME' });
   }
 });
 
 export default router;
-
