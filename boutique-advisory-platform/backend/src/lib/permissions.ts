@@ -161,7 +161,7 @@ export const PERMISSIONS: Record<string, string[]> = {
     // ==================== Advisory Service Permissions ====================
     'advisory_service.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR', 'SME'],
     'advisory_service.read': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR', 'SME'],
-    'advisory_service.create': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
+    'advisory_service.create': ['SUPER_ADMIN', 'ADVISOR'],
     'advisory_service.update': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR:owner'],
     'advisory_service.delete': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR:owner'],
     'advisory_service.manage': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR'],
