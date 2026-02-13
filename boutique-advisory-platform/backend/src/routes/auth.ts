@@ -475,7 +475,7 @@ router.put('/profile', authenticateToken, async (req: AuthenticatedRequest, res:
       data: {
         ...(firstName && { firstName }),
         ...(lastName && { lastName }),
-        ...(language && { language }),
+        ...(language && { language: language.toUpperCase() as any }), // Convert to uppercase for Enum match
         ...(preferences && { preferences: preferences as any }),
       }
     });

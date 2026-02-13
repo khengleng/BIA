@@ -54,7 +54,7 @@ export default function SettingsPage() {
 
   // Preferences State
   const [preferences, setPreferences] = useState({
-    language: 'en',
+    language: 'EN',
     timezone: 'UTC+7',
     currency: 'USD'
   })
@@ -706,9 +706,9 @@ export default function SettingsPage() {
                         onChange={(e) => setPreferences({ ...preferences, language: e.target.value })}
                         className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
-                        <option value="en">English (US)</option>
-                        <option value="km">Khmer (ភាសាខ្មែរ)</option>
-                        <option value="zh">Chinese (中文)</option>
+                        <option value="EN">English (US)</option>
+                        <option value="KM">Khmer (ភាសាខ្មែរ)</option>
+                        <option value="ZH">Chinese (中文)</option>
                       </select>
                       <p className="text-xs text-gray-500 mt-1">Select the language for the platform interface.</p>
                     </div>
