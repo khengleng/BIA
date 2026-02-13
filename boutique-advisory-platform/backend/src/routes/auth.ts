@@ -1082,5 +1082,100 @@ router.post('/delete-account', authenticateToken, async (req: AuthenticatedReque
   }
 });
 
+
+// Switch Role Endpoint
+router.post('/switch-role', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    const token = authHeader.substring(7);
+    if (!process.env.JWT_SECRET) return res.status(500).json({ error: 'Config error' });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET) as any;
+    const userId = decoded.userId;
+
+    const { targetRole } = req.body;
+
+    if (!['SME', 'INVESTOR'].includes(targetRole)) {
+      return res.status(400).json({ error: 'Invalid target role. Can only switch between SME and INVESTOR.' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { sme: true, investor: true }
+    });
+
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // logic to ensure profile exists
+    if (targetRole === 'INVESTOR') {
+      if (!user.investor) {
+        // Create Investor Profile
+        await prisma.investor.create({
+          data: {
+            userId: user.id,
+            tenantId: user.tenantId,
+            name: `${user.firstName} ${user.lastName}`,
+            type: 'ANGEL', // Default
+            kycStatus: 'PENDING'
+          }
+        });
+      }
+    } else if (targetRole === 'SME') {
+      if (!user.sme) {
+        // Create SME Profile
+        await prisma.sME.create({
+          data: {
+            userId: user.id,
+            tenantId: user.tenantId,
+            name: `${user.firstName} ${user.lastName}`,
+            sector: 'General',
+            stage: 'SEED',
+            fundingRequired: 0,
+            status: 'DRAFT'
+          }
+        });
+      }
+    }
+
+    // Update User Role
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: { role: targetRole as any }
+    });
+
+    // Generate new token
+    const newToken = jwt.sign(
+      {
+        userId: user.id,
+        email: user.email,
+        role: targetRole,
+        tenantId: user.tenantId
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    return res.json({
+      message: `Successfully switched to ${targetRole}`,
+      token: newToken,
+      user: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
+        twoFactorEnabled: updatedUser.twoFactorEnabled
+      }
+    });
+
+  } catch (error) {
+    console.error('Switch role error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
 

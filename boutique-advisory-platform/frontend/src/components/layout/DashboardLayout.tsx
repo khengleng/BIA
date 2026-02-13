@@ -30,7 +30,8 @@ import {
     UserCog,
     History,
     Briefcase,
-    Palette
+    Palette,
+    RefreshCw
 } from 'lucide-react'
 import { useTranslations } from '../../hooks/useTranslations'
 import { User } from '../../types'
@@ -108,6 +109,28 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
         fetchUser()
     }, [router, pathname])
+
+    const handleSwitchRole = async () => {
+        if (!user) return;
+        const targetRole = user.role === 'SME' ? 'INVESTOR' : 'SME';
+
+        try {
+            const response = await authorizedRequest('/api/auth/switch-role', {
+                method: 'POST',
+                body: JSON.stringify({ targetRole })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('user', JSON.stringify(data.user));
+                setUser(data.user);
+                window.location.reload();
+            }
+        } catch (error) {
+            console.error('Failed to switch role', error);
+        }
+    }
 
     const handleLogout = () => {
         localStorage.removeItem('token')
@@ -248,6 +271,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                             <p className="text-xs text-gray-400 capitalize truncate">
                                 {user?.role.toLowerCase()}
                             </p>
+                            {(user?.role === 'SME' || user?.role === 'INVESTOR') && (
+                                <button
+                                    onClick={handleSwitchRole}
+                                    className="text-[10px] text-blue-400 hover:text-blue-300 mt-1 flex items-center gap-1 transition-colors"
+                                >
+                                    <RefreshCw className="w-3 h-3" />
+                                    Switch to {user.role === 'SME' ? 'Investor' : 'SME'}
+                                </button>
+                            )}
                         </div>
                         <NotificationCenter />
                     </div>
