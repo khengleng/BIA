@@ -15,6 +15,8 @@ export default function LoginPage() {
   const [step, setStep] = useState<'credentials' | '2fa'>('credentials')
   const [tempToken, setTempToken] = useState('')
   const [twoFactorCode, setTwoFactorCode] = useState('')
+  const [showResendVerification, setShowResendVerification] = useState(false)
+  const [resendStatus, setResendStatus] = useState('')
 
   const [formData, setFormData] = useState({
     email: '',
@@ -22,6 +24,37 @@ export default function LoginPage() {
     rememberMe: false
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  const handleResendVerification = async () => {
+    if (!formData.email) {
+      setErrors({ general: 'Please enter your email first' });
+      return;
+    }
+    setIsLoading(true)
+    setResendStatus('')
+
+    try {
+      const response = await fetch(`${API_URL}/api/auth/resend-verification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setResendStatus('Verification email sent! Please check your inbox.')
+        setShowResendVerification(false)
+        setErrors({})
+      } else {
+        setErrors({ general: data.error || 'Failed to send email' })
+      }
+    } catch (error) {
+      setErrors({ general: 'Network error' })
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target
@@ -112,7 +145,12 @@ export default function LoginPage() {
           router.push('/dashboard')
         }
       } else {
-        setErrors({ general: data.error || 'Login failed' })
+        const errorMsg = data.error || 'Login failed';
+        setErrors({ general: errorMsg })
+
+        if (errorMsg.toLowerCase().includes('verify')) {
+          setShowResendVerification(true)
+        }
       }
     } catch (error) {
       console.error('Login error:', error)
@@ -210,6 +248,20 @@ export default function LoginPage() {
           {errors.general && (
             <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
               <p className="text-red-400 text-sm">{errors.general}</p>
+              {showResendVerification && (
+                <button
+                  type="button"
+                  onClick={handleResendVerification}
+                  className="mt-2 text-sm font-medium text-blue-400 hover:text-blue-300 underline focus:outline-none"
+                >
+                  Resend Verification Email
+                </button>
+              )}
+            </div>
+          )}
+          {resendStatus && (
+            <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4">
+              <p className="text-green-400 text-sm">{resendStatus}</p>
             </div>
           )}
 

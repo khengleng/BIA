@@ -225,6 +225,67 @@ router.post('/verify-email', async (req: Request, res: Response) => {
   }
 });
 
+// Resend Verification Email Endpoint
+router.post('/resend-verification', async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    const sanitizedEmail = sanitizeEmail(email);
+    if (!sanitizedEmail) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    // Rate limiting
+    if (isLockedOut(`resend_${sanitizedEmail}`)) {
+      return res.status(429).json({ error: 'Too many requests. Please try again later.' });
+    }
+
+    const user = await prisma.user.findFirst({
+      where: { email: sanitizedEmail }
+    });
+
+    if (!user) {
+      // Return success to avoid email enumeration
+      return res.json({ message: 'If an account exists, a verification email has been sent.' });
+    }
+
+    if (user.isEmailVerified) {
+      return res.status(400).json({ error: 'Email is already verified' });
+    }
+
+    // Generate new token
+    const verificationToken = generateSecureToken(32);
+    const hashedVerificationToken = hashToken(verificationToken);
+    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        verificationToken: hashedVerificationToken,
+        verificationTokenExpiry: verificationExpires
+      }
+    });
+
+    // Send email
+    sendVerificationEmail(user.email, verificationToken)
+      .catch(error => console.error('Failed to send verification email:', error));
+
+    // Record attempt for rate limiting
+    recordFailedAttempt(`resend_${sanitizedEmail}`);
+
+    return res.json({ message: 'Verification email sent successfully.' });
+
+  } catch (error) {
+    console.error('Resend verification error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Login endpoint
 router.post('/login', async (req: Request, res: Response) => {
   const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
