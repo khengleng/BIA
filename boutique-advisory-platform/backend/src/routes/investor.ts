@@ -404,4 +404,28 @@ function getColorForSector(sector: string): string {
   return colors[sector] || 'bg-gray-500';
 }
 
+// Delete Investor
+router.delete('/:id', authorize('investor.delete'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const existingInvestor = await prisma.investor.findUnique({ where: { id } });
+    if (!existingInvestor) {
+      return res.status(404).json({ error: 'Investor not found' });
+    }
+
+    await prisma.investor.delete({
+      where: { id }
+    });
+
+    return res.status(200).json({ message: 'Investor deleted successfully' });
+  } catch (error: any) {
+    console.error('Delete Investor error:', error);
+    if (error.code === 'P2003') { // Foreign key constraint failed
+      return res.status(400).json({ error: 'Cannot delete Investor because they have related records (investments, trades, etc.)' });
+    }
+    return res.status(500).json({ error: 'Failed to delete Investor' });
+  }
+});
+
 export default router;
