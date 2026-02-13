@@ -477,10 +477,20 @@ router.delete('/services/:id', authorize('advisory_service.delete'), async (req:
     }
 });
 
-// Get my services (for advisors)
+// Get my services (for advisors) - Admins see all
 router.get('/my-services', authorize('advisory_service.manage'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const userId = req.user?.id;
+        const userRole = req.user?.role;
+
+        // If Admin, return all services
+        if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') {
+            const allServices = await prisma.advisoryService.findMany({
+                include: { advisor: true },
+                orderBy: { createdAt: 'desc' }
+            });
+            return res.json(allServices);
+        }
 
         const advisor = await prisma.advisor.findUnique({
             where: { userId }
