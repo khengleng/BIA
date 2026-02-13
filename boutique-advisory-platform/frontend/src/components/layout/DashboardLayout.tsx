@@ -145,7 +145,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         { href: '/syndicates', label: 'Syndicates', icon: UsersRound, isNew: true, roles: ['ADMIN', 'ADVISOR', 'INVESTOR'] },
         { href: '/due-diligence', label: t('advisory.assessment'), icon: Shield, isNew: true, roles: ['ADMIN', 'ADVISOR'] },
         { href: '/community', label: 'Community', icon: MessagesSquare, isNew: true, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
-        { href: '/secondary-trading', label: 'Trading', icon: ArrowLeftRight, isNew: true, roles: ['ADMIN', 'ADVISOR', 'INVESTOR'] },
+        { href: '/secondary-trading', label: 'Trading', icon: ArrowLeftRight, isNew: true, roles: ['INVESTOR'] },
         // Settings at the end
         { href: '/settings', label: t('navigation.settings'), icon: Settings, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
     ]

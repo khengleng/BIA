@@ -175,12 +175,12 @@ export const PERMISSIONS: Record<string, string[]> = {
     'syndicate.manage': ['SUPER_ADMIN', 'ADMIN', 'INVESTOR:owner'],
 
     // ==================== Secondary Trading Permissions ====================
-    'secondary_trading.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR', 'SME'],
-    'secondary_trading.read': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR', 'SME'],
-    'secondary_trading.create_listing': ['SUPER_ADMIN', 'ADMIN', 'INVESTOR'],
-    'secondary_trading.update_listing': ['SUPER_ADMIN', 'ADMIN', 'INVESTOR:owner'],
-    'secondary_trading.buy': ['SUPER_ADMIN', 'ADMIN', 'INVESTOR'],
-    'secondary_trading.execute': ['SUPER_ADMIN', 'ADMIN'],
+    'secondary_trading.list': ['SUPPORT', 'INVESTOR', 'SME'],
+    'secondary_trading.read': ['SUPPORT', 'INVESTOR', 'SME'],
+    'secondary_trading.create_listing': ['INVESTOR'],
+    'secondary_trading.update_listing': ['INVESTOR:owner'],
+    'secondary_trading.buy': ['INVESTOR'],
+    'secondary_trading.execute': [],
 
     // ==================== Notification Permissions ====================
     'notification.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR', 'SME'],
