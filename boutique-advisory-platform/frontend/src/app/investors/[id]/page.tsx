@@ -146,8 +146,10 @@ export default function InvestorProfilePage() {
     timeline: ''
   })
 
+  const [investor, setInvestor] = useState<Investor | null>(null)
+
   useEffect(() => {
-    const fetchUser = async () => {
+    const fetchData = async () => {
       try {
         const token = localStorage.getItem('token')
         const userData = localStorage.getItem('user')
@@ -157,20 +159,110 @@ export default function InvestorProfilePage() {
           return
         }
 
-        const user = JSON.parse(userData)
-        setUser(user)
+        const parsedUser = JSON.parse(userData)
+        setUser(parsedUser)
+
+        // Fetch Investor Data
+        const response = await fetch(`${API_URL}/api/investors/${params.id}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch investor')
+        }
+
+        const data = await response.json()
+
+        // Map API response to component state
+        const mappedInvestor: Investor = {
+          id: data.id,
+          userId: data.userId,
+          name: data.name,
+          title: data.preferences?.title || data.type,
+          email: data.user?.email || '',
+          phone: data.preferences?.phone || '',
+          address: data.preferences?.address || '',
+          city: data.preferences?.city || '',
+          province: data.preferences?.province || '',
+          country: data.preferences?.country || '',
+          investorType: data.type,
+          investmentExperience: data.preferences?.investmentExperience || '',
+          preferredSectors: data.preferences?.preferredSectors || [],
+          investmentRange: data.preferences?.investmentRange || '',
+          netWorth: data.preferences?.netWorth || '',
+          kycStatus: data.kycStatus,
+          annualIncome: data.preferences?.annualIncome || '',
+          liquidAssets: data.preferences?.liquidAssets || '',
+          investmentPortfolio: data.preferences?.investmentPortfolio || '',
+          occupation: data.preferences?.occupation || '',
+          company: data.preferences?.company || '',
+          experience: data.preferences?.experience || '',
+          riskTolerance: data.preferences?.riskTolerance || '',
+          investmentGoals: data.preferences?.investmentGoals || '',
+          status: data.preferences?.status || 'Active',
+          rating: data.preferences?.rating || 0,
+          reviews: data.preferences?.reviews || 0,
+          completedInvestments: data.preferences?.completedInvestments || 0,
+          activeInvestments: data.preferences?.activeInvestments || 0,
+          totalReturns: data.preferences?.totalReturns || '',
+          documents: data.preferences?.documents || [],
+          investments: data.dealInvestments?.map((inv: any) => ({
+            id: inv.id,
+            company: inv.deal?.sme?.name || 'Unknown',
+            amount: `$${inv.amount}`,
+            status: inv.status,
+            returns: 'N/A', // Real ROI not yet tracked
+            date: new Date(inv.createdAt).toLocaleDateString()
+          })) || [],
+          metrics: data.preferences?.metrics || {
+            totalInvested: '$0',
+            averageReturn: '0%',
+            successRate: '0%',
+            portfolioGrowth: '0%'
+          },
+          timelineEvents: data.preferences?.timelineEvents || []
+        }
+
+        setInvestor(mappedInvestor)
+
+        // Pre-fill edit form
+        setEditForm({
+          name: mappedInvestor.name,
+          title: mappedInvestor.title,
+          email: mappedInvestor.email,
+          phone: mappedInvestor.phone,
+          address: mappedInvestor.address,
+          city: mappedInvestor.city,
+          province: mappedInvestor.province,
+          country: mappedInvestor.country,
+          investorType: mappedInvestor.investorType,
+          investmentExperience: mappedInvestor.investmentExperience,
+          investmentRange: mappedInvestor.investmentRange,
+          netWorth: mappedInvestor.netWorth,
+          annualIncome: mappedInvestor.annualIncome,
+          liquidAssets: mappedInvestor.liquidAssets,
+          investmentPortfolio: mappedInvestor.investmentPortfolio,
+          occupation: mappedInvestor.occupation,
+          company: mappedInvestor.company,
+          experience: mappedInvestor.experience,
+          riskTolerance: mappedInvestor.riskTolerance,
+          investmentGoals: mappedInvestor.investmentGoals,
+          status: mappedInvestor.status,
+          preferredSectors: mappedInvestor.preferredSectors
+        })
+
       } catch (error) {
-        console.error('Error fetching user:', error)
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-        router.push('/auth/login')
+        console.error('Error fetching data:', error)
+        // If 401 or similar, might want to redirect
       } finally {
         setIsLoading(false)
       }
     }
 
-    fetchUser()
-  }, [router])
+    fetchData()
+  }, [router, params.id])
 
   const handleLogout = () => {
     localStorage.removeItem('token')
@@ -179,6 +271,7 @@ export default function InvestorProfilePage() {
   }
 
   const handleEdit = () => {
+    if (!investor) return
     setEditForm({
       name: investor.name,
       title: investor.title,
@@ -253,7 +346,10 @@ export default function InvestorProfilePage() {
         alert(`Investor "${editForm.name}" updated successfully!`)
 
         // Update the local investor data to reflect changes
-        Object.assign(investor, editForm)
+        if (investor) {
+          const updatedInvestor = { ...investor, ...editForm }
+          setInvestor(updatedInvestor)
+        }
 
         setShowEditModal(false)
 
@@ -417,8 +513,6 @@ export default function InvestorProfilePage() {
     }
   }
 
-
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleEditTimelineEvent = (event: any) => {
     // In a real implementation, this would open an edit modal for the timeline event
@@ -430,301 +524,6 @@ export default function InvestorProfilePage() {
     // In a real implementation, this would delete the timeline event
     console.log(`Delete event: ${event.title}`)
   }
-
-  // Mock Investor data - dynamically based on ID
-  const getInvestorData = (id: string) => {
-    const investors = {
-      '1': {
-        id: '1',
-        userId: 'investor_1',
-        name: 'John Smith',
-        title: 'Angel Investor',
-        email: 'john.smith@email.com',
-        phone: '+855 12 345 678',
-        address: '456 Investment Avenue',
-        city: 'Phnom Penh',
-        province: 'Phnom Penh',
-        country: 'Cambodia',
-        investorType: 'Angel Investor',
-        investmentExperience: 'Advanced',
-        preferredSectors: ['Technology', 'Fintech', 'E-commerce', 'Healthcare'],
-        investmentRange: '$100K - $500K',
-        netWorth: '$2,500,000',
-        annualIncome: '$300,000',
-        liquidAssets: '$800,000',
-        investmentPortfolio: '$1,200,000',
-        occupation: 'Entrepreneur',
-        company: 'Smith Ventures',
-        experience: '15+ years',
-        riskTolerance: 'Moderate',
-        investmentGoals: 'Diversified portfolio with focus on high-growth technology companies in emerging markets.',
-        status: 'Active',
-        kycStatus: 'VERIFIED',
-        rating: 4.8,
-        reviews: 12,
-        completedInvestments: 8,
-        activeInvestments: 3,
-        totalReturns: '+18.5%',
-        documents: [
-          { name: 'Identification Document', type: 'PDF', size: '1.2 MB', uploaded: '2024-01-15' },
-          { name: 'Proof of Funds', type: 'PDF', size: '2.1 MB', uploaded: '2024-01-10' },
-          { name: 'Professional References', type: 'PDF', size: '0.8 MB', uploaded: '2024-01-05' }
-        ],
-        investments: [
-          { id: 1, company: 'Tech Startup A', amount: '$200K', status: 'Active', returns: '+25%', date: '2023-06-15' },
-          { id: 2, company: 'Fintech Co', amount: '$150K', status: 'Active', returns: '+12%', date: '2023-09-20' },
-          { id: 3, company: 'E-commerce Platform', amount: '$300K', status: 'Pending', returns: 'N/A', date: '2024-01-10' }
-        ],
-        metrics: {
-          totalInvested: '$650K',
-          averageReturn: '+18.5%',
-          successRate: '87%',
-          portfolioGrowth: '+22%'
-        },
-        timelineEvents: [
-          {
-            id: 1,
-            title: 'Initial Contact Made',
-            description: 'First contact established through LinkedIn outreach',
-            date: '2023-01-15',
-            type: 'Contact',
-            status: 'Completed',
-            priority: 'High'
-          },
-          {
-            id: 2,
-            title: 'Due Diligence Started',
-            description: 'Comprehensive due diligence process initiated',
-            date: '2023-02-20',
-            type: 'Due Diligence',
-            status: 'In Progress',
-            priority: 'High'
-          },
-          {
-            id: 3,
-            title: 'Investment Agreement Signed',
-            description: 'Final investment agreement signed and executed',
-            date: '2023-03-10',
-            type: 'Legal',
-            status: 'Completed',
-            priority: 'Critical'
-          },
-          {
-            id: 4,
-            title: 'First Investment Made',
-            description: 'Initial investment of $200K transferred to Tech Startup A',
-            date: '2023-06-15',
-            type: 'Investment',
-            status: 'Completed',
-            priority: 'Critical'
-          },
-          {
-            id: 5,
-            title: 'Quarterly Review Meeting',
-            description: 'Scheduled quarterly performance review meeting',
-            date: '2023-09-15',
-            type: 'Review',
-            status: 'Scheduled',
-            priority: 'Medium'
-          }
-        ]
-      },
-      '2': {
-        id: '2',
-        userId: 'investor_2',
-        name: 'Sarah Johnson',
-        title: 'Venture Capital Partner',
-        email: 'sarah.johnson@vc.com',
-        phone: '+65 9 876 543',
-        address: '789 Venture Street',
-        city: 'Singapore',
-        province: 'Singapore',
-        country: 'Singapore',
-        investorType: 'Venture Capital',
-        investmentExperience: 'Expert',
-        preferredSectors: ['Technology', 'Fintech', 'Healthcare', 'AI/ML'],
-        investmentRange: '$500K - $5M',
-        netWorth: '$15,000,000',
-        annualIncome: '$800,000',
-        liquidAssets: '$3,000,000',
-        investmentPortfolio: '$8,500,000',
-        occupation: 'VC Partner',
-        company: 'Southeast Asia Ventures',
-        experience: '20+ years',
-        riskTolerance: 'Aggressive',
-        investmentGoals: 'Focus on Series A and B investments in high-growth technology companies across Southeast Asia.',
-        status: 'Active',
-        kycStatus: 'VERIFIED',
-        rating: 4.9,
-        reviews: 18,
-        completedInvestments: 12,
-        activeInvestments: 5,
-        totalReturns: '+25.3%',
-        documents: [
-          { name: 'Professional License', type: 'PDF', size: '0.9 MB', uploaded: '2024-01-20' },
-          { name: 'Investment Track Record', type: 'PDF', size: '3.2 MB', uploaded: '2024-01-18' },
-          { name: 'Due Diligence Report', type: 'PDF', size: '1.5 MB', uploaded: '2024-01-12' }
-        ],
-        investments: [
-          { id: 1, company: 'AI Health Tech', amount: '$1M', status: 'Active', returns: '+35%', date: '2023-08-10' },
-          { id: 2, company: 'Fintech Platform', amount: '$2M', status: 'Active', returns: '+18%', date: '2023-11-15' },
-          { id: 3, company: 'E-commerce Solution', amount: '$800K', status: 'Active', returns: '+22%', date: '2024-01-05' }
-        ],
-        metrics: {
-          totalInvested: '$3.8M',
-          averageReturn: '+25.3%',
-          successRate: '92%',
-          portfolioGrowth: '+28%'
-        },
-        timelineEvents: [
-          {
-            id: 1,
-            title: 'VC Partnership Established',
-            description: 'Formal partnership agreement signed with Southeast Asia Ventures',
-            date: '2023-03-01',
-            type: 'Partnership',
-            status: 'Completed',
-            priority: 'Critical'
-          },
-          {
-            id: 2,
-            title: 'Investment Committee Review',
-            description: 'Investment committee approved Series A funding strategy',
-            date: '2023-04-15',
-            type: 'Review',
-            status: 'Completed',
-            priority: 'High'
-          },
-          {
-            id: 3,
-            title: 'AI Health Tech Investment',
-            description: 'Successfully closed $1M Series A investment in AI Health Tech',
-            date: '2023-08-10',
-            type: 'Investment',
-            status: 'Completed',
-            priority: 'Critical'
-          },
-          {
-            id: 4,
-            title: 'Board Meeting Scheduled',
-            description: 'Scheduled board meeting for portfolio company review',
-            date: '2023-11-20',
-            type: 'Meeting',
-            status: 'Scheduled',
-            priority: 'Medium'
-          },
-          {
-            id: 5,
-            title: 'Exit Strategy Planning',
-            description: 'Initiated exit strategy planning for mature investments',
-            date: '2024-01-10',
-            type: 'Strategy',
-            status: 'In Progress',
-            priority: 'High'
-          }
-        ]
-      },
-      '3': {
-        id: '3',
-        userId: 'investor_3',
-        name: 'Michael Chen',
-        title: 'Private Equity Investor',
-        email: 'michael.chen@pe.com',
-        phone: '+852 5 555 555',
-        address: '321 Private Equity Road',
-        city: 'Hong Kong',
-        province: 'Hong Kong',
-        country: 'Hong Kong',
-        investorType: 'Private Equity',
-        investmentExperience: 'Expert',
-        preferredSectors: ['Manufacturing', 'Logistics', 'Real Estate', 'Technology'],
-        investmentRange: '$5M - $50M',
-        netWorth: '$50,000,000',
-        annualIncome: '$2,000,000',
-        liquidAssets: '$15,000,000',
-        investmentPortfolio: '$25,000,000',
-        occupation: 'PE Managing Director',
-        company: 'Asia Pacific Capital',
-        experience: '25+ years',
-        riskTolerance: 'Moderate',
-        investmentGoals: 'Growth-stage investments in established companies with strong fundamentals and expansion potential.',
-        status: 'Active',
-        kycStatus: 'PENDING',
-        rating: 4.7,
-        reviews: 15,
-        completedInvestments: 5,
-        activeInvestments: 2,
-        totalReturns: '+12.8%',
-        documents: [
-          { name: 'Investment Certificate', type: 'PDF', size: '2.8 MB', uploaded: '2024-01-25' },
-          { name: 'Financial Statements', type: 'PDF', size: '4.1 MB', uploaded: '2024-01-22' },
-          { name: 'Regulatory Compliance', type: 'PDF', size: '1.7 MB', uploaded: '2024-01-19' }
-        ],
-        investments: [
-          { id: 1, company: 'Manufacturing Corp', amount: '$10M', status: 'Active', returns: '+15%', date: '2023-05-20' },
-          { id: 2, company: 'Logistics Platform', amount: '$8M', status: 'Active', returns: '+8%', date: '2023-10-12' },
-          { id: 3, company: 'Real Estate Fund', amount: '$15M', status: 'Pending', returns: 'N/A', date: '2024-01-15' }
-        ],
-        metrics: {
-          totalInvested: '$33M',
-          averageReturn: '+12.8%',
-          successRate: '95%',
-          portfolioGrowth: '+18%'
-        },
-        timelineEvents: [
-          {
-            id: 1,
-            title: 'PE Fund Launch',
-            description: 'Successfully launched Asia Pacific Capital PE Fund',
-            date: '2023-01-10',
-            type: 'Fund Launch',
-            status: 'Completed',
-            priority: 'Critical'
-          },
-          {
-            id: 2,
-            title: 'Manufacturing Corp Investment',
-            description: 'Closed $10M growth investment in Manufacturing Corp',
-            date: '2023-05-20',
-            type: 'Investment',
-            status: 'Completed',
-            priority: 'Critical'
-          },
-          {
-            id: 3,
-            title: 'Operational Review',
-            description: 'Conducted comprehensive operational review of portfolio companies',
-            date: '2023-08-15',
-            type: 'Review',
-            status: 'Completed',
-            priority: 'High'
-          },
-          {
-            id: 4,
-            title: 'Exit Negotiations',
-            description: 'Initiated exit negotiations for Logistics Platform investment',
-            date: '2023-12-01',
-            type: 'Exit',
-            status: 'In Progress',
-            priority: 'High'
-          },
-          {
-            id: 5,
-            title: 'New Fund Planning',
-            description: 'Started planning for Fund II launch in 2024',
-            date: '2024-01-05',
-            type: 'Planning',
-            status: 'In Progress',
-            priority: 'Medium'
-          }
-        ]
-      }
-    }
-
-    return investors[id as keyof typeof investors] || investors['1']
-  }
-
-  const investor = getInvestorData(params.id as string)
 
   const tabs = [
     { id: 'overview', name: t('common.overview'), icon: Eye },
@@ -739,6 +538,14 @@ export default function InvestorProfilePage() {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
+      </div>
+    )
+  }
+
+  if (!investor) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white">
+        Investor not found.
       </div>
     )
   }
