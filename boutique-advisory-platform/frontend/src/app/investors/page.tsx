@@ -277,10 +277,24 @@ export default function InvestorsPage() {
                     <p className="text-gray-400 text-sm">{investor.type}</p>
                   </div>
                   <div className="flex flex-col items-end gap-1">
-                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${investor.kycStatus === 'VERIFIED' ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-500/20 text-gray-400'
-                      }`}>
-                      {investor.kycStatus === 'VERIFIED' ? `✅ ${t('advisory.kycVerified')}` : `⏳ ${t('advisory.kycPending')}`}
-                    </span>
+                    {(() => {
+                      const status = investor.kycStatus || 'PENDING';
+                      let config = { color: 'bg-gray-500/20 text-gray-400', icon: '⏳', label: t('advisory.kycPending') || 'Pending' };
+
+                      if (status === 'VERIFIED') {
+                        config = { color: 'bg-blue-500/20 text-blue-400', icon: '✅', label: t('advisory.kycVerified') || 'Verified' };
+                      } else if (status === 'REJECTED') {
+                        config = { color: 'bg-red-500/20 text-red-400', icon: '❌', label: 'Rejected' };
+                      } else if (status === 'UNDER_REVIEW') {
+                        config = { color: 'bg-yellow-500/20 text-yellow-400', icon: '👀', label: 'Under Review' };
+                      }
+
+                      return (
+                        <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${config.color}`}>
+                          {`${config.icon} ${config.label}`}
+                        </span>
+                      );
+                    })()}
                     <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${investor.preferences?.status === 'Active' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
                       }`}>
                       {investor.preferences?.status || 'Active'}

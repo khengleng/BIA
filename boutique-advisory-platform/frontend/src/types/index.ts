@@ -37,7 +37,7 @@ export interface Investor {
     userId?: string
     name: string
     type: string
-    kycStatus?: 'PENDING' | 'VERIFIED' | 'REJECTED'
+    kycStatus?: 'PENDING' | 'VERIFIED' | 'REJECTED' | 'UNDER_REVIEW'
     preferences: {
         portfolioValue?: string
         activeInvestments?: string
