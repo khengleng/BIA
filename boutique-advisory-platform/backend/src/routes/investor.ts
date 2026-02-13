@@ -67,10 +67,27 @@ router.get('/', authorize('investor.list'), async (req: AuthenticatedRequest, re
 router.get('/profile', async (req: any, res: Response) => {
   try {
     const userId = req.user?.id;
-    const investor = await prisma.investor.findUnique({
+    let investor = await prisma.investor.findUnique({
       where: { userId },
       include: { user: true }
     });
+
+    // Auto-onboard Admin as Platform Operator (Investor)
+    if (!investor && (req.user?.role === 'ADMIN' || req.user?.role === 'SUPER_ADMIN')) {
+      const userDetail = await prisma.user.findUnique({ where: { id: userId } });
+      if (userDetail) {
+        investor = await prisma.investor.create({
+          data: {
+            userId: userDetail.id,
+            tenantId: userDetail.tenantId,
+            name: `${userDetail.firstName} ${userDetail.lastName}`,
+            type: 'INSTITUTIONAL',
+            kycStatus: 'VERIFIED'
+          },
+          include: { user: true }
+        }) as any;
+      }
+    }
 
     if (!investor) {
       return res.status(404).json({ error: 'Investor not found' });
@@ -95,9 +112,25 @@ router.get('/portfolio/stats', authorize('investor.read', { getOwnerId: (req) =>
     const userId = req.user?.id;
 
     // Get investor profile
-    const investor = await prisma.investor.findUnique({
+    let investor = await prisma.investor.findUnique({
       where: { userId }
     });
+
+    // Auto-onboard Admin as Platform Operator (Investor)
+    if (!investor && (req.user?.role === 'ADMIN' || req.user?.role === 'SUPER_ADMIN')) {
+      const userDetail = await prisma.user.findUnique({ where: { id: userId } });
+      if (userDetail) {
+        investor = await prisma.investor.create({
+          data: {
+            userId: userDetail.id,
+            tenantId: userDetail.tenantId,
+            name: `${userDetail.firstName} ${userDetail.lastName}`,
+            type: 'INSTITUTIONAL',
+            kycStatus: 'VERIFIED'
+          }
+        }) as any;
+      }
+    }
 
     if (!investor) {
       return res.status(404).json({ error: 'Investor profile not found' });

@@ -340,18 +340,11 @@ router.post('/services', authorize('advisory_service.create'), async (req: Authe
             where: { userId }
         });
 
-        if (!advisor && userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
-            return res.status(404).json({ error: 'Advisor profile not found' });
+        if (!advisor) {
+            return res.status(403).json({ error: 'Only registered Advisors can create advisory services' });
         }
 
-        // If admin, they can specify advisorId, otherwise use their own
-        const advisorId = userRole === 'ADMIN' && req.body.advisorId
-            ? req.body.advisorId
-            : advisor?.id;
-
-        if (!advisorId) {
-            return res.status(400).json({ error: 'Advisor ID is required' });
-        }
+        const advisorId = advisor.id;
 
         const service = await prisma.advisoryService.create({
             data: {
