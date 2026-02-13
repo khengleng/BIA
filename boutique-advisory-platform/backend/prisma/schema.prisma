@@ -63,6 +63,7 @@ model User {
   isEmailVerified      Boolean   @default(false)
   verificationToken    String?
   verificationTokenExpiry DateTime?
+  preferences          Json      @default("{}")
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

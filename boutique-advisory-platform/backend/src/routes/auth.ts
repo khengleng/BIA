@@ -444,11 +444,54 @@ router.get('/me', async (req: Request, res: Response) => {
         role: user.role,
         firstName: user.firstName,
         lastName: user.lastName,
-        twoFactorEnabled: user.twoFactorEnabled
+        twoFactorEnabled: user.twoFactorEnabled,
+        language: user.language,
+        preferences: user.preferences
       }
     });
   } catch (error) {
     console.error('Get user error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Update user profile
+router.put('/profile', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const { firstName, lastName, language, preferences } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    // Validate inputs
+    if (firstName && firstName.length > 100) return res.status(400).json({ error: 'First name too long' });
+    if (lastName && lastName.length > 100) return res.status(400).json({ error: 'Last name too long' });
+
+    // Update user
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(firstName && { firstName }),
+        ...(lastName && { lastName }),
+        ...(language && { language }),
+        ...(preferences && { preferences: preferences as any }),
+      }
+    });
+
+    return res.json({
+      id: updatedUser.id,
+      email: updatedUser.email,
+      role: updatedUser.role,
+      firstName: updatedUser.firstName,
+      lastName: updatedUser.lastName,
+      twoFactorEnabled: updatedUser.twoFactorEnabled,
+      language: updatedUser.language,
+      preferences: updatedUser.preferences
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

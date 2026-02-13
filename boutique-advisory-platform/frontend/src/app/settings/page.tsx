@@ -239,7 +239,7 @@ export default function SettingsPage() {
   const handleSavePreferences = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${API_URL}/api/users/profile`, {
+      const response = await fetch(`${API_URL}/api/auth/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
