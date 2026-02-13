@@ -301,12 +301,15 @@ router.post('/:id/join', authorize('syndicate.join'), async (req: AuthenticatedR
             return;
         }
 
+        const isLeadInvestor = syndicate.leadInvestorId === investor.id;
+        const initialStatus = isLeadInvestor ? 'APPROVED' : 'PENDING';
+
         const member = await prisma.syndicateMember.create({
             data: {
                 syndicateId: req.params.id,
                 investorId: investor.id,
                 amount,
-                status: 'PENDING'
+                status: initialStatus
             },
             include: {
                 investor: {
@@ -316,7 +319,7 @@ router.post('/:id/join', authorize('syndicate.join'), async (req: AuthenticatedR
         });
 
         res.status(201).json({
-            message: 'Join request submitted',
+            message: isLeadInvestor ? 'Joined successfully (GP Commitment Auto-approved)' : 'Join request submitted',
             member
         });
     } catch (error) {
