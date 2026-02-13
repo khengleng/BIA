@@ -60,6 +60,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 return;
             }
 
+            // Optimistic load for instant navigation
+            const storedUser = localStorage.getItem('user')
+            if (storedUser) {
+                try {
+                    setUser(JSON.parse(storedUser))
+                    setIsLoading(false)
+                } catch (e) {
+                    // Invalid JSON, ignore
+                }
+            }
+
             try {
                 // Check if token exists before making request
                 const token = localStorage.getItem('token');
