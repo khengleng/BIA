@@ -191,16 +191,16 @@ router.post('/', authorize('syndicate.create'), async (req: AuthenticatedRequest
 
         const syndicate = await prisma.syndicate.create({
             data: {
-                tenantId: 'default',
+                tenantId: investor.tenantId,
                 name,
                 description,
                 leadInvestorId: investor.id,
-                targetAmount,
-                minInvestment: minInvestment || 1000,
-                maxInvestment,
-                managementFee: managementFee || 2.0,
-                carryFee: carryFee || 20.0,
-                dealId,
+                targetAmount: Number(targetAmount),
+                minInvestment: minInvestment ? Number(minInvestment) : 1000,
+                maxInvestment: maxInvestment ? Number(maxInvestment) : null,
+                managementFee: managementFee ? Number(managementFee) : 2.0,
+                carryFee: carryFee ? Number(carryFee) : 20.0,
+                dealId: dealId || null,
                 closingDate: closingDate ? new Date(closingDate) : null,
                 status: 'FORMING'
             },
