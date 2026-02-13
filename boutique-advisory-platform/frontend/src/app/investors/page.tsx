@@ -392,12 +392,11 @@ export default function InvestorsPage() {
                       className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="">Select Type</option>
-                      <option value="Angel Investor">Angel Investor</option>
-                      <option value="Venture Capital">Venture Capital</option>
-                      <option value="Private Equity">Private Equity</option>
-                      <option value="Institutional">Institutional</option>
-                      <option value="Corporate">Corporate</option>
-                      <option value="Family Office">Family Office</option>
+                      <option value="ANGEL">Angel Investor</option>
+                      <option value="VENTURE_CAPITAL">Venture Capital</option>
+                      <option value="PRIVATE_EQUITY">Private Equity</option>
+                      <option value="INSTITUTIONAL">Institutional</option>
+                      <option value="CORPORATE">Corporate</option>
                     </select>
                   </div>
 
@@ -458,10 +457,9 @@ export default function InvestorsPage() {
                       className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="">Select Status</option>
-                      <option value="Active">Active</option>
-                      <option value="Inactive">Inactive</option>
-                      <option value="Suspended">Suspended</option>
-                      <option value="Pending">Pending</option>
+                      <option value="ACTIVE">Active</option>
+                      <option value="INACTIVE">Inactive</option>
+                      <option value="SUSPENDED">Suspended</option>
                     </select>
                   </div>
                 </div>
