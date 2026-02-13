@@ -366,8 +366,9 @@ router.post('/login', async (req: Request, res: Response) => {
     }
 
     // SECURITY: Check if email is verified
-    // Allow SUPER_ADMIN and ADMIN to bypass this check to prevent lockout during setup
-    if (!user.isEmailVerified && user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN') {
+    // Allow SUPER_ADMIN to bypass this check to prevent lockout during setup
+    // Removed ADMIN from bypass to enforce verification
+    if (!user.isEmailVerified && user.role !== 'SUPER_ADMIN') {
       await logAuditEvent({
         userId: user.id,
         action: 'LOGIN_BLOCKED',
