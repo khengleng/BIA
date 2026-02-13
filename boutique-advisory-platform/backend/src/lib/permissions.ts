@@ -236,6 +236,7 @@ export const PERMISSIONS: Record<string, string[]> = {
 
     // ==================== Admin Permissions ====================
     'admin.read': ['SUPER_ADMIN', 'ADMIN'],
+    'admin.dashboard_view': ['SUPER_ADMIN', 'ADMIN'],
     'admin.user_manage': ['SUPER_ADMIN', 'ADMIN'],
     'admin.tenant_manage': ['SUPER_ADMIN'],
     'admin.system_config': ['SUPER_ADMIN'],
