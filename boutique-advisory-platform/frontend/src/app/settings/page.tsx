@@ -52,6 +52,13 @@ export default function SettingsPage() {
   const [deleteConfirmation, setDeleteConfirmation] = useState('')
   const [isDeleting, setIsDeleting] = useState(false)
 
+  // Preferences State
+  const [preferences, setPreferences] = useState({
+    language: 'en',
+    timezone: 'UTC+7',
+    currency: 'USD'
+  })
+
   const handleUpdatePassword = async () => {
     if (newPassword !== confirmPassword) {
       alert('New passwords do not match')
@@ -227,6 +234,40 @@ export default function SettingsPage() {
     }
   }
 
+
+
+  const handleSavePreferences = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`${API_URL}/api/users/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          language: preferences.language,
+          preferences: {
+            timezone: preferences.timezone,
+            currency: preferences.currency
+          }
+        })
+      })
+
+      if (response.ok) {
+        const updatedUser = await response.json()
+        setUser(updatedUser)
+        localStorage.setItem('user', JSON.stringify(updatedUser))
+        alert('Preferences saved successfully!')
+      } else {
+        alert('Failed to save preferences')
+      }
+    } catch (error) {
+      console.error('Error saving preferences:', error)
+      alert('An error occurred')
+    }
+  }
+
   useEffect(() => {
     // Get user data from localStorage
     const fetchUser = async () => {
@@ -242,6 +283,14 @@ export default function SettingsPage() {
         // Parse user data from localStorage
         const parsedUser = JSON.parse(userData)
         setUser(parsedUser)
+
+        // Load preferences if available
+        if (parsedUser.preferences) {
+          setPreferences(prev => ({ ...prev, ...parsedUser.preferences }))
+        }
+        if (parsedUser.language) {
+          setPreferences(prev => ({ ...prev, language: parsedUser.language }))
+        }
 
         // Fetch fresh status including 2FA
         const meResponse = await fetch(`${API_URL}/api/auth/me`, {
@@ -652,7 +701,11 @@ export default function SettingsPage() {
                   <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 space-y-6">
                     <div>
                       <label className="block text-sm font-medium text-gray-300 mb-2">Language</label>
-                      <select className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <select
+                        value={preferences.language}
+                        onChange={(e) => setPreferences({ ...preferences, language: e.target.value })}
+                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
                         <option value="en">English (US)</option>
                         <option value="km">Khmer (ភាសាខ្មែរ)</option>
                         <option value="zh">Chinese (中文)</option>
@@ -662,7 +715,11 @@ export default function SettingsPage() {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-300 mb-2">Timezone</label>
-                      <select className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <select
+                        value={preferences.timezone}
+                        onChange={(e) => setPreferences({ ...preferences, timezone: e.target.value })}
+                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
                         <option value="UTC+7">Indochina Time (ICT) - UTC+07:00</option>
                         <option value="UTC+0">Coordinated Universal Time (UTC)</option>
                         <option value="UTC+8">Singapore Standard Time (SST) - UTC+08:00</option>
@@ -672,7 +729,11 @@ export default function SettingsPage() {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-300 mb-2">Currency Display</label>
-                      <select className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <select
+                        value={preferences.currency}
+                        onChange={(e) => setPreferences({ ...preferences, currency: e.target.value })}
+                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
                         <option value="USD">USD ($)</option>
                         <option value="KHR">KHR (៛)</option>
                       </select>
@@ -681,7 +742,10 @@ export default function SettingsPage() {
                   </div>
 
                   <div className="flex justify-end">
-                    <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg" onClick={() => alert('Preferences saved!')}>
+                    <button
+                      onClick={handleSavePreferences}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+                    >
                       Save Preferences
                     </button>
                   </div>

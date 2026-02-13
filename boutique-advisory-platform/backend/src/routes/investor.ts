@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
 import { prisma } from '../database';
 import { validateBody, updateInvestorSchema } from '../middleware/validation';
 import { authorize, AuthenticatedRequest } from '../middleware/authorize';
@@ -63,7 +63,6 @@ router.get('/', authorize('investor.list'), async (req: AuthenticatedRequest, re
   }
 });
 
-
 // Get current investor profile
 router.get('/profile', async (req: any, res: Response) => {
   try {
@@ -90,28 +89,38 @@ router.get('/profile', async (req: any, res: Response) => {
   }
 });
 
-// Get investor portfolio analytics
+// Get investor portfolio analytics (REAL DATA)
 router.get('/portfolio/stats', authorize('investor.read', { getOwnerId: (req) => req.user?.id }), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user?.id;
 
-    // Get investor profile with investments
+    // Get investor profile
     const investor = await prisma.investor.findUnique({
-      where: { userId },
+      where: { userId }
+    });
+
+    if (!investor) {
+      return res.status(404).json({ error: 'Investor profile not found' });
+    }
+
+    // 1. Get all completed/approved investments
+    // We filter for investments that are effectively part of the portfolio
+    // For MVP, APPROVED counts as "Active Position", COMPLETED counts as "Funded"
+    const investments = await prisma.dealInvestor.findMany({
+      where: {
+        investorId: investor.id,
+        status: { in: ['COMPLETED', 'APPROVED'] }
+      },
       include: {
-        dealInvestments: {
+        deal: {
           include: {
-            deal: {
-              include: {
-                sme: true
-              }
-            }
+            sme: true
           }
         }
       }
     });
 
-    if (!investor) {
+    if (investments.length === 0) {
       return res.json({
         summary: {
           totalAum: 0,
@@ -124,25 +133,25 @@ router.get('/portfolio/stats', authorize('investor.read', { getOwnerId: (req) =>
       });
     }
 
-    // Calculate Portfolio Metrics
-    const investments = investor.dealInvestments;
-    // Calculate total value based on invested amount
-    const totalValue = investments.reduce((sum, inv) => sum + (inv.amount || 0), 0);
-    const activePositions = investments.filter(inv => ['APPROVED', 'COMPLETED', 'PENDING'].includes(inv.status)).length;
+    // 2. Calculate Portfolio Metrics
+    const totalAum = investments.reduce((sum, inv) => sum + (inv.amount || 0), 0);
+    const activePositions = investments.length;
+    // Find the earliest investment date
+    const startDate = investments.reduce((earliest, inv) => {
+      return inv.createdAt < earliest ? inv.createdAt : earliest;
+    }, new Date());
 
-    // Calculate Sector Allocation
+    // 3. Calculate Sector Allocation
     const sectorMap = new Map<string, number>();
 
     investments.forEach(inv => {
-      // Use dealing's SME sector or default
       const sector = inv.deal?.sme?.sector || 'General';
       const current = sectorMap.get(sector) || 0;
       sectorMap.set(sector, current + (inv.amount || 0));
     });
 
     const sectors = Array.from(sectorMap.entries()).map(([sector, amount]) => {
-      // Avoid division by zero
-      const percentage = totalValue > 0 ? (amount / totalValue) * 100 : 0;
+      const percentage = totalAum > 0 ? (amount / totalAum) * 100 : 0;
 
       return {
         sector,
@@ -150,29 +159,53 @@ router.get('/portfolio/stats', authorize('investor.read', { getOwnerId: (req) =>
         value: amount,
         color: getColorForSector(sector)
       };
-    }).sort((a, b) => b.value - a.value); // Sort by largest allocation
+    }).sort((a, b) => b.value - a.value);
 
-    // Format individual portfolio items for the list
+    // 4. Format individual portfolio items
     const portfolioItems = investments.map(inv => {
-      const percentage = totalValue > 0 ? (inv.amount / totalValue) * 100 : 0;
+      const percentage = totalAum > 0 ? (inv.amount / totalAum) * 100 : 0;
 
       return {
         id: inv.dealId,
+        investmentId: inv.id, // Primary Key of DealInvestor
         name: inv.deal?.sme?.name || 'Unknown Company',
         sector: inv.deal?.sme?.sector || 'General',
         allocation: parseFloat(percentage.toFixed(1)),
         value: inv.amount,
-        returns: calculateMockReturns(inv.amount, inv.status),
+        // Placeholder: Real ROI requires secondary market data or valuation updates
+        returns: 0,
         color: getColorForSector(inv.deal?.sme?.sector || 'General')
       };
     });
 
+    // 5. Calculate Realized ROI from Secondary Trades
+    // Fetch all completed sales where this investor was the seller
+    const completedSales = await prisma.secondaryTrade.findMany({
+      where: {
+        sellerId: investor.id,
+        status: 'COMPLETED'
+      }
+    });
+
+    let realizedRoi = 0;
+    if (completedSales.length > 0) {
+      const totalRevenue = completedSales.reduce((sum, trade) => sum + trade.totalAmount, 0);
+      const totalCostBasis = completedSales.reduce((sum, trade) => sum + trade.shares, 0); // Assuming 1 share = $1 original value
+      const totalFees = completedSales.reduce((sum, trade) => sum + trade.fee, 0);
+
+      const netProfit = totalRevenue - totalCostBasis - totalFees;
+
+      if (totalCostBasis > 0) {
+        realizedRoi = parseFloat(((netProfit / totalCostBasis) * 100).toFixed(2));
+      }
+    }
+
     return res.json({
       summary: {
-        totalAum: totalValue,
+        totalAum,
         activePositions,
-        realizedRoi: 12.5, // Mocked for now
-        startDate: investor.createdAt
+        realizedRoi,
+        startDate
       },
       sectors: sectors,
       items: portfolioItems
@@ -275,48 +308,15 @@ router.put('/:id', authorize('investor.update'), validateBody(updateInvestorSche
   }
 });
 
-// Verify Investor KYC (Mock)
+/*
+[DEPRECATED] Verify Investor KYC (Mock)
+This endpoint is disabled in production to enforce strict KYC via Sumsub/Stripe.
+To re-enable for testing, uncomment below or set ENABLE_MOCK_KYC=true env var.
+
 router.post('/:id/kyc', authorize('investor.verify'), async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const { id } = req.params;
-    const userId = req.user?.id;
-    const userRole = req.user?.role;
-
-    // Only Admin or the Investor themselves (via self-service) can trigger KYC
-    // In a real app, this would call an external service like Sumsub or Jumio
-    const investor = await prisma.investor.findUnique({ where: { id } });
-
-    if (!investor) {
-      return res.status(404).json({ error: 'Investor not found' });
-    }
-
-    // Mock verification logic
-    const kycResult = {
-      status: 'VERIFIED',
-      verifiedAt: new Date(),
-      provider: 'MockKYC-SEC-Certified',
-      score: 95
-    };
-
-    const updatedInvestor = await prisma.investor.update({
-      where: { id },
-      data: {
-        kycStatus: 'VERIFIED'
-      }
-    });
-
-    return res.json({
-      message: 'KYC Verification Successful',
-      investor: updatedInvestor,
-      details: kycResult
-    });
-  } catch (error) {
-    console.error('KYC Verification error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
+  // Mock logic removed for production safety
 });
-
-
+*/
 
 // Submit KYC details
 router.post('/kyc-submit', async (req: any, res: Response) => {
@@ -337,7 +337,7 @@ router.post('/kyc-submit', async (req: any, res: Response) => {
         preferences: {
           ...(investor.preferences as any),
           nationality,
-          idNumber: encrypt(idNumber),
+          idNumber: encrypt(idNumber), // Always encrypt PII at rest
           fullName
         } as any
       }
@@ -389,8 +389,6 @@ router.post('/kyc-token', authorize('investor.update', { getOwnerId: (req) => re
   }
 });
 
-
-
 function getColorForSector(sector: string): string {
   const colors: any = {
     'Technology': 'bg-blue-500',
@@ -406,12 +404,4 @@ function getColorForSector(sector: string): string {
   return colors[sector] || 'bg-gray-500';
 }
 
-function calculateMockReturns(amount: number, status: string): number {
-  if (status === 'PENDING') return 0;
-  // Generate a deterministic random-looking return based on amount
-  const seed = (amount % 17) - 5;
-  return parseFloat(seed.toFixed(1));
-}
-
 export default router;
-

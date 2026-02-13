@@ -157,7 +157,10 @@ export default function SecondaryTradingPage() {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ shares: parseFloat(buyShares) })
+                body: JSON.stringify({
+                    shares: parseFloat(buyShares),
+                    simulate_payment: true // DEMO: Enable immediate execution
+                })
             })
 
             if (response.ok) {

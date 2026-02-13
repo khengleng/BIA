@@ -178,10 +178,10 @@ function SMEDashboard({ user, t, stats }: { user: User; t: any; stats: any }) {
 // Investor Dashboard Component
 function InvestorDashboard({ t, stats }: { t: any; stats: any }) {
   const dashboardStats = [
-    { label: t('dashboard.portfolioValue') || 'Portfolio Value', value: stats?.portfolioValue ? `$${(stats.portfolioValue / 1000).toFixed(0)}K` : '$0', icon: DollarSign, color: 'text-green-500' },
-    { label: t('dashboard.activeInvestments') || 'Active Investments', value: stats?.activeInvestments || '0', icon: TrendingUp, color: 'text-blue-500' },
-    { label: 'Match Score', value: stats?.avgMatchScore ? `${stats.avgMatchScore}%` : '0%', icon: BarChart3, color: 'text-purple-500' },
-    { label: 'Pending Offers', value: stats?.pendingOffers || '0', icon: Clock, color: 'text-yellow-500' }
+    { label: t('dashboard.portfolioValue') || 'Portfolio Value', value: stats?.portfolioValue ? `$${(stats.portfolioValue / 1000).toFixed(0)}K` : '$0', icon: DollarSign, color: 'text-green-500', link: '/investor/portfolio' },
+    { label: t('dashboard.activeInvestments') || 'Active Investments', value: stats?.activeInvestments || '0', icon: TrendingUp, color: 'text-blue-500', link: '/investor/portfolio' },
+    { label: 'Match Score', value: stats?.avgMatchScore ? `${stats.avgMatchScore}%` : '0%', icon: BarChart3, color: 'text-purple-500', link: '/matches' },
+    { label: 'Pending Offers', value: stats?.pendingOffers || '0', icon: Clock, color: 'text-yellow-500', link: '/deals' }
   ]
 
   return (
@@ -190,17 +190,19 @@ function InvestorDashboard({ t, stats }: { t: any; stats: any }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {dashboardStats.map((stat: any, index: number) => (
-          <div key={index} className="bg-gray-800 rounded-lg p-6">
-            <div className="flex items-center">
-              <div className={`p-2 rounded-lg bg-gray-700 ${stat.color}`}>
-                <stat.icon className="w-6 h-6" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-400">{stat.label}</p>
-                <p className="text-2xl font-bold text-white">{stat.value}</p>
+          <Link href={stat.link} key={index} className="block group">
+            <div className="bg-gray-800 rounded-lg p-6 group-hover:bg-gray-700 transition-colors cursor-pointer border border-transparent group-hover:border-gray-600">
+              <div className="flex items-center">
+                <div className={`p-2 rounded-lg bg-gray-700 ${stat.color} group-hover:bg-gray-600`}>
+                  <stat.icon className="w-6 h-6" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-400 group-hover:text-gray-300 transition-colors">{stat.label}</p>
+                  <p className="text-2xl font-bold text-white">{stat.value}</p>
+                </div>
               </div>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
 

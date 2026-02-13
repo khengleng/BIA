@@ -304,6 +304,22 @@ router.post('/login', async (req: Request, res: Response) => {
       });
     }
 
+    // SECURITY: Check if email is verified
+    if (!user.isEmailVerified) {
+      await logAuditEvent({
+        userId: user.id,
+        action: 'LOGIN_BLOCKED',
+        resource: 'auth',
+        details: { email: sanitizedEmail, reason: 'email_not_verified' },
+        ipAddress: clientIp,
+        success: false,
+        errorMessage: 'Email not verified'
+      });
+      return res.status(403).json({
+        error: 'Please verify your email address before logging in. Check your inbox for the verification link.'
+      });
+    }
+
     // SECURITY: Check if account is active
     if (user.status !== 'ACTIVE') {
       await logAuditEvent({

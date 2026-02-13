@@ -6,6 +6,7 @@ import { authorizedRequest } from '../lib/api'
 import SumsubKyc from './SumsubKyc'
 import { useToast } from '../contexts/ToastContext'
 import FileDisputeModal from './FileDisputeModal'
+import SellPositionModal from './SellPositionModal'
 import { ShieldAlert } from 'lucide-react'
 
 interface PortfolioSummary {
@@ -24,6 +25,7 @@ interface SectorAllocation {
 
 interface PortfolioItem {
     id: string
+    investmentId?: string
     name: string
     sector: string
     allocation: number
@@ -46,6 +48,8 @@ export default function PortfolioOverview() {
     const [items, setItems] = useState<PortfolioItem[]>([])
     const [showDisputeModal, setShowDisputeModal] = useState(false)
     const [selectedDeal, setSelectedDeal] = useState<{ id: string; name: string } | null>(null)
+    const [showSellModal, setShowSellModal] = useState(false)
+    const [selectedSellItem, setSelectedSellItem] = useState<PortfolioItem | null>(null)
 
     useEffect(() => {
         fetchPortfolioData()
@@ -191,6 +195,21 @@ export default function PortfolioOverview() {
                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation();
+                                            if (item.investmentId) {
+                                                setSelectedSellItem(item);
+                                                setShowSellModal(true);
+                                            } else {
+                                                addToast('error', 'Cannot sell this item');
+                                            }
+                                        }}
+                                        className="p-2 hover:bg-green-500/20 text-green-400/60 hover:text-green-400 rounded-lg transition-colors"
+                                        title="Sell Position"
+                                    >
+                                        <DollarSign className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
                                             setSelectedDeal({ id: item.id, name: item.name });
                                             setShowDisputeModal(true);
                                         }}
@@ -226,6 +245,19 @@ export default function PortfolioOverview() {
                     onClose={() => setShowDisputeModal(false)}
                     onSuccess={() => {
                         setShowDisputeModal(false);
+                    }}
+                />
+            )}
+            {/* Sell Modal */}
+            {showSellModal && selectedSellItem && selectedSellItem.investmentId && (
+                <SellPositionModal
+                    investmentId={selectedSellItem.investmentId}
+                    dealName={selectedSellItem.name}
+                    currentValue={selectedSellItem.value}
+                    onClose={() => setShowSellModal(false)}
+                    onSuccess={() => {
+                        setShowSellModal(false);
+                        fetchPortfolioData();
                     }}
                 />
             )}

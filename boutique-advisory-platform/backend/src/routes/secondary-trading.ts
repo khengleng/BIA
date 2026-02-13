@@ -285,6 +285,60 @@ router.post('/listings/:id/buy', authorize('secondary_trading.buy'), async (req:
             { tradeId: trade.id, listingId: listing.id, buyerId: buyer.id }
         );
 
+        // DEMO MODE: Auto-execute if requested
+        if (req.body.simulate_payment) {
+            await prisma.$transaction(async (tx) => {
+                // 1. Mark trade as completed
+                await tx.secondaryTrade.update({
+                    where: { id: trade.id },
+                    data: { status: 'COMPLETED', executedAt: new Date() }
+                });
+
+                // 2. Deduct from Seller
+                await tx.dealInvestor.update({
+                    where: { id: listing.dealInvestorId },
+                    data: { amount: { decrement: shares } }
+                });
+
+                // 3. Asset Transfer Logic
+                // Fetch seller investment to get Deal ID
+                const sellerInv = await tx.dealInvestor.findUnique({ where: { id: listing.dealInvestorId } });
+
+                if (!sellerInv) {
+                    throw new Error('Seller investment record not found');
+                }
+
+                const existingBuyerInv = await tx.dealInvestor.findUnique({
+                    where: { dealId_investorId: { dealId: sellerInv.dealId, investorId: buyer.id } }
+                });
+
+                if (existingBuyerInv) {
+                    await tx.dealInvestor.update({
+                        where: { id: existingBuyerInv.id },
+                        data: { amount: { increment: shares } }
+                    });
+                } else {
+                    await tx.dealInvestor.create({
+                        data: {
+                            dealId: sellerInv.dealId,
+                            investorId: buyer.id,
+                            amount: shares,
+                            status: 'APPROVED'
+                        }
+                    });
+                }
+            });
+
+            // Refetch updated trade
+            const completedTrade = await prisma.secondaryTrade.findUnique({ where: { id: trade.id } });
+
+            res.status(201).json({
+                trade: completedTrade,
+                message: 'Trade executed immediately (Simulation Mode)'
+            });
+            return;
+        }
+
         res.status(201).json({
             trade,
             clientSecret: escrow.client_secret,
@@ -365,7 +419,7 @@ router.get('/trades/my', authorize('secondary_trading.read'), async (req: Authen
     }
 });
 
-// Execute trade (admin only)
+// Execute trade (admin only or webhook)
 router.post('/trades/:id/execute', authorize('secondary_trading.execute'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
@@ -373,18 +427,90 @@ router.post('/trades/:id/execute', authorize('secondary_trading.execute'), async
             return;
         }
 
-        const trade = await prisma.secondaryTrade.update({
-            where: { id: req.params.id },
-            data: {
-                status: 'COMPLETED',
-                executedAt: new Date()
+        const tradeId = req.params.id;
+
+        await prisma.$transaction(async (tx) => {
+            // 1. Get and verify trade
+            const trade = await tx.secondaryTrade.findUnique({
+                where: { id: tradeId },
+                include: { listing: true }
+            });
+
+            if (!trade) {
+                throw new Error('Trade not found');
+            }
+
+            if (trade.status !== 'PENDING') {
+                throw new Error('Trade is not pending execution');
+            }
+
+            // 2. Mark trade as completed
+            await tx.secondaryTrade.update({
+                where: { id: tradeId },
+                data: {
+                    status: 'COMPLETED',
+                    executedAt: new Date()
+                }
+            });
+
+            // 3. Asset Transfer Logic
+            // We treat 'shares' as units of the original investment amount (e.g., $1 principal = 1 share)
+
+            // A. Deduct from Seller
+            // Verification: Ensure seller still has enough amount (in case of race conditions or multiple listings)
+            const sellerInvestment = await tx.dealInvestor.findUnique({
+                where: { id: trade.listing.dealInvestorId }
+            });
+
+            if (!sellerInvestment || sellerInvestment.amount < trade.shares) {
+                throw new Error('Seller has insufficient investment amount to transfer');
+            }
+
+            await tx.dealInvestor.update({
+                where: { id: trade.listing.dealInvestorId },
+                data: {
+                    amount: { decrement: trade.shares }
+                }
+            });
+
+            // B. Add to Buyer
+            // Check if buyer already has an investment in this deal
+            const dealId = sellerInvestment.dealId;
+            const buyerId = trade.buyerId;
+
+            const buyerInvestment = await tx.dealInvestor.findUnique({
+                where: {
+                    dealId_investorId: {
+                        dealId: dealId,
+                        investorId: buyerId
+                    }
+                }
+            });
+
+            if (buyerInvestment) {
+                await tx.dealInvestor.update({
+                    where: { id: buyerInvestment.id },
+                    data: {
+                        amount: { increment: trade.shares },
+                        status: 'APPROVED' // Ensure it's active
+                    }
+                });
+            } else {
+                await tx.dealInvestor.create({
+                    data: {
+                        dealId: dealId,
+                        investorId: buyerId,
+                        amount: trade.shares,
+                        status: 'APPROVED'
+                    }
+                });
             }
         });
 
-        res.json({ message: 'Trade executed', trade });
-    } catch (error) {
+        res.json({ message: 'Trade executed successfully' });
+    } catch (error: any) {
         console.error('Error executing trade:', error);
-        res.status(500).json({ error: 'Failed to execute trade' });
+        res.status(500).json({ error: error.message || 'Failed to execute trade' });
     }
 });
 
