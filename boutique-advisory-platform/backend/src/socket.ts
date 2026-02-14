@@ -111,9 +111,17 @@ export function initSocket(server: HttpServer) {
                 };
 
                 // Broadcast to all other participants in their personal rooms
-                conversation.participants.forEach((p: any) => {
-                    if (p.userId === user.userId) return; // Skip sender to avoid duplicates
-                    io.to(`user_${p.userId}`).emit('new_message', messagePayload);
+                // We fetch participant details to ensure we don't send to DELETED users
+                const participants = await (prisma as any).user.findMany({
+                    where: {
+                        id: { in: conversation.participants.map((p: any) => p.userId) },
+                        status: 'ACTIVE'
+                    }
+                });
+
+                participants.forEach((p: any) => {
+                    if (p.id === user.userId) return; // Skip sender to avoid duplicates
+                    io.to(`user_${p.id}`).emit('new_message', messagePayload);
                 });
 
                 console.log(`📡 Message broadcast to ${conversation.participants.length} participants in conversation ${data.conversationId}`);
