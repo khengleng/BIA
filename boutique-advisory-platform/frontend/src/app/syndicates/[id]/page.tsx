@@ -62,6 +62,12 @@ interface Syndicate {
     managementFee: number
     carryFee: number
     status: string
+    isTokenized: boolean
+    tokenName?: string
+    tokenSymbol?: string
+    pricePerToken?: number
+    totalTokens?: number
+    tokensSold?: number
     deal?: {
         id: string
         title: string
@@ -262,6 +268,48 @@ export default function SyndicateDetailsPage() {
                             </div>
                         </div>
 
+                        {/* Token Details (if tokenized) */}
+                        {syndicate.isTokenized && (
+                            <div className="bg-gradient-to-r from-blue-900/40 to-cyan-900/40 rounded-xl p-6 border border-blue-500/30">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></div>
+                                        Tokenized Asset Details
+                                    </h3>
+                                    <div className="flex items-center gap-2 px-3 py-1 bg-cyan-500/10 rounded-full border border-cyan-500/20">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+                                        <span className="text-xs font-bold text-cyan-300 uppercase tracking-widest">Secondary Market Ready</span>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                                    <div>
+                                        <p className="text-gray-400 text-xs uppercase font-bold tracking-wider mb-1">Token Name</p>
+                                        <p className="text-white font-bold">{syndicate.tokenName}</p>
+                                        <p className="text-cyan-400 text-xs font-mono">{syndicate.tokenSymbol}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-gray-400 text-xs uppercase font-bold tracking-wider mb-1">Price</p>
+                                        <p className="text-white font-bold text-xl">${syndicate.pricePerToken}</p>
+                                        <p className="text-gray-500 text-xs">per token</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-gray-400 text-xs uppercase font-bold tracking-wider mb-1">Supply</p>
+                                        <p className="text-white font-bold text-xl">{syndicate.totalTokens?.toLocaleString()}</p>
+                                        <p className="text-gray-500 text-xs">total tokens</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-gray-400 text-xs uppercase font-bold tracking-wider mb-1">Sold</p>
+                                        <p className="text-white font-bold text-xl">{syndicate.tokensSold?.toLocaleString()}</p>
+                                        <p className="text-cyan-400 text-xs font-bold flex items-center gap-1">
+                                            {syndicate.totalTokens ? ((syndicate.tokensSold || 0) / syndicate.totalTokens * 100).toFixed(1) : 0}%
+                                            <span className="text-gray-500 font-normal">sold</span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Members Section (Lead/Admin Only or Public Summary) */}
                         <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
                             <div className="p-6 border-b border-gray-700 flex justify-between items-center">
@@ -451,6 +499,16 @@ export default function SyndicateDetailsPage() {
                                     {syndicate.maxInvestment && ` | Max: $${syndicate.maxInvestment.toLocaleString()}`}
                                 </p>
                             </div>
+
+                            {syndicate.isTokenized && syndicate.pricePerToken && (
+                                <div className="bg-blue-900/30 border border-blue-500/30 rounded-lg p-3 flex justify-between items-center">
+                                    <span className="text-blue-300 text-sm">Estimated Tokens:</span>
+                                    <span className="text-white font-bold text-lg">
+                                        {joinAmount ? (parseFloat(joinAmount) / syndicate.pricePerToken).toLocaleString() : '0'}
+                                        <span className="text-blue-400 text-xs ml-1">{syndicate.tokenSymbol}</span>
+                                    </span>
+                                </div>
+                            )}
 
                             <div className="bg-gray-700/50 rounded-lg p-4">
                                 <div className="flex items-start gap-3">
