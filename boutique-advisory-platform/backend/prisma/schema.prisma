@@ -146,6 +146,11 @@ model Investor {
   tradesAsBuyer        SecondaryTrade[] @relation("TradeBuyer")
   tradesAsSeller       SecondaryTrade[] @relation("TradeSeller")
   matches              Match[]
+  
+  // Token Trading
+  tokenListings        SyndicateTokenListing[]
+  tokenTradesAsBuyer   SyndicateTokenTrade[] @relation("TokenTradeBuyer")
+  tokenTradesAsSeller  SyndicateTokenTrade[] @relation("TokenTradeSeller")
 
   @@map("investors")
 }
@@ -329,6 +334,7 @@ model Syndicate {
   leadInvestor    Investor @relation("LeadInvestor", fields: [leadInvestorId], references: [id])
   deal            Deal?    @relation(fields: [dealId], references: [id])
   members         SyndicateMember[]
+  tokenListings   SyndicateTokenListing[]
 
   @@map("syndicates")
 }
@@ -348,6 +354,55 @@ model SyndicateMember {
 
   @@unique([syndicateId, investorId])
   @@map("syndicate_members")
+}
+
+model SyndicateTokenListing {
+  id              String   @id @default(cuid())
+  syndicateId     String
+  sellerId        String   
+  
+  tokensAvailable Float
+  pricePerToken   Float
+  minTokens       Float    @default(1)
+  
+  status          ListingStatus @default(ACTIVE)
+  listedAt        DateTime @default(now())
+  expiresAt       DateTime?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  syndicate       Syndicate @relation(fields: [syndicateId], references: [id])
+  seller          Investor  @relation(fields: [sellerId], references: [id])
+  trades          SyndicateTokenTrade[]
+
+  @@map("syndicate_token_listings")
+}
+
+model SyndicateTokenTrade {
+  id              String   @id @default(cuid())
+  listingId       String
+  buyerId         String
+  sellerId        String
+  
+  tokens          Float
+  pricePerToken   Float
+  totalAmount     Float
+  fee             Float    @default(0)
+  
+  status          TradeStatus @default(PENDING)
+  executedAt      DateTime?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  listing         SyndicateTokenListing @relation(fields: [listingId], references: [id])
+  buyer           Investor              @relation("TokenTradeBuyer", fields: [buyerId], references: [id])
+  seller          Investor              @relation("TokenTradeSeller", fields: [sellerId], references: [id])
+
+  @@map("syndicate_token_trades")
 }
 
 // Due Diligence Scoring (like OurCrowd)
