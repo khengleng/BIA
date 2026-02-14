@@ -30,7 +30,8 @@ import {
   Briefcase,
   X,
   Plus,
-  Shield
+  Shield,
+  ArrowUpRight
 } from 'lucide-react'
 import { useTranslations } from '@/hooks/useTranslations'
 import AnalyticsDashboard from '@/components/analytics/AnalyticsDashboard'
@@ -83,6 +84,14 @@ interface Investor {
     successRate: string
     portfolioGrowth: string
   }
+  tokenHoldings: Array<{
+    syndicateId: string
+    syndicateName: string
+    tokenName: string
+    tokenSymbol: string
+    amount: number
+    tokens: number
+  }>
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   timelineEvents: any[]
 }
@@ -222,6 +231,17 @@ export default function InvestorProfilePage() {
             successRate: '0%',
             portfolioGrowth: '0%'
           },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          tokenHoldings: data.syndicateMemberships
+            ?.filter((m: any) => m.tokens > 0)
+            .map((m: any) => ({
+              syndicateId: m.syndicate?.id || 'unknown',
+              syndicateName: m.syndicate?.name || 'Unknown Fund',
+              tokenName: m.syndicate?.tokenName || 'Fund Token',
+              tokenSymbol: m.syndicate?.tokenSymbol || 'FND',
+              amount: m.amount,
+              tokens: m.tokens
+            })) || [],
           timelineEvents: data.preferences?.timelineEvents || []
         }
 
