@@ -90,7 +90,7 @@ export default function AdminDashboardPage() {
                             <Users className="w-4 h-4" />
                             Total Users
                         </div>
-                        <p className="text-3xl font-bold text-white">{stats?.users || 17}</p>
+                        <p className="text-3xl font-bold text-white">{stats?.users || 0}</p>
                     </div>
 
                     <div className="bg-gradient-to-br from-green-900/40 to-green-800/20 border border-green-700/50 rounded-xl p-5">
@@ -98,7 +98,7 @@ export default function AdminDashboardPage() {
                             <Building2 className="w-4 h-4" />
                             SMEs
                         </div>
-                        <p className="text-3xl font-bold text-white">{stats?.smes || 4}</p>
+                        <p className="text-3xl font-bold text-white">{stats?.smes || 0}</p>
                     </div>
 
                     <div className="bg-gradient-to-br from-purple-900/40 to-purple-800/20 border border-purple-700/50 rounded-xl p-5">
@@ -122,7 +122,7 @@ export default function AdminDashboardPage() {
                             <DollarSign className="w-4 h-4" />
                             Revenue
                         </div>
-                        <p className="text-2xl font-bold text-white">${(stats?.totalVolume || 1012750).toLocaleString()}</p>
+                        <p className="text-2xl font-bold text-white">${(stats?.totalVolume || 0).toLocaleString()}</p>
                     </div>
 
                     <div className="bg-gradient-to-br from-gray-900/40 to-gray-800/20 border border-gray-700/50 rounded-xl p-5">
@@ -130,7 +130,7 @@ export default function AdminDashboardPage() {
                             <UserX className="w-4 h-4" />
                             Deleted Users
                         </div>
-                        <p className="text-3xl font-bold text-white">{stats?.deletedUsers || 3}</p>
+                        <p className="text-3xl font-bold text-white">{stats?.deletedUsers || 0}</p>
                     </div>
                 </div>
 
