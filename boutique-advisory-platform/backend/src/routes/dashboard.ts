@@ -77,27 +77,41 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
             case 'INVESTOR': {
                 const investor = await prisma.investor.findUnique({ where: { userId } });
                 if (investor) {
-                    const [matchCount, investmentCount, activeOffers] = await Promise.all([
+                    const [matchCount, dealInvestmentCount, activeOffers, syndicateMembershipCount] = await Promise.all([
                         prisma.match.count({ where: { investorId: investor.id } }),
                         prisma.dealInvestor.count({ where: { investorId: investor.id, status: 'COMPLETED' } }),
-                        prisma.dealInvestor.count({ where: { investorId: investor.id, status: 'PENDING' } })
+                        prisma.dealInvestor.count({ where: { investorId: investor.id, status: 'PENDING' } }),
+                        prisma.syndicateMember.count({ where: { investorId: investor.id, status: 'APPROVED' } })
                     ]);
 
-                    // Calculate Portfolio Value
-                    const completedInvestments = await prisma.dealInvestor.findMany({
-                        where: {
-                            investorId: investor.id,
-                            status: 'COMPLETED'
-                        },
-                        select: { amount: true }
-                    });
-                    const portfolioValue = completedInvestments.reduce((sum, inv) => sum + inv.amount, 0);
+                    // Calculate Portfolio Value from both deals and syndicates
+                    const [completedDealInvestments, syndicateInvestments] = await Promise.all([
+                        prisma.dealInvestor.findMany({
+                            where: {
+                                investorId: investor.id,
+                                status: 'COMPLETED'
+                            },
+                            select: { amount: true }
+                        }),
+                        prisma.syndicateMember.findMany({
+                            where: {
+                                investorId: investor.id,
+                                status: 'APPROVED'
+                            },
+                            select: { amount: true }
+                        })
+                    ]);
+
+                    const dealPortfolioValue = completedDealInvestments.reduce((sum, inv) => sum + inv.amount, 0);
+                    const syndicatePortfolioValue = syndicateInvestments.reduce((sum, inv) => sum + inv.amount, 0);
+                    const portfolioValue = dealPortfolioValue + syndicatePortfolioValue;
 
                     stats = {
                         totalMatches: matchCount,
-                        activeInvestments: investmentCount,
+                        activeInvestments: dealInvestmentCount + syndicateMembershipCount,
                         pendingOffers: activeOffers,
                         portfolioValue,
+                        syndicateMemberships: syndicateMembershipCount,
                         avgMatchScore: 85 // This would require complex aggregation of match scores
                     };
                 }
@@ -134,7 +148,7 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
 
             case 'ADMIN':
             case 'SUPER_ADMIN': {
-                const [users, smes, investors, deals, revenue, deletedUsers, activeDisputesCount] = await Promise.all([
+                const [users, smes, investors, deals, bookingRevenue, deletedUsers, activeDisputesCount, syndicateRevenue, secondaryTradingRevenue, dealInvestments] = await Promise.all([
                     prisma.user.count({ where: { tenantId } }),
                     prisma.sME.count({ where: { tenantId } }),
                     prisma.investor.count({ where: { tenantId } }),
@@ -146,16 +160,39 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
                     prisma.user.count({ where: { status: 'DELETED' as any, tenantId } }),
                     (prisma as any).dispute.count({
                         where: { tenantId, status: { in: ['OPEN', 'IN_PROGRESS'] } }
+                    }),
+                    // Syndicate investments
+                    prisma.syndicateMember.aggregate({
+                        where: { syndicate: { tenantId }, status: 'APPROVED' },
+                        _sum: { amount: true }
+                    }),
+                    // Secondary trading fees (1% of trade volume)
+                    prisma.secondaryTrade.aggregate({
+                        where: { status: 'COMPLETED' },
+                        _sum: { fee: true }
+                    }),
+                    // Deal investments
+                    prisma.dealInvestor.aggregate({
+                        where: { status: 'COMPLETED' },
+                        _sum: { amount: true }
                     })
                 ]);
 
+                // Calculate total revenue from all sources
+                const totalVolume = (
+                    (bookingRevenue._sum.amount || 0) +
+                    (syndicateRevenue._sum.amount || 0) +
+                    (secondaryTradingRevenue._sum.fee || 0) +
+                    (dealInvestments._sum.amount || 0)
+                );
+
                 stats = {
-                    totalUsers: users,
-                    totalSMEs: smes,
-                    totalInvestors: investors,
-                    activeDeals: deals,
-                    platformRevenue: revenue._sum.amount || 0,
-                    deletedUsers: deletedUsers,
+                    users,
+                    smes,
+                    investors,
+                    deals,
+                    totalVolume,
+                    deletedUsers,
                     activeDisputes: activeDisputesCount
                 };
                 break;
@@ -181,7 +218,9 @@ router.get('/analytics', async (req: AuthenticatedRequest, res: Response) => {
         const [
             totalDeals,
             activeDeals,
-            totalInvestmentAgg,
+            dealInvestmentAgg,
+            syndicateInvestmentAgg,
+            totalSyndicates,
             activeSMEs,
             activeInvestors,
             pendingMatches
@@ -193,29 +232,38 @@ router.get('/analytics', async (req: AuthenticatedRequest, res: Response) => {
                     status: { in: ['PUBLISHED', 'NEGOTIATION', 'FUNDED'] }
                 }
             }),
-            prisma.deal.aggregate({
-                where: { tenantId },
+            // Deal investments
+            prisma.dealInvestor.aggregate({
+                where: { status: 'COMPLETED' },
                 _sum: { amount: true }
             }),
+            // Syndicate investments
+            prisma.syndicateMember.aggregate({
+                where: { syndicate: { tenantId }, status: 'APPROVED' },
+                _sum: { amount: true }
+            }),
+            prisma.syndicate.count({ where: { tenantId } }),
             prisma.sME.count({ where: { tenantId, status: 'CERTIFIED' } }),
             prisma.investor.count({ where: { tenantId, kycStatus: 'VERIFIED' } }),
             prisma.match.count({ where: { tenantId, status: 'PENDING' } })
         ]);
 
-        // Fix Investor count: Investor model doesn't have status, but User does.
-        // For now, simple count is fine.
+        // Calculate total investment including both deals and syndicates
+        const dealInvestment = dealInvestmentAgg._sum.amount || 0;
+        const syndicateInvestment = syndicateInvestmentAgg._sum.amount || 0;
+        const totalInvestment = dealInvestment + syndicateInvestment;
 
-        const totalInvestment = totalInvestmentAgg._sum.amount || 0;
-        const avgDealSize = totalDeals > 0 ? totalInvestment / totalDeals : 0;
+        const totalDealsAndSyndicates = totalDeals + totalSyndicates;
+        const avgDealSize = totalDealsAndSyndicates > 0 ? totalInvestment / totalDealsAndSyndicates : 0;
 
-        // Mock success rate for now or calculate based on CLOSED deals
+        // Calculate success rate based on CLOSED deals
         const closedDeals = await prisma.deal.count({
             where: { tenantId, status: 'CLOSED' }
         });
         const successRate = totalDeals > 0 ? Math.round((closedDeals / totalDeals) * 100) : 0;
 
         const kpis = {
-            totalDeals,
+            totalDeals: totalDealsAndSyndicates,
             activeDeals,
             totalInvestment,
             avgDealSize,
@@ -225,25 +273,40 @@ router.get('/analytics', async (req: AuthenticatedRequest, res: Response) => {
             pendingMatches
         };
 
-        // 2. Fetch Monthly Deals (Last 6 months)
+        // 2. Fetch Monthly Deals and Syndicates (Last 6 months)
         const sixMonthsAgo = new Date();
         sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-        const deals = await prisma.deal.findMany({
-            where: {
-                tenantId,
-                createdAt: { gte: sixMonthsAgo }
-            },
-            select: {
-                createdAt: true,
-                amount: true
-            },
-            orderBy: { createdAt: 'asc' }
-        });
+        const [deals, syndicateMembers] = await Promise.all([
+            prisma.deal.findMany({
+                where: {
+                    tenantId,
+                    createdAt: { gte: sixMonthsAgo }
+                },
+                select: {
+                    createdAt: true,
+                    amount: true
+                },
+                orderBy: { createdAt: 'asc' }
+            }),
+            prisma.syndicateMember.findMany({
+                where: {
+                    syndicate: { tenantId },
+                    status: 'APPROVED',
+                    joinedAt: { gte: sixMonthsAgo }
+                },
+                select: {
+                    joinedAt: true,
+                    amount: true
+                },
+                orderBy: { joinedAt: 'asc' }
+            })
+        ]);
 
         const monthlyDealsMap = new Map<string, { deals: number, value: number }>();
         const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+        // Add deal data
         deals.forEach(deal => {
             const date = new Date(deal.createdAt);
             const monthKey = monthNames[date.getMonth()];
@@ -252,6 +315,18 @@ router.get('/analytics', async (req: AuthenticatedRequest, res: Response) => {
             monthlyDealsMap.set(monthKey, {
                 deals: current.deals + 1,
                 value: current.value + deal.amount
+            });
+        });
+
+        // Add syndicate investment data
+        syndicateMembers.forEach(member => {
+            const date = new Date(member.joinedAt);
+            const monthKey = monthNames[date.getMonth()];
+
+            const current = monthlyDealsMap.get(monthKey) || { deals: 0, value: 0 };
+            monthlyDealsMap.set(monthKey, {
+                deals: current.deals + 1,
+                value: current.value + member.amount
             });
         });
 
