@@ -1,9 +1,14 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { Storage } from '@google-cloud/storage';
 import crypto from 'crypto';
 import path from 'path';
+import fs from 'fs';
 
-// Initialize S3 Client (works with both AWS S3 and Cloudflare R2)
+// --- Provider Selection Logic ---
+const STORAGE_PROVIDER = process.env.STORAGE_PROVIDER || (process.env.GOOGLE_APPLICATION_CREDENTIALS || process.env.GCP_SERVICE_ACCOUNT_JSON ? 'GCS' : 'S3');
+
+// --- S3 Configuration ---
 const s3Client = new S3Client({
     region: process.env.S3_REGION || 'auto',
     endpoint: process.env.S3_ENDPOINT, // For Cloudflare R2 or custom S3 endpoint
@@ -13,8 +18,30 @@ const s3Client = new S3Client({
     },
 });
 
-const BUCKET_NAME = process.env.S3_BUCKET_NAME || 'bia-documents';
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+// --- GCS Configuration ---
+let gcsClient: Storage | null = null;
+if (STORAGE_PROVIDER === 'GCS') {
+    try {
+        // Option 1: Using a JSON key file path
+        if (process.env.GOOGLE_APPLICATION_CREDENTIALS && fs.existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
+            gcsClient = new Storage();
+        }
+        // Option 2: Using JSON content directly from env (useful for Railway)
+        else if (process.env.GCP_SERVICE_ACCOUNT_JSON) {
+            const credentials = JSON.parse(process.env.GCP_SERVICE_ACCOUNT_JSON);
+            gcsClient = new Storage({
+                projectId: credentials.project_id,
+                credentials
+            });
+        }
+        console.log('✅ Google Cloud Storage initialized');
+    } catch (error) {
+        console.error('❌ Failed to initialize GCS:', error);
+    }
+}
+
+const BUCKET_NAME = process.env.STORAGE_BUCKET_NAME || process.env.S3_BUCKET_NAME || 'bia-documents';
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // Increased to 50MB for business documents
 const ALLOWED_MIME_TYPES = [
     'application/pdf',
     'application/msword',
@@ -58,7 +85,7 @@ export function validateFile(file: Express.Multer.File): { valid: boolean; error
 }
 
 /**
- * Upload file to S3/R2
+ * Upload file to GCS or S3
  */
 export async function uploadFile(
     file: Express.Multer.File,
@@ -72,56 +99,81 @@ export async function uploadFile(
     const filename = generateUniqueFilename(file.originalname);
     const key = `${folder}/${filename}`;
 
-    const command = new PutObjectCommand({
-        Bucket: BUCKET_NAME,
-        Key: key,
-        Body: file.buffer,
-        ContentType: file.mimetype,
-        Metadata: {
-            // Sanitize original name to avoid non-ASCII metadata issues
-            originalName: encodeURIComponent(file.originalname),
-            uploadedAt: new Date().toISOString(),
-        },
-    });
+    if (STORAGE_PROVIDER === 'GCS' && gcsClient) {
+        // --- GCS UPLOAD ---
+        const bucket = gcsClient.bucket(BUCKET_NAME);
+        const gcsFile = bucket.file(key);
 
-    await s3Client.send(command);
+        await gcsFile.save(file.buffer, {
+            contentType: file.mimetype,
+            metadata: {
+                originalName: encodeURIComponent(file.originalname),
+                uploadedAt: new Date().toISOString(),
+            }
+        });
 
-    // Generate public URL (adjust based on your S3/R2 configuration)
-    const publicUrl = process.env.S3_PUBLIC_URL
-        ? `${process.env.S3_PUBLIC_URL}/${key}`
-        : `https://${BUCKET_NAME}.s3.${process.env.S3_REGION}.amazonaws.com/${key}`;
+        // Make public if configured (GCS standard is usually private, so we use publicUrl env)
+        const publicUrl = process.env.STORAGE_PUBLIC_BASE_URL
+            ? `${process.env.STORAGE_PUBLIC_BASE_URL}/${key}`
+            : `https://storage.googleapis.com/${BUCKET_NAME}/${key}`;
 
-    return {
-        url: publicUrl,
-        key: key,
-        size: file.size,
-    };
+        return { url: publicUrl, key, size: file.size };
+    } else {
+        // --- S3 UPLOAD ---
+        const command = new PutObjectCommand({
+            Bucket: BUCKET_NAME,
+            Key: key,
+            Body: file.buffer,
+            ContentType: file.mimetype,
+            Metadata: {
+                originalName: encodeURIComponent(file.originalname),
+                uploadedAt: new Date().toISOString(),
+            },
+        });
+
+        await s3Client.send(command);
+
+        const publicUrl = process.env.S3_PUBLIC_URL
+            ? `${process.env.S3_PUBLIC_URL}/${key}`
+            : `https://${BUCKET_NAME}.s3.${process.env.S3_REGION}.amazonaws.com/${key}`;
+
+        return { url: publicUrl, key, size: file.size };
+    }
 }
 
 /**
- * Delete file from S3/R2
+ * Delete file
  */
 export async function deleteFile(key: string): Promise<void> {
-    const command = new DeleteObjectCommand({
-        Bucket: BUCKET_NAME,
-        Key: key,
-    });
-
-    await s3Client.send(command);
+    if (STORAGE_PROVIDER === 'GCS' && gcsClient) {
+        await gcsClient.bucket(BUCKET_NAME).file(key).delete();
+    } else {
+        const command = new DeleteObjectCommand({
+            Bucket: BUCKET_NAME,
+            Key: key,
+        });
+        await s3Client.send(command);
+    }
 }
 
 /**
- * Generate a presigned URL for temporary file access
- * Useful for private files that need temporary access
+ * Generate a presigned URL
  */
 export async function getPresignedUrl(key: string, expiresIn: number = 3600): Promise<string> {
-    const command = new GetObjectCommand({
-        Bucket: BUCKET_NAME,
-        Key: key,
-    });
-
-    const url = await getSignedUrl(s3Client, command, { expiresIn });
-    return url;
+    if (STORAGE_PROVIDER === 'GCS' && gcsClient) {
+        const [url] = await gcsClient.bucket(BUCKET_NAME).file(key).getSignedUrl({
+            version: 'v4',
+            action: 'read',
+            expires: Date.now() + expiresIn * 1000,
+        });
+        return url;
+    } else {
+        const command = new GetObjectCommand({
+            Bucket: BUCKET_NAME,
+            Key: key,
+        });
+        return await getSignedUrl(s3Client, command, { expiresIn });
+    }
 }
 
 /**
