@@ -304,11 +304,18 @@ router.post('/:id/join', authorize('syndicate.join'), async (req: AuthenticatedR
         const isLeadInvestor = syndicate.leadInvestorId === investor.id;
         const initialStatus = isLeadInvestor ? 'APPROVED' : 'PENDING';
 
+        // Calculate tokens if syndicate is tokenized
+        let tokensToIssue = 0;
+        if (syndicate.isTokenized && syndicate.pricePerToken) {
+            tokensToIssue = amount / syndicate.pricePerToken;
+        }
+
         const member = await prisma.syndicateMember.create({
             data: {
                 syndicateId: req.params.id,
                 investorId: investor.id,
                 amount,
+                tokens: tokensToIssue,
                 status: initialStatus
             },
             include: {
@@ -368,6 +375,18 @@ router.post('/:id/members/:memberId/approve', authorize('syndicate.manage'), asy
                 }
             }
         });
+
+        // Update tokens sold if tokenized
+        if (syndicate.isTokenized && member.tokens) {
+            await prisma.syndicate.update({
+                where: { id: syndicate.id },
+                data: {
+                    tokensSold: {
+                        increment: member.tokens
+                    }
+                }
+            });
+        }
 
         // Check if syndicate is now fully funded
         // We calculate sum manually here using the primary connection to be safe against replication lag
