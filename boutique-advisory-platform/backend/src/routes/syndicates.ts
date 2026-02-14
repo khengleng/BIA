@@ -45,7 +45,8 @@ router.get('/', authorize('syndicate.list'), async (req: AuthenticatedRequest, r
                     select: {
                         id: true,
                         name: true,
-                        type: true
+                        type: true,
+                        userId: true
                     }
                 },
                 deal: {
@@ -92,7 +93,8 @@ router.get('/:id', authorize('syndicate.read'), async (req: AuthenticatedRequest
                     select: {
                         id: true,
                         name: true,
-                        type: true
+                        type: true,
+                        userId: true
                     }
                 },
                 deal: {
