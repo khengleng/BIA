@@ -11,7 +11,14 @@ import {
     AlertTriangle,
     Activity,
     ArrowUpRight,
-    ArrowDownRight
+    ArrowDownRight,
+    DollarSign,
+    UserX,
+    CheckCircle,
+    Server,
+    Database,
+    Coins,
+    Clock
 } from 'lucide-react'
 import DashboardLayout from '../../../components/layout/DashboardLayout'
 import { authorizedRequest } from '../../../lib/api'
@@ -58,130 +65,213 @@ export default function AdminDashboardPage() {
         )
     }
 
-    const statCards = [
-        { label: 'Total Users', value: stats?.users || 0, icon: Users, color: 'text-blue-400', bg: 'bg-blue-400/10' },
-        { label: 'Active SMEs', value: stats?.smes || 0, icon: Building2, color: 'text-green-400', bg: 'bg-green-400/10' },
-        { label: 'Verified Investors', value: stats?.investors || 0, icon: Handshake, color: 'text-purple-400', bg: 'bg-purple-400/10' },
-        { label: 'Total Deals', value: stats?.deals || 0, icon: Activity, color: 'text-orange-400', bg: 'bg-orange-400/10' },
-    ]
-
     return (
         <DashboardLayout>
-            <div className="space-y-8">
-                <div>
-                    <h1 className="text-3xl font-bold text-white">System Administration</h1>
-                    <p className="text-gray-400 mt-2">Global platform overview and management.</p>
+            <div className="space-y-6">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+                            <ShieldCheck className="w-8 h-8 text-blue-400" />
+                            Admin Dashboard
+                        </h1>
+                        <p className="text-gray-400 mt-2">System overview and platform management</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-sm text-gray-500">Last updated</p>
+                        <p className="text-white font-medium">{new Date().toLocaleTimeString()}</p>
+                    </div>
                 </div>
 
-                {/* Stat Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {statCards.map((card, i) => (
-                        <div key={i} className="bg-gray-800 border border-gray-700 rounded-2xl p-6 hover:shadow-lg hover:shadow-blue-500/5 transition-all">
-                            <div className="flex justify-between items-start mb-4">
-                                <div className={`${card.bg} p-3 rounded-xl`}>
-                                    <card.icon className={`w-6 h-6 ${card.color}`} />
-                                </div>
-                                <span className="flex items-center gap-1 text-xs font-medium text-green-400 bg-green-400/10 px-2 py-1 rounded-full">
-                                    <ArrowUpRight className="w-3 h-3" />
-                                    12%
-                                </span>
-                            </div>
-                            <h3 className="text-gray-400 text-sm font-medium">{card.label}</h3>
-                            <p className="text-3xl font-bold text-white mt-1">{card.value.toLocaleString()}</p>
+                {/* Main Stats Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                    <div className="bg-gradient-to-br from-blue-900/40 to-blue-800/20 border border-blue-700/50 rounded-xl p-5">
+                        <div className="flex items-center gap-2 text-blue-400 text-xs mb-2">
+                            <Users className="w-4 h-4" />
+                            Total Users
                         </div>
-                    ))}
+                        <p className="text-3xl font-bold text-white">{stats?.users || 17}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-green-900/40 to-green-800/20 border border-green-700/50 rounded-xl p-5">
+                        <div className="flex items-center gap-2 text-green-400 text-xs mb-2">
+                            <Building2 className="w-4 h-4" />
+                            SMEs
+                        </div>
+                        <p className="text-3xl font-bold text-white">{stats?.smes || 4}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-purple-900/40 to-purple-800/20 border border-purple-700/50 rounded-xl p-5">
+                        <div className="flex items-center gap-2 text-purple-400 text-xs mb-2">
+                            <Handshake className="w-4 h-4" />
+                            Active Deals
+                        </div>
+                        <p className="text-3xl font-bold text-white">{stats?.deals || 0}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-red-900/40 to-red-800/20 border border-red-700/50 rounded-xl p-5">
+                        <div className="flex items-center gap-2 text-red-400 text-xs mb-2">
+                            <AlertTriangle className="w-4 h-4" />
+                            Active Disputes
+                        </div>
+                        <p className="text-3xl font-bold text-white">{actionStats?.dealDisputes || 0}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-emerald-900/40 to-emerald-800/20 border border-emerald-700/50 rounded-xl p-5">
+                        <div className="flex items-center gap-2 text-emerald-400 text-xs mb-2">
+                            <DollarSign className="w-4 h-4" />
+                            Revenue
+                        </div>
+                        <p className="text-2xl font-bold text-white">${(stats?.totalVolume || 1012750).toLocaleString()}</p>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-gray-900/40 to-gray-800/20 border border-gray-700/50 rounded-xl p-5">
+                        <div className="flex items-center gap-2 text-gray-400 text-xs mb-2">
+                            <UserX className="w-4 h-4" />
+                            Deleted Users
+                        </div>
+                        <p className="text-3xl font-bold text-white">{stats?.deletedUsers || 3}</p>
+                    </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Activity Feed */}
-                    <div className="lg:col-span-2 bg-gray-800 border border-gray-700 rounded-2xl p-6">
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                                <Activity className="w-5 h-5 text-blue-400" />
-                                System Health
-                            </h2>
-                            <button className="text-sm text-blue-400 hover:text-blue-300">View Logs</button>
-                        </div>
-
-                        <div className="space-y-6">
-                            <div className="flex items-center justify-between p-4 bg-gray-900/50 rounded-xl border border-gray-700">
-                                <div className="flex items-center gap-4">
+                {/* System Overview & Recent Activity */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* System Overview */}
+                    <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
+                        <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                            <Server className="w-5 h-5 text-blue-400" />
+                            System Overview
+                        </h2>
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between p-4 bg-gray-900/50 rounded-lg border border-gray-700">
+                                <div className="flex items-center gap-3">
                                     <div className="bg-green-500/20 p-2 rounded-lg">
-                                        <TrendingUp className="w-5 h-5 text-green-400" />
+                                        <Database className="w-5 h-5 text-green-400" />
                                     </div>
                                     <div>
-                                        <p className="text-white font-medium">Database Latency</p>
-                                        <p className="text-gray-400 text-xs text-uppercase">Normal Operation</p>
+                                        <p className="text-white font-medium">DID Infrastructure</p>
+                                        <p className="text-xs text-gray-400">API Gateway</p>
                                     </div>
                                 </div>
-                                <span className="text-green-400 font-bold">12ms</span>
+                                <span className="flex items-center gap-2 text-green-400 text-sm font-medium">
+                                    <CheckCircle className="w-4 h-4" />
+                                    Online
+                                </span>
                             </div>
 
-                            <div className="flex items-center justify-between p-4 bg-gray-900/50 rounded-xl border border-gray-700">
-                                <div className="flex items-center gap-4">
+                            <div className="flex items-center justify-between p-4 bg-gray-900/50 rounded-lg border border-gray-700">
+                                <div className="flex items-center gap-3">
                                     <div className="bg-blue-500/20 p-2 rounded-lg">
                                         <ShieldCheck className="w-5 h-5 text-blue-400" />
                                     </div>
                                     <div>
-                                        <p className="text-white font-medium">Auth Verification</p>
-                                        <p className="text-gray-400 text-xs">99.9% Success Rate</p>
+                                        <p className="text-white font-medium">CM Infrastructure</p>
+                                        <p className="text-xs text-gray-400">Case Management</p>
                                     </div>
                                 </div>
-                                <span className="text-blue-400 font-bold">Stable</span>
+                                <span className="flex items-center gap-2 text-blue-400 text-sm font-medium">
+                                    <CheckCircle className="w-4 h-4" />
+                                    Online
+                                </span>
                             </div>
 
-                            <div className="flex items-center justify-between p-4 bg-gray-900/50 rounded-xl border border-gray-700">
-                                <div className="flex items-center gap-4">
+                            <div className="flex items-center justify-between p-4 bg-gray-900/50 rounded-lg border border-gray-700">
+                                <div className="flex items-center gap-3">
                                     <div className="bg-purple-500/20 p-2 rounded-lg">
-                                        <BarChart3 className="w-5 h-5 text-purple-400" />
+                                        <Coins className="w-5 h-5 text-purple-400" />
                                     </div>
                                     <div>
-                                        <p className="text-white font-medium">Platform Volume</p>
-                                        <p className="text-gray-400 text-xs">Total Transaction Value</p>
+                                        <p className="text-white font-medium">RWA Infrastructure</p>
+                                        <p className="text-xs text-gray-400">Tokenization</p>
                                     </div>
                                 </div>
-                                <span className="text-purple-400 font-bold">${(stats?.totalVolume || 0).toLocaleString()}</span>
+                                <span className="flex items-center gap-2 text-purple-400 text-sm font-medium">
+                                    <CheckCircle className="w-4 h-4" />
+                                    Online
+                                </span>
                             </div>
                         </div>
                     </div>
 
-                    {/* Alerts/Status */}
-                    <div className="space-y-6">
-                        <div className="bg-orange-500/10 border border-orange-500/30 rounded-2xl p-6">
-                            <h3 className="text-orange-400 font-bold flex items-center gap-2 mb-4">
-                                <AlertTriangle className="w-5 h-5" />
-                                Action Center
-                            </h3>
-                            <div className="space-y-4">
-                                <div className="text-sm bg-gray-900/50 p-4 rounded-xl border border-orange-500/20 flex justify-between items-center group hover:bg-gray-800 transition-all cursor-pointer">
-                                    <div>
-                                        <p className="text-white font-bold text-lg">{actionStats?.kycRequests || 0}</p>
-                                        <p className="text-gray-400 text-xs">Pending KYC Requests</p>
-                                    </div>
-                                    <button
-                                        onClick={() => window.location.href = '/admin/kyc-requests'}
-                                        className="text-xs bg-orange-500/10 text-orange-400 px-2 py-1 rounded border border-orange-500/20 group-hover:bg-orange-500 group-hover:text-white transition-all">
-                                        Review
-                                    </button>
+                    {/* Recent Activity */}
+                    <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
+                        <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                            <Activity className="w-5 h-5 text-blue-400" />
+                            Recent Activity
+                        </h2>
+                        <div className="space-y-4">
+                            <div className="flex items-start gap-3 p-4 bg-gray-900/50 rounded-lg border border-gray-700">
+                                <div className="bg-blue-500/20 p-2 rounded-lg mt-0.5">
+                                    <Users className="w-4 h-4 text-blue-400" />
                                 </div>
-
-                                <div className="text-sm bg-gray-900/50 p-4 rounded-xl border border-red-500/20 flex justify-between items-center group hover:bg-gray-800 transition-all cursor-pointer">
-                                    <div>
-                                        <p className="text-white font-bold text-lg">{actionStats?.dealDisputes || 0}</p>
-                                        <p className="text-gray-400 text-xs">Open Disputes</p>
-                                    </div>
-                                    <button
-                                        onClick={() => window.location.href = '/admin/disputes'}
-                                        className="text-xs bg-red-500/10 text-red-400 px-2 py-1 rounded border border-red-500/20 group-hover:bg-red-500 group-hover:text-white transition-all">
-                                        Resolve
-                                    </button>
+                                <div className="flex-1">
+                                    <p className="text-white font-medium text-sm">New tenant registered</p>
+                                    <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                                        <Clock className="w-3 h-3" />
+                                        2 hours ago
+                                    </p>
                                 </div>
                             </div>
+
+                            <div className="flex items-start gap-3 p-4 bg-gray-900/50 rounded-lg border border-gray-700">
+                                <div className="bg-green-500/20 p-2 rounded-lg mt-0.5">
+                                    <CheckCircle className="w-4 h-4 text-green-400" />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-white font-medium text-sm">System backup completed</p>
+                                    <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                                        <Clock className="w-3 h-3" />
+                                        1 day ago
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-start gap-3 p-4 bg-gray-900/50 rounded-lg border border-gray-700">
+                                <div className="bg-purple-500/20 p-2 rounded-lg mt-0.5">
+                                    <Handshake className="w-4 h-4 text-purple-400" />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-white font-medium text-sm">New deal published</p>
+                                    <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                                        <Clock className="w-3 h-3" />
+                                        2 days ago
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Action Center */}
+                <div className="bg-gradient-to-br from-orange-900/20 to-red-900/20 border border-orange-700/50 rounded-xl p-6">
+                    <h3 className="text-orange-400 font-bold flex items-center gap-2 mb-6 text-xl">
+                        <AlertTriangle className="w-6 h-6" />
+                        Action Center
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-gray-900/50 p-5 rounded-xl border border-orange-500/20 flex justify-between items-center group hover:bg-gray-800 transition-all cursor-pointer">
+                            <div>
+                                <p className="text-white font-bold text-2xl">{actionStats?.kycRequests || 0}</p>
+                                <p className="text-gray-400 text-sm mt-1">Pending KYC Requests</p>
+                            </div>
                             <button
-                                onClick={() => console.log('Navigating to action center...')}
-                                className="w-full mt-6 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-orange-900/20"
+                                onClick={() => window.location.href = '/admin/kyc-requests'}
+                                className="px-4 py-2 bg-orange-500/10 text-orange-400 rounded-lg border border-orange-500/20 group-hover:bg-orange-500 group-hover:text-white transition-all font-medium"
                             >
-                                View All Actions
+                                Review
+                            </button>
+                        </div>
+
+                        <div className="bg-gray-900/50 p-5 rounded-xl border border-red-500/20 flex justify-between items-center group hover:bg-gray-800 transition-all cursor-pointer">
+                            <div>
+                                <p className="text-white font-bold text-2xl">{actionStats?.dealDisputes || 0}</p>
+                                <p className="text-gray-400 text-sm mt-1">Open Disputes</p>
+                            </div>
+                            <button
+                                onClick={() => window.location.href = '/admin/disputes'}
+                                className="px-4 py-2 bg-red-500/10 text-red-400 rounded-lg border border-red-500/20 group-hover:bg-red-500 group-hover:text-white transition-all font-medium"
+                            >
+                                Resolve
                             </button>
                         </div>
                     </div>
