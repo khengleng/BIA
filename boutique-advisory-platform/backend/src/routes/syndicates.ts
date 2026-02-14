@@ -286,6 +286,34 @@ router.post('/:id/join', authorize('syndicate.join'), async (req: AuthenticatedR
             return;
         }
 
+        // Calculate current raised amount
+        const result = await prisma.syndicateMember.aggregate({
+            where: {
+                syndicateId: req.params.id,
+                status: 'APPROVED'
+            },
+            _sum: { amount: true }
+        });
+        const currentRaised = result._sum.amount || 0;
+
+        if (currentRaised + amount > syndicate.targetAmount) {
+            const remaining = syndicate.targetAmount - currentRaised;
+            res.status(400).json({ error: `Investment exceeds target amount. Remaining allocation: $${remaining.toLocaleString()}` });
+            return;
+        }
+
+        // Check token supply if tokenized
+        if (syndicate.isTokenized && syndicate.pricePerToken && syndicate.totalTokens) {
+            const tokensNeeded = amount / syndicate.pricePerToken;
+            const currentTokensSold = syndicate.tokensSold || 0;
+
+            if (currentTokensSold + tokensNeeded > syndicate.totalTokens) {
+                const remainingTokens = syndicate.totalTokens - currentTokensSold;
+                res.status(400).json({ error: `Investment exceeds available tokens. Remaining tokens: ${remainingTokens.toLocaleString()}` });
+                return;
+            }
+        }
+
         // Check if already a member
         const existingMember = await prisma.syndicateMember.findUnique({
             where: {
