@@ -1,0 +1,345 @@
+/**
+ * Syndicate Token Trading Routes
+ * 
+ * Handles listing and trading of syndicate tokens
+ */
+
+import { Router, Response } from 'express';
+import { AuthenticatedRequest, authorize } from '../middleware/authorize';
+import { prisma, prismaReplica } from '../database';
+import { shouldUseDatabase } from '../migration-manager';
+
+const router = Router();
+
+// Platform fee percentage
+const PLATFORM_FEE = 0.01; // 1%
+
+// Get all syndicate token listings
+router.get('/listings', authorize('secondary_trading.list'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+        if (!shouldUseDatabase()) {
+            res.json([]);
+            return;
+        }
+
+        const { status, syndicateId, sellerId } = req.query;
+
+        const where: any = {};
+        if (status) where.status = status;
+        if (syndicateId) where.syndicateId = syndicateId;
+        if (sellerId) where.sellerId = sellerId;
+
+        const listings = await prismaReplica.syndicateTokenListing.findMany({
+            where,
+            include: {
+                seller: {
+                    select: { id: true, name: true, type: true }
+                },
+                syndicate: {
+                    select: {
+                        id: true,
+                        name: true,
+                        tokenName: true,
+                        tokenSymbol: true,
+                        pricePerToken: true,
+                        isTokenized: true
+                    }
+                },
+                trades: true
+            },
+            orderBy: { listedAt: 'desc' }
+        });
+
+        res.json(listings);
+    } catch (error) {
+        console.error('Error fetching syndicate token listings:', error);
+        res.status(500).json({ error: 'Failed to fetch listings' });
+    }
+});
+
+// Create syndicate token listing
+router.post('/listings', authorize('secondary_trading.create_listing'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+        if (!shouldUseDatabase()) {
+            res.status(503).json({ error: 'Database not available' });
+            return;
+        }
+
+        const { syndicateId, tokensAvailable, pricePerToken, minTokens, expiresAt } = req.body;
+
+        // Get investor ID
+        const investor = await prisma.investor.findFirst({
+            where: { userId: req.user?.id }
+        });
+
+        if (!investor) {
+            res.status(404).json({ error: 'Investor profile not found' });
+            return;
+        }
+
+        // Verify user is a member of the syndicate and has enough tokens
+        const membership = await prisma.syndicateMember.findUnique({
+            where: {
+                syndicateId_investorId: {
+                    syndicateId,
+                    investorId: investor.id
+                }
+            }
+        });
+
+        if (!membership || membership.status !== 'APPROVED') {
+            res.status(403).json({ error: 'You must be an approved member to list tokens' });
+            return;
+        }
+
+        if (!membership.tokens || membership.tokens < tokensAvailable) {
+            res.status(400).json({ error: 'Insufficient tokens to list' });
+            return;
+        }
+
+        // Create listing
+        const listing = await prisma.syndicateTokenListing.create({
+            data: {
+                syndicateId,
+                sellerId: investor.id,
+                tokensAvailable,
+                pricePerToken,
+                minTokens: minTokens || 1,
+                expiresAt: expiresAt ? new Date(expiresAt) : null,
+                status: 'ACTIVE'
+            },
+            include: {
+                seller: {
+                    select: { id: true, name: true, type: true }
+                },
+                syndicate: {
+                    select: {
+                        id: true,
+                        name: true,
+                        tokenName: true,
+                        tokenSymbol: true
+                    }
+                }
+            }
+        });
+
+        res.status(201).json(listing);
+    } catch (error) {
+        console.error('Error creating listing:', error);
+        res.status(500).json({ error: 'Failed to create listing' });
+    }
+});
+
+// Buy syndicate tokens
+router.post('/buy', authorize('secondary_trading.buy'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+        if (!shouldUseDatabase()) {
+            res.status(503).json({ error: 'Database not available' });
+            return;
+        }
+
+        const { listingId, tokens } = req.body;
+
+        // Get buyer investor
+        const buyer = await prisma.investor.findFirst({
+            where: { userId: req.user?.id }
+        });
+
+        if (!buyer) {
+            res.status(404).json({ error: 'Investor profile not found' });
+            return;
+        }
+
+        // Get listing
+        const listing = await prisma.syndicateTokenListing.findUnique({
+            where: { id: listingId },
+            include: {
+                seller: true,
+                syndicate: true
+            }
+        });
+
+        if (!listing) {
+            res.status(404).json({ error: 'Listing not found' });
+            return;
+        }
+
+        if (listing.status !== 'ACTIVE') {
+            res.status(400).json({ error: 'Listing is not active' });
+            return;
+        }
+
+        if (tokens < listing.minTokens) {
+            res.status(400).json({ error: `Minimum purchase is ${listing.minTokens} tokens` });
+            return;
+        }
+
+        if (tokens > listing.tokensAvailable) {
+            res.status(400).json({ error: 'Not enough tokens available' });
+            return;
+        }
+
+        const totalAmount = tokens * listing.pricePerToken;
+        const fee = totalAmount * PLATFORM_FEE;
+
+        // Create trade
+        const trade = await prisma.syndicateTokenTrade.create({
+            data: {
+                listingId,
+                buyerId: buyer.id,
+                sellerId: listing.sellerId,
+                tokens,
+                pricePerToken: listing.pricePerToken,
+                totalAmount,
+                fee,
+                status: 'COMPLETED', // Auto-complete for now
+                executedAt: new Date()
+            },
+            include: {
+                buyer: {
+                    select: { id: true, name: true }
+                },
+                seller: {
+                    select: { id: true, name: true }
+                },
+                listing: {
+                    include: {
+                        syndicate: true
+                    }
+                }
+            }
+        });
+
+        // Update listing
+        await prisma.syndicateTokenListing.update({
+            where: { id: listingId },
+            data: {
+                tokensAvailable: { decrement: tokens },
+                status: listing.tokensAvailable - tokens === 0 ? 'SOLD' : 'ACTIVE'
+            }
+        });
+
+        // Transfer tokens from seller to buyer
+        // Get or create buyer's syndicate membership
+        let buyerMembership = await prisma.syndicateMember.findUnique({
+            where: {
+                syndicateId_investorId: {
+                    syndicateId: listing.syndicateId,
+                    investorId: buyer.id
+                }
+            }
+        });
+
+        if (buyerMembership) {
+            // Update existing membership
+            await prisma.syndicateMember.update({
+                where: {
+                    syndicateId_investorId: {
+                        syndicateId: listing.syndicateId,
+                        investorId: buyer.id
+                    }
+                },
+                data: {
+                    tokens: { increment: tokens },
+                    amount: { increment: totalAmount }
+                }
+            });
+        } else {
+            // Create new membership
+            await prisma.syndicateMember.create({
+                data: {
+                    syndicateId: listing.syndicateId,
+                    investorId: buyer.id,
+                    amount: totalAmount,
+                    tokens,
+                    status: 'APPROVED' // Auto-approve secondary purchases
+                }
+            });
+        }
+
+        // Deduct tokens from seller
+        await prisma.syndicateMember.update({
+            where: {
+                syndicateId_investorId: {
+                    syndicateId: listing.syndicateId,
+                    investorId: listing.sellerId
+                }
+            },
+            data: {
+                tokens: { decrement: tokens }
+            }
+        });
+
+        res.status(201).json({
+            message: 'Tokens purchased successfully',
+            trade
+        });
+    } catch (error) {
+        console.error('Error buying tokens:', error);
+        res.status(500).json({ error: 'Failed to purchase tokens' });
+    }
+});
+
+// Get my token trades
+router.get('/trades/my', authorize('secondary_trading.list'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+        if (!shouldUseDatabase()) {
+            res.json({ purchases: [], sales: [] });
+            return;
+        }
+
+        const investor = await prismaReplica.investor.findFirst({
+            where: { userId: req.user?.id }
+        });
+
+        if (!investor) {
+            res.json({ purchases: [], sales: [] });
+            return;
+        }
+
+        const purchases = await prismaReplica.syndicateTokenTrade.findMany({
+            where: { buyerId: investor.id },
+            include: {
+                seller: { select: { id: true, name: true } },
+                listing: {
+                    include: {
+                        syndicate: {
+                            select: {
+                                id: true,
+                                name: true,
+                                tokenSymbol: true
+                            }
+                        }
+                    }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        const sales = await prismaReplica.syndicateTokenTrade.findMany({
+            where: { sellerId: investor.id },
+            include: {
+                buyer: { select: { id: true, name: true } },
+                listing: {
+                    include: {
+                        syndicate: {
+                            select: {
+                                id: true,
+                                name: true,
+                                tokenSymbol: true
+                            }
+                        }
+                    }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        res.json({ purchases, sales });
+    } catch (error) {
+        console.error('Error fetching trades:', error);
+        res.status(500).json({ error: 'Failed to fetch trades' });
+    }
+});
+
+export default router;

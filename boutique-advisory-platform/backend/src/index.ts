@@ -28,6 +28,7 @@ import {
 
 // New Feature Routes
 import syndicateRoutes from './routes/syndicates';
+import syndicateTokenRoutes from './routes/syndicate-tokens';
 import dueDiligenceRoutes from './routes/duediligence';
 import dealDueDiligenceRoutes from './routes/deal-due-diligence';
 import communityRoutes from './routes/community';
@@ -295,6 +296,7 @@ app.use('/api/documents', authenticateToken, documentRoutes);
 
 // Feature endpoints (already protected)
 app.use('/api/syndicates', authenticateToken, syndicateRoutes);
+app.use('/api/syndicate-tokens', authenticateToken, syndicateTokenRoutes);
 app.use('/api/due-diligence', authenticateToken, dueDiligenceRoutes);
 app.use('/api/duediligence', authenticateToken, dueDiligenceRoutes);
 app.use('/api/deal-due-diligence', authenticateToken, dealDueDiligenceRoutes);
