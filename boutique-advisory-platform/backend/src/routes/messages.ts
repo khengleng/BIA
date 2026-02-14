@@ -163,9 +163,15 @@ router.post('/upload', upload.single('file'), async (req: AuthenticatedRequest, 
         }
 
         const uploadedFile = await uploadFile(req.file, 'messages');
+
+        // Generate signed URL immediately for private buckets
+        const { getPresignedUrl } = await import('../utils/fileUpload');
+        const signedUrl = await getPresignedUrl(uploadedFile.key, 3600);
+
         return res.json({
             name: req.file.originalname,
-            url: uploadedFile.url,
+            url: signedUrl,
+            key: uploadedFile.key, // Return key for database storage
             type: req.file.mimetype,
             size: req.file.size
         });
@@ -207,17 +213,41 @@ router.get('/conversations/:id', async (req: AuthenticatedRequest, res: Response
             }
         });
 
-        const formatted = messages.map((m: any) => ({
-            id: m.id,
-            conversationId: m.conversationId,
-            senderId: m.senderId,
-            senderName: `${m.sender.firstName} ${m.sender.lastName}`,
-            senderType: m.sender.role,
-            content: m.content,
-            type: m.type,
-            attachments: m.attachments,
-            read: m.read,
-            createdAt: m.createdAt
+        const { getPresignedUrl } = await import('../utils/fileUpload');
+
+        const formatted = await Promise.all(messages.map(async (m: any) => {
+            let attachments = m.attachments;
+
+            // If we have attachments, generate presigned URLs for private storage
+            if (Array.isArray(attachments) && attachments.length > 0) {
+                attachments = await Promise.all(attachments.map(async (attr: any) => {
+                    if (attr.url && (attr.url.includes('storage.googleapis.com') || attr.url.includes('s3'))) {
+                        try {
+                            // Extract key: folder/filename
+                            const urlParts = attr.url.split('/');
+                            const key = urlParts.slice(-2).join('/');
+                            const signedUrl = await getPresignedUrl(key, 3600);
+                            return { ...attr, url: signedUrl };
+                        } catch (e) {
+                            return attr;
+                        }
+                    }
+                    return attr;
+                }));
+            }
+
+            return {
+                id: m.id,
+                conversationId: m.conversationId,
+                senderId: m.senderId,
+                senderName: `${m.sender.firstName} ${m.sender.lastName}`,
+                senderType: m.sender.role,
+                content: m.content,
+                type: m.type,
+                attachments,
+                read: m.read,
+                createdAt: m.createdAt
+            };
         }));
 
         return res.json({ messages: formatted });

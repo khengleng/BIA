@@ -22,21 +22,22 @@ const s3Client = new S3Client({
 let gcsClient: Storage | null = null;
 if (STORAGE_PROVIDER === 'GCS') {
     try {
-        // Option 1: Using a JSON key file path
         if (process.env.GOOGLE_APPLICATION_CREDENTIALS && fs.existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
+            console.log('✅ GCS: Initializing with GOOGLE_APPLICATION_CREDENTIALS path');
             gcsClient = new Storage();
         }
-        // Option 2: Using JSON content directly from env (useful for Railway)
         else if (process.env.GCP_SERVICE_ACCOUNT_JSON) {
+            console.log('✅ GCS: Initializing with GCP_SERVICE_ACCOUNT_JSON content');
             const credentials = JSON.parse(process.env.GCP_SERVICE_ACCOUNT_JSON);
             gcsClient = new Storage({
                 projectId: credentials.project_id,
                 credentials
             });
+        } else {
+            console.warn('⚠️ GCS: No credentials found but STORAGE_PROVIDER is GCS');
         }
-        console.log('✅ Google Cloud Storage initialized');
     } catch (error) {
-        console.error('❌ Failed to initialize GCS:', error);
+        console.error('❌ GCS: Failed to initialize Storage client:', error);
     }
 }
 
@@ -104,13 +105,21 @@ export async function uploadFile(
         const bucket = gcsClient.bucket(BUCKET_NAME);
         const gcsFile = bucket.file(key);
 
-        await gcsFile.save(file.buffer, {
-            contentType: file.mimetype,
-            metadata: {
-                originalName: encodeURIComponent(file.originalname),
-                uploadedAt: new Date().toISOString(),
-            }
-        });
+        console.log(`[GCS] Attempting upload to bucket: ${BUCKET_NAME}, key: ${key}`);
+
+        try {
+            await gcsFile.save(file.buffer, {
+                contentType: file.mimetype,
+                resumable: false, // Performance improvement for small files
+                metadata: {
+                    originalName: encodeURIComponent(file.originalname),
+                    uploadedAt: new Date().toISOString(),
+                }
+            });
+        } catch (uploadError: any) {
+            console.error(`[GCS] Upload Save Error:`, uploadError);
+            throw new Error(`Google Storage Upload failed: ${uploadError.message}`);
+        }
 
         // Make public if configured (GCS standard is usually private, so we use publicUrl env)
         const publicUrl = process.env.STORAGE_PUBLIC_BASE_URL
