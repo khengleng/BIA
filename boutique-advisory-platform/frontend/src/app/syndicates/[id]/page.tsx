@@ -95,13 +95,33 @@ export default function SyndicateDetailsPage() {
     const [syndicate, setSyndicate] = useState<Syndicate | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [isJoining, setIsJoining] = useState(false)
+    const [isUpdating, setIsUpdating] = useState(false)
     const [joinAmount, setJoinAmount] = useState('')
     const [showJoinModal, setShowJoinModal] = useState(false)
     const [isLead, setIsLead] = useState(false)
 
+    // Tokenization Form State
+    const [tokenForm, setTokenForm] = useState({
+        isTokenized: false,
+        tokenName: '',
+        tokenSymbol: '',
+        pricePerToken: ''
+    })
+
     useEffect(() => {
         fetchSyndicate()
     }, [params.id])
+
+    useEffect(() => {
+        if (syndicate) {
+            setTokenForm({
+                isTokenized: syndicate.isTokenized || false,
+                tokenName: syndicate.tokenName || '',
+                tokenSymbol: syndicate.tokenSymbol || '',
+                pricePerToken: syndicate.pricePerToken?.toString() || ''
+            })
+        }
+    }, [syndicate])
 
     const fetchSyndicate = async () => {
         try {
@@ -175,14 +195,48 @@ export default function SyndicateDetailsPage() {
                 setShowJoinModal(false)
                 fetchSyndicate()
             } else {
-                const error = await response.json()
-                addToast('error', error.error || 'Failed to join syndicate')
+                addToast('error', data.error || 'Failed to join syndicate')
             }
         } catch (error) {
             console.error('Error joining syndicate:', error)
             addToast('error', 'Error joining syndicate')
         } finally {
             setIsJoining(false)
+        }
+    }
+
+    const handleUpdateTokenization = async () => {
+        if (!syndicate) return
+        setIsUpdating(true)
+
+        try {
+            const token = localStorage.getItem('token')
+            const response = await fetch(`${API_URL}/api/syndicates/${syndicate.id}`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    isTokenized: tokenForm.isTokenized,
+                    tokenName: tokenForm.tokenName,
+                    tokenSymbol: tokenForm.tokenSymbol,
+                    pricePerToken: parseFloat(tokenForm.pricePerToken)
+                })
+            })
+
+            if (response.ok) {
+                addToast('success', 'Syndicate tokenization updated!')
+                fetchSyndicate()
+            } else {
+                const error = await response.json()
+                addToast('error', error.error || 'Failed to update tokenization')
+            }
+        } catch (error) {
+            console.error('Error updating tokenization:', error)
+            addToast('error', 'Error updating tokenization')
+        } finally {
+            setIsUpdating(false)
         }
     }
 
@@ -311,6 +365,79 @@ export default function SyndicateDetailsPage() {
                                             {syndicate.totalTokens ? ((syndicate.tokensSold || 0) / syndicate.totalTokens * 100).toFixed(1) : 0}%
                                             <span className="text-gray-500 font-normal">sold</span>
                                         </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Management Actions (Lead/Admin Only) */}
+                        {(isLead || isAdmin) && (
+                            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                                <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                                    <ShieldCheck className="w-5 h-5 text-purple-400" />
+                                    Syndicate Management
+                                </h3>
+
+                                <div className="space-y-6">
+                                    <div className="flex items-center justify-between p-4 bg-gray-700/30 rounded-lg border border-gray-600">
+                                        <div>
+                                            <p className="text-white font-bold">Enable Tokenization</p>
+                                            <p className="text-gray-400 text-sm">Issue digital tokens to represent equity stakes</p>
+                                        </div>
+                                        <label className="relative inline-flex items-center cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                className="sr-only peer"
+                                                checked={tokenForm.isTokenized}
+                                                onChange={(e) => setTokenForm({ ...tokenForm, isTokenized: e.target.checked })}
+                                            />
+                                            <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                        </label>
+                                    </div>
+
+                                    {tokenForm.isTokenized && (
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <div>
+                                                <label className="block text-gray-400 text-xs font-bold uppercase mb-2">Token Name</label>
+                                                <input
+                                                    type="text"
+                                                    value={tokenForm.tokenName}
+                                                    onChange={(e) => setTokenForm({ ...tokenForm, tokenName: e.target.value })}
+                                                    className="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2 text-white focus:border-blue-500 transition-colors"
+                                                    placeholder="e.g. Van Equity Token"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-gray-400 text-xs font-bold uppercase mb-2">Symbol</label>
+                                                <input
+                                                    type="text"
+                                                    value={tokenForm.tokenSymbol}
+                                                    onChange={(e) => setTokenForm({ ...tokenForm, tokenSymbol: e.target.value })}
+                                                    className="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2 text-white focus:border-blue-500 transition-colors"
+                                                    placeholder="e.g. VAN"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-gray-400 text-xs font-bold uppercase mb-2">Price per Token ($)</label>
+                                                <input
+                                                    type="number"
+                                                    value={tokenForm.pricePerToken}
+                                                    onChange={(e) => setTokenForm({ ...tokenForm, pricePerToken: e.target.value })}
+                                                    className="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2 text-white focus:border-blue-500 transition-colors"
+                                                    placeholder="1.00"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="flex justify-end">
+                                        <button
+                                            onClick={handleUpdateTokenization}
+                                            disabled={isUpdating}
+                                            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold transition-colors disabled:opacity-50 flex items-center gap-2"
+                                        >
+                                            {isUpdating ? 'Updating...' : 'Save Configuration'}
+                                        </button>
                                     </div>
                                 </div>
                             </div>
