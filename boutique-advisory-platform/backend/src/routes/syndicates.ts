@@ -297,7 +297,44 @@ router.post('/:id/join', authorize('syndicate.join'), async (req: AuthenticatedR
         });
 
         if (existingMember) {
-            res.status(400).json({ error: 'Already a member of this syndicate' });
+            // Allow top-up investment
+            let additionalTokens = 0;
+            if (syndicate.isTokenized && syndicate.pricePerToken) {
+                additionalTokens = amount / syndicate.pricePerToken;
+            }
+
+            const updatedMember = await prisma.syndicateMember.update({
+                where: {
+                    syndicateId_investorId: {
+                        syndicateId: req.params.id,
+                        investorId: investor.id
+                    }
+                },
+                data: {
+                    amount: { increment: amount },
+                    tokens: { increment: additionalTokens }
+                },
+                include: {
+                    investor: {
+                        select: { id: true, name: true, type: true }
+                    }
+                }
+            });
+
+            // If tokenized and already approved, update total sold immediately
+            if (syndicate.isTokenized && existingMember.status === 'APPROVED') {
+                await prisma.syndicate.update({
+                    where: { id: syndicate.id },
+                    data: {
+                        tokensSold: { increment: additionalTokens }
+                    }
+                });
+            }
+
+            res.status(200).json({
+                message: 'Investment topped up successfully',
+                member: updatedMember
+            });
             return;
         }
 
