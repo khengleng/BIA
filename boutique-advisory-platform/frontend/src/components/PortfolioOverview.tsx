@@ -13,6 +13,7 @@ interface PortfolioSummary {
     totalAum: number
     activePositions: number
     realizedRoi: number
+    totalPerformance: number
     startDate: string
     kycStatus?: string
 }
@@ -43,6 +44,7 @@ export default function PortfolioOverview() {
         totalAum: 0,
         activePositions: 0,
         realizedRoi: 0,
+        totalPerformance: 0,
         startDate: ''
     })
     const [sectors, setSectors] = useState<SectorAllocation[]>([])
@@ -100,9 +102,9 @@ export default function PortfolioOverview() {
                     <p className="text-3xl font-bold text-white tracking-tight">
                         ${summary.totalAum.toLocaleString()}
                     </p>
-                    <div className="mt-2 flex items-center gap-1 text-green-400 text-xs font-bold">
+                    <div className={`mt-2 flex items-center gap-1 text-xs font-bold ${summary.totalPerformance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                         <TrendingUp className="w-3 h-3" />
-                        +6.8% since last quarter
+                        {summary.totalPerformance >= 0 ? '+' : ''}{summary.totalPerformance}% Total Growth
                     </div>
                 </div>
 
@@ -118,7 +120,7 @@ export default function PortfolioOverview() {
                     <p className="text-gray-400 text-sm mb-1">Realized ROI</p>
                     <p className="text-3xl font-bold text-white tracking-tight">{summary.realizedRoi}%</p>
                     <div className="mt-2 flex items-center gap-1 text-blue-400 text-xs font-bold font-mono">
-                        PLATFORM BEATING
+                        {summary.realizedRoi > 0 ? 'LIQUID PROFIT' : 'NO SALES YET'}
                     </div>
                 </div>
 

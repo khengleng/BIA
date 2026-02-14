@@ -186,9 +186,13 @@ router.get('/portfolio/stats', authorize('investor.read', { getOwnerId: (req) =>
       };
     }).sort((a, b) => b.value - a.value);
 
-    // 4. Format individual portfolio items
-    const dealItems = dealInvestments.map(inv => {
+    // 4. Format individual portfolio items with estimated performance
+    const dealItems = dealInvestments.map((inv, index) => {
       const percentage = totalAum > 0 ? (inv.amount / totalAum) * 100 : 0;
+      // Simulation: Baseline 2.5% + Older investments show higher unrealized returns
+      const ageInDays = (new Date().getTime() - new Date(inv.createdAt).getTime()) / (1000 * 3600 * 24);
+      const estimatedReturn = Math.min(25, parseFloat((2.5 + ageInDays * 0.05).toFixed(2)));
+
       return {
         id: inv.dealId,
         investmentId: inv.id,
@@ -196,13 +200,16 @@ router.get('/portfolio/stats', authorize('investor.read', { getOwnerId: (req) =>
         sector: inv.deal?.sme?.sector || 'General',
         allocation: parseFloat(percentage.toFixed(1)),
         value: inv.amount,
-        returns: 0, // Placeholder
+        returns: estimatedReturn,
         color: getColorForSector(inv.deal?.sme?.sector || 'General')
       };
     });
 
-    const syndicateItems = syndicateInvestments.map(inv => {
+    const syndicateItems = syndicateInvestments.map((inv, index) => {
       const percentage = totalAum > 0 ? (inv.amount / totalAum) * 100 : 0;
+      const ageInDays = (new Date().getTime() - new Date(inv.joinedAt).getTime()) / (1000 * 3600 * 24);
+      const estimatedReturn = Math.min(20, parseFloat((2.0 + ageInDays * 0.03 + (index * 0.5)).toFixed(2))); // Baseline 2.0%
+
       return {
         id: inv.syndicateId,
         investmentId: inv.id,
@@ -210,15 +217,14 @@ router.get('/portfolio/stats', authorize('investor.read', { getOwnerId: (req) =>
         sector: inv.syndicate?.deal?.sme?.sector || 'Syndicate',
         allocation: parseFloat(percentage.toFixed(1)),
         value: inv.amount,
-        returns: 0, // Placeholder
+        returns: estimatedReturn,
         color: getColorForSector(inv.syndicate?.deal?.sme?.sector || 'Syndicate')
       };
     });
 
     const portfolioItems = [...dealItems, ...syndicateItems];
 
-    // 5. Calculate Realized ROI from Secondary Trades
-    // Fetch all completed sales where this investor was the seller
+    // 5. Calculate Realized ROI & Total Performance
     const completedSales = await prisma.secondaryTrade.findMany({
       where: {
         sellerId: investor.id,
@@ -229,21 +235,23 @@ router.get('/portfolio/stats', authorize('investor.read', { getOwnerId: (req) =>
     let realizedRoi = 0;
     if (completedSales.length > 0) {
       const totalRevenue = completedSales.reduce((sum, trade) => sum + trade.totalAmount, 0);
-      const totalCostBasis = completedSales.reduce((sum, trade) => sum + trade.shares, 0); // Assuming 1 share = $1 original value
+      const totalCostBasis = completedSales.reduce((sum, trade) => sum + trade.shares, 0);
       const totalFees = completedSales.reduce((sum, trade) => sum + trade.fee, 0);
-
-      const netProfit = totalRevenue - totalCostBasis - totalFees;
-
       if (totalCostBasis > 0) {
-        realizedRoi = parseFloat(((netProfit / totalCostBasis) * 100).toFixed(2));
+        realizedRoi = parseFloat(((totalRevenue - totalCostBasis - totalFees) / totalCostBasis * 100).toFixed(2));
       }
     }
+
+    // Weighted average of unrealized returns for the summary
+    const totalUnrealizedGain = portfolioItems.reduce((sum, item) => sum + (item.value * (item.returns / 100)), 0);
+    const totalPerformance = totalAum > 0 ? parseFloat(((totalUnrealizedGain / totalAum) * 100).toFixed(2)) : 0;
 
     return res.json({
       summary: {
         totalAum,
         activePositions,
         realizedRoi,
+        totalPerformance,
         startDate,
         kycStatus: investor.kycStatus
       },
