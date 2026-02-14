@@ -118,20 +118,32 @@ router.get('/', authorize('matchmaking.read'), async (req: AuthenticatedRequest,
         let matches: any[] = [];
 
         if (role === 'SME') {
-            const sme = await prisma.sME.findUnique({ where: { userId } });
-            if (!sme) return res.json({ matches: [], stats: {} });
+            const sme = await prisma.sME.findUnique({
+                where: { userId },
+                include: { user: true }
+            });
+            if (!sme || sme.user.status !== 'ACTIVE') return res.json({ matches: [], stats: {} });
 
             matches = await prisma.match.findMany({
-                where: { smeId: sme.id },
+                where: {
+                    smeId: sme.id,
+                    investor: { user: { status: 'ACTIVE' } }
+                },
                 include: { investor: true, interests: true },
                 orderBy: { score: 'desc' }
             });
         } else if (role === 'INVESTOR') {
-            const investor = await prisma.investor.findUnique({ where: { userId } });
-            if (!investor) return res.json({ matches: [], stats: {} });
+            const investor = await prisma.investor.findUnique({
+                where: { userId },
+                include: { user: true }
+            });
+            if (!investor || investor.user.status !== 'ACTIVE') return res.json({ matches: [], stats: {} });
 
             matches = await prisma.match.findMany({
-                where: { investorId: investor.id },
+                where: {
+                    investorId: investor.id,
+                    sme: { user: { status: 'ACTIVE' } }
+                },
                 include: { sme: true, interests: true },
                 orderBy: { score: 'desc' }
             });
@@ -166,8 +178,12 @@ router.get('/', authorize('matchmaking.read'), async (req: AuthenticatedRequest,
 // Trigger Re-computation
 router.post('/recompute', authorize('matchmaking.create_match'), async (req: AuthenticatedRequest, res: Response) => {
     try {
-        const smes = await prisma.sME.findMany();
-        const investors = await prisma.investor.findMany();
+        const smes = await prisma.sME.findMany({
+            where: { user: { status: 'ACTIVE' } }
+        });
+        const investors = await prisma.investor.findMany({
+            where: { user: { status: 'ACTIVE' } }
+        });
         const tenantId = req.user?.tenantId || 'default';
 
         let count = 0;

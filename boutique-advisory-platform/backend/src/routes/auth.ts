@@ -46,28 +46,37 @@ router.post('/register', async (req: Request, res: Response) => {
       return res.status(400).json({ error: passwordError });
     }
 
-    // Check if user already exists
+    // Check for existing user (including deleted ones to purge them)
     const existingUser = await prisma.user.findFirst({
       where: {
-        email: sanitizedEmail,
+        OR: [
+          { email: sanitizedEmail },
+          { email: { startsWith: 'deleted_' }, AND: [{ email: { endsWith: sanitizedEmail } }] }
+        ],
         tenantId
       }
     });
 
     if (existingUser) {
-      // SECURITY: Log attempt to register with existing email
-      await logAuditEvent({
-        userId: 'anonymous',
-        action: 'REGISTER_ATTEMPT',
-        resource: 'user',
-        details: { email: sanitizedEmail, reason: 'email_exists' },
-        ipAddress: clientIp,
-        success: false,
-        errorMessage: 'Email already registered'
-      });
-      return res.status(409).json({
-        error: 'User already exists with this email'
-      });
+      if (existingUser.status === 'DELETED') {
+        console.log(`[AUTH] Purging old deleted user ${existingUser.id} to allow fresh registration for ${sanitizedEmail}`);
+        // Hard delete the old record so the email and relationships are truly fresh
+        await prisma.user.delete({ where: { id: existingUser.id } });
+      } else {
+        // SECURITY: Log attempt to register with existing email
+        await logAuditEvent({
+          userId: 'anonymous',
+          action: 'REGISTER_ATTEMPT',
+          resource: 'user',
+          details: { email: sanitizedEmail, reason: 'email_exists' },
+          ipAddress: clientIp,
+          success: false,
+          errorMessage: 'Email already registered'
+        });
+        return res.status(409).json({
+          error: 'User already exists with this email'
+        });
+      }
     }
 
     // Hash password with strong hashing
@@ -1104,6 +1113,11 @@ router.post('/delete-account', authenticateToken, async (req: AuthenticatedReque
           resetTokenExpiry: null
           // Keep tenantId for data segregation if needed, or move to a 'deleted' tenant
         }
+      });
+
+      // 1.5 Purge Push Subscriptions to prevent notification leakage
+      await tx.pushSubscription.deleteMany({
+        where: { userId: user.id }
       });
 
       // 2. Anonymize Linked Profiles based on Role using raw queries or updates
