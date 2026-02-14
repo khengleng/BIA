@@ -115,7 +115,7 @@ export default function SyndicateDetailsPage() {
                 const currentUserStr = localStorage.getItem('user')
                 if (currentUserStr) {
                     const currentUser = JSON.parse(currentUserStr)
-                    setIsLead(currentUser.role === 'INVESTOR' && data.leadInvestorId === currentUser.id)
+                    setIsLead(data.leadInvestorId === currentUser.id)
                 }
             } else {
                 addToast('error', 'Syndicate not found')
@@ -323,7 +323,7 @@ export default function SyndicateDetailsPage() {
                                 </span>
                             </div>
 
-                            {(isAdmin || isLead) ? (
+                            {(isAdmin || isLead || user?.role === 'ADMIN') ? (
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left">
                                         <thead className="bg-gray-700/50 text-gray-400 text-xs uppercase tracking-widest">
