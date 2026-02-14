@@ -210,7 +210,9 @@ export default function SyndicatesPage() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-green-300 text-sm">Total Raised</p>
-                                <p className="text-3xl font-bold text-white mt-1">${(stats.totalRaised / 1000).toFixed(0)}K</p>
+                                <p className="text-3xl font-bold text-white mt-1">
+                                    ${((stats.totalRaised || 0) / 1000).toFixed(0)}K
+                                </p>
                             </div>
                             <div className="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center">
                                 <DollarSign className="w-6 h-6 text-green-400" />
@@ -222,7 +224,12 @@ export default function SyndicatesPage() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-purple-300 text-sm">Target Amount</p>
-                                <p className="text-3xl font-bold text-white mt-1">${(stats.totalTarget / 1000000).toFixed(1)}M</p>
+                                <p className="text-3xl font-bold text-white mt-1">
+                                    ${((stats.totalTarget || 0) >= 1000000
+                                        ? ((stats.totalTarget || 0) / 1000000).toFixed(1) + 'M'
+                                        : ((stats.totalTarget || 0) / 1000).toFixed(0) + 'K'
+                                    )}
+                                </p>
                             </div>
                             <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center">
                                 <TrendingUp className="w-6 h-6 text-purple-400" />
@@ -234,7 +241,7 @@ export default function SyndicatesPage() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-amber-300 text-sm">Total Members</p>
-                                <p className="text-3xl font-bold text-white mt-1">{stats.totalMembers}</p>
+                                <p className="text-3xl font-bold text-white mt-1">{stats.totalMembers || 0}</p>
                             </div>
                             <div className="w-12 h-12 bg-amber-500/20 rounded-xl flex items-center justify-center">
                                 <Users className="w-6 h-6 text-amber-400" />
