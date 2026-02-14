@@ -34,6 +34,7 @@ interface PortfolioItem {
     sector: string
     allocation: number
     value: number
+    shares: number
     returns: number
     color: string
 }
@@ -264,7 +265,7 @@ export default function PortfolioOverview() {
                     parentId={selectedSellItem.parentId}
                     type={selectedSellItem.type}
                     dealName={selectedSellItem.name}
-                    currentValue={selectedSellItem.value}
+                    currentValue={selectedSellItem.shares || selectedSellItem.value}
                     onClose={() => setShowSellModal(false)}
                     onSuccess={() => {
                         setShowSellModal(false);

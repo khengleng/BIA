@@ -90,6 +90,9 @@ router.post('/listings', authorize('secondary_trading.create_listing'), async (r
                     syndicateId,
                     investorId: investor.id
                 }
+            },
+            include: {
+                syndicate: true
             }
         });
 
@@ -98,7 +101,14 @@ router.post('/listings', authorize('secondary_trading.create_listing'), async (r
             return;
         }
 
-        if (!membership.tokens || membership.tokens < tokensAvailable) {
+        // Auto-repair/Resilient check for tokens
+        let currentTokens = membership.tokens || 0;
+        if (currentTokens === 0 && membership.syndicate.isTokenized && membership.syndicate.pricePerToken) {
+            currentTokens = membership.amount / membership.syndicate.pricePerToken;
+        }
+
+        if (currentTokens < tokensAvailable) {
+            console.warn(`Insufficient tokens for ${investor.id}: Has ${currentTokens}, tried to list ${tokensAvailable}`);
             res.status(400).json({ error: 'Insufficient tokens to list' });
             return;
         }

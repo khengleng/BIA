@@ -199,6 +199,7 @@ router.get('/portfolio/stats', authorize('investor.read', { getOwnerId: (req) =>
         sector: inv.deal?.sme?.sector || 'General',
         allocation: parseFloat(percentage.toFixed(1)),
         value: inv.amount,
+        shares: inv.amount, // For deals, 1 share = $1 principal for now
         returns: 0, // Real dividends/growth track will go here
         color: getColorForSector(inv.deal?.sme?.sector || 'General')
       };
@@ -206,6 +207,12 @@ router.get('/portfolio/stats', authorize('investor.read', { getOwnerId: (req) =>
 
     const syndicateItems = syndicateInvestments.map((inv) => {
       const percentage = totalAum > 0 ? (inv.amount / totalAum) * 100 : 0;
+
+      // Auto-fix tokens if missing for the portfolio result
+      let tokens = inv.tokens || 0;
+      if (tokens === 0 && inv.syndicate?.isTokenized && inv.syndicate?.pricePerToken) {
+        tokens = inv.amount / inv.syndicate.pricePerToken;
+      }
 
       return {
         id: inv.syndicateId,
@@ -216,6 +223,7 @@ router.get('/portfolio/stats', authorize('investor.read', { getOwnerId: (req) =>
         sector: inv.syndicate?.deal?.sme?.sector || 'Syndicate',
         allocation: parseFloat(percentage.toFixed(1)),
         value: inv.amount,
+        shares: tokens, // Use tokens as the "sellable" unit
         returns: 0,
         color: getColorForSector(inv.syndicate?.deal?.sme?.sector || 'Syndicate')
       };
