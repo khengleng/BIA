@@ -79,7 +79,7 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
                 if (investor) {
                     const [matchCount, dealInvestmentCount, activeOffers, syndicateMembershipCount] = await Promise.all([
                         prisma.match.count({ where: { investorId: investor.id } }),
-                        prisma.dealInvestor.count({ where: { investorId: investor.id, status: 'COMPLETED' } }),
+                        prisma.dealInvestor.count({ where: { investorId: investor.id, status: { in: ['COMPLETED', 'APPROVED'] } } }),
                         prisma.dealInvestor.count({ where: { investorId: investor.id, status: 'PENDING' } }),
                         prisma.syndicateMember.count({ where: { investorId: investor.id, status: 'APPROVED' } })
                     ]);
@@ -89,7 +89,7 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
                         prisma.dealInvestor.findMany({
                             where: {
                                 investorId: investor.id,
-                                status: 'COMPLETED'
+                                status: { in: ['COMPLETED', 'APPROVED'] }
                             },
                             select: { amount: true }
                         }),
