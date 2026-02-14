@@ -81,6 +81,53 @@ interface MarketStats {
     last7dVolume: number
 }
 
+interface SyndicateTokenListing {
+    id: string
+    syndicateId: string
+    sellerId: string
+    seller: {
+        id: string
+        name: string
+        type: string
+    }
+    syndicate: {
+        id: string
+        name: string
+        tokenName: string
+        tokenSymbol: string
+        pricePerToken: number
+    }
+    tokensAvailable: number
+    pricePerToken: number
+    minTokens: number
+    status: string
+    listedAt: string
+    expiresAt: string | null
+}
+
+interface SyndicateTokenTrade {
+    id: string
+    listingId: string
+    buyerId: string
+    buyer: { id: string; name: string }
+    sellerId: string
+    seller: { id: string; name: string }
+    tokens: number
+    pricePerToken: number
+    totalAmount: number
+    fee: number
+    status: string
+    executedAt: string | null
+    createdAt: string
+    listing: {
+        syndicate: {
+            id: string
+            name: string
+            tokenSymbol: string
+        }
+    }
+}
+
 export default function SecondaryTradingPage() {
     const { addToast } = useToast()
     const { isAdmin, user } = usePermissions()
@@ -89,12 +136,20 @@ export default function SecondaryTradingPage() {
     const [myTrades, setMyTrades] = useState<{ purchases: Trade[], sales: Trade[] }>({ purchases: [], sales: [] })
     const [stats, setStats] = useState<MarketStats | null>(null)
     const [isLoading, setIsLoading] = useState(true)
-    const [activeTab, setActiveTab] = useState<'marketplace' | 'my-trades' | 'sell'>('marketplace')
+    const [activeTab, setActiveTab] = useState<'marketplace' | 'syndicate-tokens' | 'my-trades' | 'sell'>('marketplace')
     const [showBuyModal, setShowBuyModal] = useState(false)
     const [selectedListing, setSelectedListing] = useState<Listing | null>(null)
     const [buyShares, setBuyShares] = useState('')
     const [isBuying, setIsBuying] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
+
+    // Syndicate token state
+    const [tokenListings, setTokenListings] = useState<SyndicateTokenListing[]>([])
+    const [myTokenTrades, setMyTokenTrades] = useState<{ purchases: SyndicateTokenTrade[], sales: SyndicateTokenTrade[] }>({ purchases: [], sales: [] })
+    const [showBuyTokenModal, setShowBuyTokenModal] = useState(false)
+    const [selectedTokenListing, setSelectedTokenListing] = useState<SyndicateTokenListing | null>(null)
+    const [buyTokens, setBuyTokens] = useState('')
+    const [isBuyingTokens, setIsBuyingTokens] = useState(false)
 
     useEffect(() => {
         fetchData()
@@ -130,6 +185,22 @@ export default function SecondaryTradingPage() {
             })
             if (statsRes.ok) {
                 setStats(await statsRes.json())
+            }
+
+            // Fetch syndicate token listings
+            const tokenListingsRes = await fetch(`${API_URL}/api/syndicate-tokens/listings`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            if (tokenListingsRes.ok) {
+                setTokenListings(await tokenListingsRes.json())
+            }
+
+            // Fetch my token trades
+            const tokenTradesRes = await fetch(`${API_URL}/api/syndicate-tokens/trades/my`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            if (tokenTradesRes.ok) {
+                setMyTokenTrades(await tokenTradesRes.json())
             }
         } catch (error) {
             console.error('Error fetching data:', error)
@@ -176,6 +247,46 @@ export default function SecondaryTradingPage() {
             addToast('error', 'Error processing purchase')
         } finally {
             setIsBuying(false)
+        }
+    }
+
+    const handleBuyTokenClick = (listing: SyndicateTokenListing) => {
+        setSelectedTokenListing(listing)
+        setBuyTokens(listing.minTokens.toString())
+        setShowBuyTokenModal(true)
+    }
+
+    const handleBuyTokens = async () => {
+        if (!selectedTokenListing) return
+        setIsBuyingTokens(true)
+
+        try {
+            const token = localStorage.getItem('token')
+            const response = await fetch(`${API_URL}/api/syndicate-tokens/buy`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    listingId: selectedTokenListing.id,
+                    tokens: parseFloat(buyTokens)
+                })
+            })
+
+            if (response.ok) {
+                addToast('success', 'Tokens purchased successfully!')
+                setShowBuyTokenModal(false)
+                fetchData()
+            } else {
+                const error = await response.json()
+                addToast('error', error.error || 'Failed to buy tokens')
+            }
+        } catch (error) {
+            console.error('Error buying tokens:', error)
+            addToast('error', 'Error processing purchase')
+        } finally {
+            setIsBuyingTokens(false)
         }
     }
 
@@ -295,6 +406,21 @@ export default function SecondaryTradingPage() {
                     )}
                 </button>
                 <button
+                    onClick={() => setActiveTab('syndicate-tokens')}
+                    className={`pb-3 px-1 text-sm font-medium transition-colors relative ${activeTab === 'syndicate-tokens'
+                        ? 'text-cyan-400'
+                        : 'text-gray-400 hover:text-white'
+                        }`}
+                >
+                    <div className="flex items-center gap-2">
+                        <DollarSign className="w-4 h-4" />
+                        Syndicate Tokens
+                    </div>
+                    {activeTab === 'syndicate-tokens' && (
+                        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400" />
+                    )}
+                </button>
+                <button
                     onClick={() => setActiveTab('my-trades')}
                     className={`pb-3 px-1 text-sm font-medium transition-colors relative ${activeTab === 'my-trades'
                         ? 'text-blue-400'
@@ -410,6 +536,108 @@ export default function SecondaryTradingPage() {
                             <ShoppingCart className="w-16 h-16 text-gray-600 mx-auto mb-4" />
                             <p className="text-gray-400 text-lg">No listings found</p>
                             <p className="text-gray-500 text-sm mt-2">Check back later for new opportunities</p>
+                        </div>
+                    )}
+                </>
+            )}
+
+            {/* Syndicate Tokens Tab */}
+            {activeTab === 'syndicate-tokens' && (
+                <>
+                    {/* Search */}
+                    <div className="mb-6">
+                        <div className="relative">
+                            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                            <input
+                                type="text"
+                                placeholder="Search by syndicate name..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full pl-12 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Token Listings Grid */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {tokenListings
+                            .filter(listing =>
+                                listing.syndicate.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                listing.syndicate.tokenSymbol?.toLowerCase().includes(searchQuery.toLowerCase())
+                            )
+                            .map((listing) => (
+                                <div key={listing.id} className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden hover:border-cyan-500/50 transition-all">
+                                    <div className="p-5">
+                                        {/* Header */}
+                                        <div className="flex items-start justify-between mb-4">
+                                            <div>
+                                                <h3 className="text-lg font-bold text-white mb-1">{listing.syndicate.name}</h3>
+                                                <p className="text-sm text-cyan-400">{listing.syndicate.tokenSymbol}</p>
+                                            </div>
+                                            {getStatusBadge(listing.status)}
+                                        </div>
+
+                                        {/* Token Info */}
+                                        <div className="grid grid-cols-3 gap-4 mb-4">
+                                            <div className="bg-gray-700/50 rounded-lg p-3 text-center">
+                                                <p className="text-xs text-gray-400 mb-1">Price/Token</p>
+                                                <p className="text-lg font-bold text-white">${listing.pricePerToken.toFixed(2)}</p>
+                                                <p className="text-xs text-gray-500">per {listing.syndicate.tokenSymbol}</p>
+                                            </div>
+                                            <div className="bg-gray-700/50 rounded-lg p-3 text-center">
+                                                <p className="text-xs text-gray-400 mb-1">Available</p>
+                                                <p className="text-lg font-bold text-white">{listing.tokensAvailable.toLocaleString()}</p>
+                                                <p className="text-xs text-gray-500">tokens</p>
+                                            </div>
+                                            <div className="bg-gray-700/50 rounded-lg p-3 text-center">
+                                                <p className="text-xs text-gray-400 mb-1">Total Value</p>
+                                                <p className="text-lg font-bold text-cyan-400">${((listing.tokensAvailable * listing.pricePerToken) / 1000).toFixed(1)}K</p>
+                                                <p className="text-xs text-gray-500">min {listing.minTokens}</p>
+                                            </div>
+                                        </div>
+
+                                        {/* Seller Info */}
+                                        <div className="flex items-center justify-between text-sm">
+                                            <div className="flex items-center gap-2 text-gray-400">
+                                                <span>Seller:</span>
+                                                <span className="text-white">{listing.seller.name}</span>
+                                                <span className="text-xs text-gray-500">({listing.seller.type})</span>
+                                            </div>
+                                            {listing.expiresAt && (
+                                                <div className="flex items-center gap-1 text-gray-500">
+                                                    <Clock className="w-4 h-4" />
+                                                    Expires {new Date(listing.expiresAt).toLocaleDateString()}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Action Footer */}
+                                    <div className="px-5 py-4 bg-gray-800/80 border-t border-gray-700 flex justify-between items-center">
+                                        <div className="text-sm text-gray-400">
+                                            Listed {new Date(listing.listedAt).toLocaleDateString()}
+                                        </div>
+                                        {listing.status === 'ACTIVE' && listing.sellerId !== user?.id && (
+                                            <button
+                                                onClick={() => handleBuyTokenClick(listing)}
+                                                className="px-5 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg flex items-center gap-2 transition-colors"
+                                            >
+                                                <ShoppingCart className="w-4 h-4" />
+                                                Buy Tokens
+                                            </button>
+                                        )}
+                                        {listing.sellerId === user?.id && (
+                                            <span className="text-sm text-gray-500">Your Listing</span>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                    </div>
+
+                    {tokenListings.length === 0 && (
+                        <div className="text-center py-12">
+                            <DollarSign className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                            <p className="text-gray-400">No syndicate token listings available</p>
                         </div>
                     )}
                 </>
@@ -567,6 +795,95 @@ export default function SecondaryTradingPage() {
                                     className="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                 >
                                     {isBuying ? (
+                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
+                                    ) : (
+                                        <>
+                                            <CheckCircle2 className="w-5 h-5" />
+                                            Confirm Purchase
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Buy Token Modal */}
+            {showBuyTokenModal && selectedTokenListing && (
+                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+                    <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md border border-gray-700">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-xl font-bold text-white">Buy Syndicate Tokens</h3>
+                            <button
+                                onClick={() => setShowBuyTokenModal(false)}
+                                className="text-gray-400 hover:text-white transition-colors"
+                            >
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+                            {/* Syndicate Info */}
+                            <div className="bg-gray-700/50 rounded-lg p-4">
+                                <p className="text-white font-medium">{selectedTokenListing.syndicate.name}</p>
+                                <p className="text-sm text-cyan-400">{selectedTokenListing.syndicate.tokenSymbol}</p>
+                            </div>
+
+                            {/* Price Info */}
+                            <div className="flex justify-between items-center">
+                                <span className="text-gray-400">Price per token:</span>
+                                <span className="text-xl font-bold text-white">${selectedTokenListing.pricePerToken.toFixed(2)}</span>
+                            </div>
+
+                            {/* Tokens Input */}
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-2">Number of Tokens</label>
+                                <input
+                                    type="number"
+                                    value={buyTokens}
+                                    onChange={(e) => setBuyTokens(e.target.value)}
+                                    min={selectedTokenListing.minTokens}
+                                    max={selectedTokenListing.tokensAvailable}
+                                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                />
+                                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                                    <span>Min: {selectedTokenListing.minTokens}</span>
+                                    <span>Available: {selectedTokenListing.tokensAvailable.toLocaleString()}</span>
+                                </div>
+                            </div>
+
+                            {/* Total Calculation */}
+                            <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-4">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-cyan-400">Total Cost:</span>
+                                    <span className="text-2xl font-bold text-cyan-400">
+                                        ${(parseFloat(buyTokens || '0') * selectedTokenListing.pricePerToken).toFixed(2)}
+                                    </span>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1">+ 1% platform fee</p>
+                            </div>
+
+                            {/* Warning */}
+                            <div className="flex items-start gap-3 text-amber-400 text-sm">
+                                <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                                <p>All token sales are final. Please review carefully before purchasing.</p>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex gap-3 pt-4">
+                                <button
+                                    onClick={() => setShowBuyTokenModal(false)}
+                                    className="flex-1 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleBuyTokens}
+                                    disabled={isBuyingTokens || parseFloat(buyTokens) < selectedTokenListing.minTokens || parseFloat(buyTokens) > selectedTokenListing.tokensAvailable}
+                                    className="flex-1 px-4 py-3 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    {isBuyingTokens ? (
                                         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
                                     ) : (
                                         <>
