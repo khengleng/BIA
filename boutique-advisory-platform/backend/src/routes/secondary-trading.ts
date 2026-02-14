@@ -51,13 +51,12 @@ router.get('/listings', authorize('secondary_trading.list'), async (req: Authent
             orderBy: { listedAt: 'desc' }
         });
 
-        // Map to format that frontend expects (l.deal instead of l.dealInvestor.deal)
+        // Map to format that frontend expects
         const formattedListings = listings.map(l => ({
             ...l,
             deal: l.dealInvestor.deal,
-            // Calculate return percentage if we have original price (placeholder for now)
-            returnPercentage: ((l.pricePerShare - 10) / 10) * 100, // Example: assumed $10 original
-            originalPricePerShare: 10
+            returnPercentage: 0,
+            originalPricePerShare: 0
         }));
 
         res.json(formattedListings);
@@ -572,11 +571,11 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response): Promise<v
             totalListings,
             activeListings,
             totalTrades,
-            totalListingValue: totalListingValue || 150000, // System baseline if empty
-            totalVolume: (volumeResult._sum.totalAmount || 0) + 45000, // Include system volume
+            totalListingValue: totalListingValue || 0,
+            totalVolume: volumeResult._sum.totalAmount || 0,
             totalFees: feeResult._sum.fee || 0,
-            avgReturn: 8.5, // System average
-            last24hVolume: (dayVolume._sum.totalAmount || 0) + 1200
+            avgReturn: 0, // In production, this would be derived from actual trade history
+            last24hVolume: dayVolume._sum.totalAmount || 0
         });
     } catch (error) {
         console.error('Error fetching stats:', error);

@@ -223,11 +223,8 @@ function InvestorDashboard({ t, stats }: { t: any; stats: any }) {
                   <div className="text-right">
                     <div className="flex items-center gap-1 text-green-400 text-xs font-bold mb-1">
                       <TrendingUp className="w-3 h-3" />
-                      +{((2.5 + (Math.random() * 5)).toFixed(1))}% growth
+                      +{inv.performance || 0}%
                     </div>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${inv.status === 'COMPLETED' || inv.status === 'APPROVED' ? 'bg-green-500/10 text-green-400' : 'bg-yellow-500/10 text-yellow-500'}`}>
-                      {inv.status}
-                    </span>
                   </div>
                 </div>
               ))

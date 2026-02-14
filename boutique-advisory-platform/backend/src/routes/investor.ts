@@ -186,12 +186,9 @@ router.get('/portfolio/stats', authorize('investor.read', { getOwnerId: (req) =>
       };
     }).sort((a, b) => b.value - a.value);
 
-    // 4. Format individual portfolio items with estimated performance
-    const dealItems = dealInvestments.map((inv, index) => {
+    // 4. Format individual portfolio items (Real Production Data - no simulation)
+    const dealItems = dealInvestments.map((inv) => {
       const percentage = totalAum > 0 ? (inv.amount / totalAum) * 100 : 0;
-      // Simulation: Baseline 2.5% + Older investments show higher unrealized returns
-      const ageInDays = (new Date().getTime() - new Date(inv.createdAt).getTime()) / (1000 * 3600 * 24);
-      const estimatedReturn = Math.min(25, parseFloat((2.5 + ageInDays * 0.05).toFixed(2)));
 
       return {
         id: inv.dealId,
@@ -200,15 +197,13 @@ router.get('/portfolio/stats', authorize('investor.read', { getOwnerId: (req) =>
         sector: inv.deal?.sme?.sector || 'General',
         allocation: parseFloat(percentage.toFixed(1)),
         value: inv.amount,
-        returns: estimatedReturn,
+        returns: 0, // Real dividends/growth track will go here
         color: getColorForSector(inv.deal?.sme?.sector || 'General')
       };
     });
 
-    const syndicateItems = syndicateInvestments.map((inv, index) => {
+    const syndicateItems = syndicateInvestments.map((inv) => {
       const percentage = totalAum > 0 ? (inv.amount / totalAum) * 100 : 0;
-      const ageInDays = (new Date().getTime() - new Date(inv.joinedAt).getTime()) / (1000 * 3600 * 24);
-      const estimatedReturn = Math.min(20, parseFloat((2.0 + ageInDays * 0.03 + (index * 0.5)).toFixed(2))); // Baseline 2.0%
 
       return {
         id: inv.syndicateId,
@@ -217,7 +212,7 @@ router.get('/portfolio/stats', authorize('investor.read', { getOwnerId: (req) =>
         sector: inv.syndicate?.deal?.sme?.sector || 'Syndicate',
         allocation: parseFloat(percentage.toFixed(1)),
         value: inv.amount,
-        returns: estimatedReturn,
+        returns: 0,
         color: getColorForSector(inv.syndicate?.deal?.sme?.sector || 'Syndicate')
       };
     });

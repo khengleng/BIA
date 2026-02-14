@@ -102,9 +102,8 @@ export default function PortfolioOverview() {
                     <p className="text-3xl font-bold text-white tracking-tight">
                         ${summary.totalAum.toLocaleString()}
                     </p>
-                    <div className={`mt-2 flex items-center gap-1 text-xs font-bold ${summary.totalPerformance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        <TrendingUp className="w-3 h-3" />
-                        {summary.totalPerformance >= 0 ? '+' : ''}{summary.totalPerformance}% Total Growth
+                    <div className="mt-2 text-gray-500 text-xs">
+                        Current portfolio valuation
                     </div>
                 </div>
 
