@@ -41,6 +41,7 @@ interface Member {
         type: string
     }
     amount: number
+    tokens?: number
     status: string
     joinedAt: string
 }
@@ -333,8 +334,7 @@ export default function SyndicateDetailsPage() {
                                         <thead className="bg-gray-700/50 text-gray-400 text-xs uppercase tracking-widest">
                                             <tr>
                                                 <th className="px-6 py-4">Investor</th>
-                                                <th className="px-6 py-4">Amount</th>
-                                                {syndicate.isTokenized && <th className="px-6 py-4">Tokens</th>}
+                                                <th className="px-6 py-4">Amount / Tokens</th>
                                                 <th className="px-6 py-4">Status</th>
                                                 <th className="px-6 py-4">Date</th>
                                                 <th className="px-6 py-4">Actions</th>
@@ -347,17 +347,16 @@ export default function SyndicateDetailsPage() {
                                                         <p className="text-white font-medium">{member.investor.name}</p>
                                                         <p className="text-xs text-gray-500">{member.investor.type}</p>
                                                     </td>
-                                                    <td className="px-6 py-4 text-white font-bold">
-                                                        ${member.amount.toLocaleString()}
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-white font-bold">${member.amount.toLocaleString()}</span>
+                                                            {syndicate.isTokenized && member.tokens && (
+                                                                <span className="text-xs bg-cyan-900/50 text-cyan-400 px-2 py-0.5 rounded border border-cyan-800 whitespace-nowrap">
+                                                                    {member.tokens.toLocaleString()} {syndicate.tokenSymbol}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </td>
-                                                    {syndicate.isTokenized && (
-                                                        <td className="px-6 py-4">
-                                                            <div className="flex flex-col">
-                                                                <span className="text-white font-bold">{(member as any).tokens?.toLocaleString() || '0'}</span>
-                                                                <span className="text-[10px] text-cyan-400">{syndicate.tokenSymbol}</span>
-                                                            </div>
-                                                        </td>
-                                                    )}
                                                     <td className="px-6 py-4">
                                                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${member.status === 'APPROVED' ? 'bg-green-500/20 text-green-400' :
                                                             member.status === 'PENDING' ? 'bg-amber-500/20 text-amber-400' :
