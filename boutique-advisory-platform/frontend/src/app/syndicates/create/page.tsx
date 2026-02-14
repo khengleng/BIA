@@ -40,7 +40,11 @@ export default function CreateSyndicatePage() {
         managementFee: '2.0',
         carryFee: '20.0',
         dealId: '',
-        closingDate: ''
+        closingDate: '',
+        isTokenized: false,
+        tokenName: '',
+        tokenSymbol: '',
+        pricePerToken: ''
     })
 
     useEffect(() => {
@@ -87,7 +91,16 @@ export default function CreateSyndicatePage() {
                     minInvestment: parseFloat(formData.minInvestment),
                     maxInvestment: formData.maxInvestment ? parseFloat(formData.maxInvestment) : null,
                     managementFee: parseFloat(formData.managementFee),
-                    carryFee: parseFloat(formData.carryFee)
+                    carryFee: parseFloat(formData.carryFee),
+
+                    // Tokenization fields
+                    isTokenized: formData.isTokenized,
+                    tokenName: formData.isTokenized ? formData.tokenName : null,
+                    tokenSymbol: formData.isTokenized ? formData.tokenSymbol : null,
+                    pricePerToken: formData.isTokenized ? parseFloat(formData.pricePerToken) : null,
+                    totalTokens: formData.isTokenized && formData.targetAmount && formData.pricePerToken
+                        ? Math.floor(parseFloat(formData.targetAmount) / parseFloat(formData.pricePerToken))
+                        : null
                 })
             })
 
@@ -159,6 +172,92 @@ export default function CreateSyndicatePage() {
                                 />
                             </div>
                         </div>
+                    </div>
+
+                    {/* Tokenization Options */}
+                    <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+                                <DollarSign className="w-5 h-5 text-cyan-400" />
+                                Tokenization
+                            </h2>
+                            <label className="flex items-center cursor-pointer select-none">
+                                <div className="relative">
+                                    <input
+                                        type="checkbox"
+                                        name="isTokenized"
+                                        checked={formData.isTokenized}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, isTokenized: e.target.checked }))}
+                                        className="sr-only"
+                                    />
+                                    <div className={`block w-14 h-8 rounded-full transition-colors ${formData.isTokenized ? 'bg-cyan-600' : 'bg-gray-600'}`}></div>
+                                    <div className={`absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform ${formData.isTokenized ? 'transform translate-x-6' : ''}`}></div>
+                                </div>
+                                <div className="ml-3 text-gray-300 font-medium">
+                                    Enable Tokenization
+                                </div>
+                            </label>
+                        </div>
+
+                        {formData.isTokenized && (
+                            <div className="space-y-6 animate-fadeIn">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">Token Name *</label>
+                                        <input
+                                            type="text"
+                                            name="tokenName"
+                                            value={formData.tokenName}
+                                            onChange={handleInputChange}
+                                            required={formData.isTokenized}
+                                            placeholder="e.g. Real Estate Fund Token"
+                                            className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">Token Symbol *</label>
+                                        <input
+                                            type="text"
+                                            name="tokenSymbol"
+                                            value={formData.tokenSymbol}
+                                            onChange={handleInputChange}
+                                            required={formData.isTokenized}
+                                            placeholder="e.g. REFT"
+                                            className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 uppercase"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">Price Per Token ($) *</label>
+                                        <input
+                                            type="number"
+                                            name="pricePerToken"
+                                            value={formData.pricePerToken}
+                                            onChange={handleInputChange}
+                                            required={formData.isTokenized}
+                                            min="0.01"
+                                            step="0.01"
+                                            placeholder="e.g. 100"
+                                            className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="bg-cyan-900/20 border border-cyan-700/30 rounded-lg p-4 text-sm text-cyan-200">
+                                    <p className="font-bold flex items-center gap-2 mb-2">
+                                        <AlertCircle className="w-4 h-4" />
+                                        Token Supply Estimation
+                                    </p>
+                                    {formData.targetAmount && formData.pricePerToken ? (
+                                        <p>
+                                            Based on your target of <span className="text-white font-bold">${parseFloat(formData.targetAmount).toLocaleString()}</span> and price of <span className="text-white font-bold">${parseFloat(formData.pricePerToken).toLocaleString()}</span>,
+                                            you will issue approximately <span className="text-white font-bold">{Math.floor(parseFloat(formData.targetAmount) / parseFloat(formData.pricePerToken)).toLocaleString()} {formData.tokenSymbol || 'Tokens'}</span>.
+                                        </p>
+                                    ) : (
+                                        <p className="opacity-70">Enter target amount and token price to see supply estimate.</p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Financial Terms */}
