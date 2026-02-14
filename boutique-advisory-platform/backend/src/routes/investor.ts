@@ -341,15 +341,32 @@ router.put('/:id', authorize('investor.update'), validateBody(updateInvestorSche
   }
 });
 
-/*
-[DEPRECATED] Verify Investor KYC (Mock)
-This endpoint is disabled in production to enforce strict KYC via Sumsub/Stripe.
-To re-enable for testing, uncomment below or set ENABLE_MOCK_KYC=true env var.
-
+// Verify Investor KYC (Manual override by Admin/Advisor)
 router.post('/:id/kyc', authorize('investor.verify'), async (req: AuthenticatedRequest, res: Response) => {
-  // Mock logic removed for production safety
+  try {
+    const { id } = req.params;
+
+    // Check if investor exists
+    const existingInvestor = await prisma.investor.findUnique({ where: { id } });
+    if (!existingInvestor) {
+      return res.status(404).json({ error: 'Investor not found' });
+    }
+
+    // Update status
+    const updatedInvestor = await prisma.investor.update({
+      where: { id },
+      data: {
+        kycStatus: 'VERIFIED',
+        status: 'ACTIVE'
+      } as any
+    });
+
+    return res.json({ message: 'Investor KYC verified successfully', investor: updatedInvestor });
+  } catch (error) {
+    console.error('Verify Investor KYC error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
 });
-*/
 
 // Submit KYC details
 router.post('/kyc-submit', async (req: any, res: Response) => {
