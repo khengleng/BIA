@@ -27,7 +27,9 @@ interface SectorAllocation {
 
 interface PortfolioItem {
     id: string
+    parentId: string
     investmentId?: string
+    type: 'DEAL' | 'SYNDICATE'
     name: string
     sector: string
     allocation: number
@@ -259,6 +261,8 @@ export default function PortfolioOverview() {
             {showSellModal && selectedSellItem && selectedSellItem.investmentId && (
                 <SellPositionModal
                     investmentId={selectedSellItem.investmentId}
+                    parentId={selectedSellItem.parentId}
+                    type={selectedSellItem.type}
                     dealName={selectedSellItem.name}
                     currentValue={selectedSellItem.value}
                     onClose={() => setShowSellModal(false)}

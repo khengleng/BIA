@@ -7,13 +7,15 @@ import { X, DollarSign, Loader2 } from 'lucide-react'
 
 interface SellPositionModalProps {
     investmentId: string
+    parentId: string
+    type: 'DEAL' | 'SYNDICATE'
     dealName: string
     currentValue: number
     onClose: () => void
     onSuccess: () => void
 }
 
-export default function SellPositionModal({ investmentId, dealName, currentValue, onClose, onSuccess }: SellPositionModalProps) {
+export default function SellPositionModal({ investmentId, parentId, type, dealName, currentValue, onClose, onSuccess }: SellPositionModalProps) {
     const { addToast } = useToast()
     const [amount, setAmount] = useState<string>('')
     const [price, setPrice] = useState<string>('')
@@ -22,20 +24,20 @@ export default function SellPositionModal({ investmentId, dealName, currentValue
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
 
-        // Robust parsing: Strip commas or dollar signs if the browser allowed them
+        // Robust parsing: Strip commas or dollar signs
         const cleanAmount = amount.replace(/[^0-9.]/g, '')
         const cleanPrice = price.replace(/[^0-9.]/g, '')
 
-        const sharesToSell = parseFloat(cleanAmount)
+        const qtyToSell = parseFloat(cleanAmount)
         const pricePerUnit = parseFloat(cleanPrice)
 
-        if (isNaN(sharesToSell) || sharesToSell <= 0) {
-            addToast('error', 'Please enter a valid amount to sell')
+        if (isNaN(qtyToSell) || qtyToSell <= 0) {
+            addToast('error', `Please enter a valid ${type === 'SYNDICATE' ? 'token count' : 'amount'} to sell`)
             return
         }
 
-        if (sharesToSell > (currentValue || 0)) {
-            addToast('error', `You only have $${(currentValue || 0).toLocaleString()} available to sell`)
+        if (qtyToSell > (currentValue || 0)) {
+            addToast('error', `You only have ${type === 'SYNDICATE' ? '' : '$'}${(currentValue || 0).toLocaleString()} available to sell`)
             return
         }
 
@@ -47,14 +49,24 @@ export default function SellPositionModal({ investmentId, dealName, currentValue
         setIsLoading(true)
 
         try {
-            const response = await authorizedRequest('/api/secondary-trading/listings', {
+            const isSyndicate = type === 'SYNDICATE'
+            const endpoint = isSyndicate ? '/api/syndicate-tokens/listings' : '/api/secondary-trading/listings'
+
+            const payload: any = isSyndicate ? {
+                syndicateId: parentId,
+                tokensAvailable: qtyToSell,
+                pricePerToken: pricePerUnit,
+                minTokens: 1
+            } : {
+                dealInvestorId: investmentId,
+                sharesAvailable: qtyToSell,
+                pricePerShare: pricePerUnit,
+                minPurchase: Math.min(100, qtyToSell)
+            }
+
+            const response = await authorizedRequest(endpoint, {
                 method: 'POST',
-                body: JSON.stringify({
-                    dealInvestorId: investmentId,
-                    sharesAvailable: sharesToSell,
-                    pricePerShare: pricePerUnit,
-                    minPurchase: Math.min(100, sharesToSell) // Ensure min purchase isn't larger than total
-                })
+                body: JSON.stringify(payload)
             })
 
             if (response.ok) {
@@ -88,28 +100,28 @@ export default function SellPositionModal({ investmentId, dealName, currentValue
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
                     <div className="bg-blue-900/10 border border-blue-500/20 rounded-xl p-4">
                         <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm text-blue-300">Available to Sell</span>
-                            <span className="text-lg font-bold text-white">${currentValue.toLocaleString()}</span>
+                            <span className="text-sm text-blue-300">{type === 'SYNDICATE' ? 'Tokens Available' : 'Available to Sell'}</span>
+                            <span className="text-lg font-bold text-white">{type === 'SYNDICATE' ? '' : '$'}{(currentValue || 0).toLocaleString()}</span>
                         </div>
                         <p className="text-xs text-blue-400/60">
-                            Your principal investment amount eligible for secondary trading.
+                            {type === 'SYNDICATE' ? 'Your approved syndicate tokens eligible for secondary trading.' : 'Your principal investment amount eligible for secondary trading.'}
                         </p>
                     </div>
 
                     <div className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-300 mb-2">
-                                Amount to Sell ($)
+                                {type === 'SYNDICATE' ? 'Number of Tokens' : 'Amount to Sell ($)'}
                             </label>
                             <div className="relative">
-                                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                                {type !== 'SYNDICATE' && <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />}
                                 <input
                                     type="number"
                                     value={amount}
                                     onChange={(e) => setAmount(e.target.value)}
-                                    placeholder="5000"
-                                    className="w-full bg-gray-900 border border-gray-700 rounded-xl px-10 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
-                                    min="100"
+                                    placeholder={type === 'SYNDICATE' ? "100" : "5000"}
+                                    className={`w-full bg-gray-900 border border-gray-700 rounded-xl ${type === 'SYNDICATE' ? 'px-4' : 'px-10'} py-3 text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all`}
+                                    min="1"
                                     max={currentValue}
                                 />
                             </div>
@@ -117,7 +129,7 @@ export default function SellPositionModal({ investmentId, dealName, currentValue
 
                         <div>
                             <label className="block text-sm font-medium text-gray-300 mb-2">
-                                Price Per Unit ($1 Principal)
+                                {type === 'SYNDICATE' ? 'Price Per Token ($)' : 'Price Per Unit ($1 Principal)'}
                             </label>
                             <div className="relative">
                                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
@@ -131,7 +143,7 @@ export default function SellPositionModal({ investmentId, dealName, currentValue
                                 />
                             </div>
                             <p className="text-xs text-gray-500 mt-2">
-                                Example: Enter 1.10 to sell for a 10% premium.
+                                {type === 'SYNDICATE' ? 'Example: Enter 1.50 to sell tokens at $1.50 each.' : 'Example: Enter 1.10 to sell for a 10% premium.'}
                             </p>
                         </div>
                     </div>

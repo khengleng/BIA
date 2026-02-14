@@ -192,8 +192,10 @@ router.get('/portfolio/stats', authorize('investor.read', { getOwnerId: (req) =>
 
       return {
         id: inv.dealId,
+        parentId: inv.dealId,
         investmentId: inv.id,
-        name: inv.deal?.sme?.name || 'Unknown Company',
+        type: 'DEAL',
+        name: inv.deal?.sme?.name || inv.deal?.title || 'Unknown Company',
         sector: inv.deal?.sme?.sector || 'General',
         allocation: parseFloat(percentage.toFixed(1)),
         value: inv.amount,
@@ -207,7 +209,9 @@ router.get('/portfolio/stats', authorize('investor.read', { getOwnerId: (req) =>
 
       return {
         id: inv.syndicateId,
+        parentId: inv.syndicateId,
         investmentId: inv.id,
+        type: 'SYNDICATE',
         name: inv.syndicate?.name || 'Syndicate',
         sector: inv.syndicate?.deal?.sme?.sector || 'Syndicate',
         allocation: parseFloat(percentage.toFixed(1)),
