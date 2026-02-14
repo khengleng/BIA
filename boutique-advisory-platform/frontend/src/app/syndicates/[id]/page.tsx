@@ -53,6 +53,7 @@ interface Syndicate {
         id: string
         name: string
         type: string
+        userId?: string
     }
     leadInvestorId: string
     targetAmount: number
@@ -115,7 +116,10 @@ export default function SyndicateDetailsPage() {
                 const currentUserStr = localStorage.getItem('user')
                 if (currentUserStr) {
                     const currentUser = JSON.parse(currentUserStr)
-                    setIsLead(data.leadInvestorId === currentUser.id)
+                    setIsLead(
+                        (data.leadInvestor?.userId === currentUser.id) ||
+                        (data.leadInvestorId === currentUser.id)
+                    )
                 }
             } else {
                 addToast('error', 'Syndicate not found')
