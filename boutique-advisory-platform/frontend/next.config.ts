@@ -23,7 +23,7 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   async headers() {
     const isProduction = process.env.NODE_ENV === 'production';
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://backend-production-9d40.up.railway.app';
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || '';
     const wsUrl = apiBaseUrl.replace(/^http/, 'ws');
 
     const cspDirectives = [
@@ -104,7 +104,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/api-proxy/:path*',
-        destination: `${process.env.NEXT_PUBLIC_API_URL || 'https://backend-production-9d40.up.railway.app'}/:path*`,
+        destination: `${process.env.NEXT_PUBLIC_API_URL || ''}/:path*`,
       },
     ];
   },

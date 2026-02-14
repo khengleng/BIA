@@ -10,7 +10,12 @@ if (!ENCRYPTION_KEY) {
     // Fallback strictly for local development only
     console.warn('WARNING: Using insecure default encryption key. Do not use in production.');
 }
-const ACTIVE_KEY = ENCRYPTION_KEY || '14d6762934e3d84f9ebe6ba7b6b7363dc8ad53869da8dfceb44fe479779b48ed';
+const ACTIVE_KEY = ENCRYPTION_KEY || (process.env.NODE_ENV === 'production' ? '' : '0000000000000000000000000000000000000000000000000000000000000000');
+
+if (!ACTIVE_KEY && process.env.NODE_ENV === 'production') {
+    throw new Error('FATAL: ENCRYPTION_KEY is required in production.');
+}
+
 const ALGORITHM = 'aes-256-gcm';
 
 // Standard IV length for GCM is 12 bytes (96 bits)

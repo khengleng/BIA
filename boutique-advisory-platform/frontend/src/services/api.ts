@@ -1,7 +1,7 @@
 // API Service for interacting with the backend
 // This replaces all localStorage calls with database-backed API calls
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003';
 
 // Helper function to get auth token
 const getAuthToken = (): string | null => {
