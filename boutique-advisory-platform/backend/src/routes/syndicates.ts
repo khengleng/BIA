@@ -474,9 +474,10 @@ router.get('/stats/overview', async (req: AuthenticatedRequest, res: Response): 
             return;
         }
 
-        const [totalSyndicates, openSyndicates, fundedSyndicates, totalMembers] = await Promise.all([
+        const [totalSyndicates, openSyndicates, formingSyndicates, fundedSyndicates, totalMembers] = await Promise.all([
             prismaReplica.syndicate.count(),
             prismaReplica.syndicate.count({ where: { status: 'OPEN' } }),
+            prismaReplica.syndicate.count({ where: { status: 'FORMING' } }),
             prismaReplica.syndicate.count({ where: { status: 'FUNDED' } }),
             prismaReplica.syndicateMember.count({ where: { status: 'APPROVED' } })
         ]);
@@ -486,11 +487,18 @@ router.get('/stats/overview', async (req: AuthenticatedRequest, res: Response): 
             _sum: { amount: true }
         });
 
+        const totalTargetResult = await prismaReplica.syndicate.aggregate({
+            _sum: { targetAmount: true }
+        });
+
         res.json({
             totalSyndicates,
+            activeSyndicates: openSyndicates + formingSyndicates + fundedSyndicates,
             openSyndicates,
+            formingSyndicates,
             fundedSyndicates,
             totalRaised: totalRaisedResult._sum.amount || 0,
+            totalTarget: totalTargetResult._sum.targetAmount || 0,
             totalMembers
         });
     } catch (error) {
