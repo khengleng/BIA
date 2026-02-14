@@ -48,6 +48,9 @@ interface Syndicate {
     closingDate: string
     progress: number
     createdAt: string
+    isTokenized: boolean
+    tokenSymbol?: string
+    tokenPrice?: number
 }
 
 interface SyndicateStats {
@@ -406,6 +409,25 @@ export default function SyndicatesPage() {
                                     {selectedSyndicate.maxInvestment && ` | Max: $${selectedSyndicate.maxInvestment.toLocaleString()}`}
                                 </p>
                             </div>
+
+                            {/* Token Calculation for Tokenized Syndicates */}
+                            {selectedSyndicate.isTokenized && selectedSyndicate.tokenPrice && joinAmount && parseFloat(joinAmount) > 0 && (
+                                <div className="bg-cyan-900/20 border border-cyan-700/50 rounded-lg p-4">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-xs text-cyan-400 mb-1">You will receive</p>
+                                            <p className="text-2xl font-bold text-white">
+                                                {(parseFloat(joinAmount) / selectedSyndicate.tokenPrice).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                                <span className="text-sm text-cyan-400 ml-2">{selectedSyndicate.tokenSymbol}</span>
+                                            </p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-xs text-gray-400">Token Price</p>
+                                            <p className="text-sm font-medium text-white">${selectedSyndicate.tokenPrice.toLocaleString()}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="bg-gray-700/50 rounded-lg p-4">
                                 <div className="flex items-start gap-3">
