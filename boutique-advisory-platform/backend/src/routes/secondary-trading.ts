@@ -54,7 +54,7 @@ router.get('/listings', authorize('secondary_trading.list'), async (req: Authent
         // Map to format that frontend expects
         const formattedListings = listings.map(l => ({
             ...l,
-            deal: l.dealInvestor.deal,
+            deal: l.dealInvestor?.deal || { title: 'Unknown Deal', sme: { name: 'N/A' } },
             returnPercentage: 0,
             originalPricePerShare: 0
         }));

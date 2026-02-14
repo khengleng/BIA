@@ -22,20 +22,24 @@ export default function SellPositionModal({ investmentId, dealName, currentValue
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
 
-        const sharesToSell = parseFloat(amount)
-        const pricePerUnit = parseFloat(price)
+        // Robust parsing: Strip commas or dollar signs if the browser allowed them
+        const cleanAmount = amount.replace(/[^0-9.]/g, '')
+        const cleanPrice = price.replace(/[^0-9.]/g, '')
 
-        if (!sharesToSell || sharesToSell <= 0) {
+        const sharesToSell = parseFloat(cleanAmount)
+        const pricePerUnit = parseFloat(cleanPrice)
+
+        if (isNaN(sharesToSell) || sharesToSell <= 0) {
             addToast('error', 'Please enter a valid amount to sell')
             return
         }
 
-        if (sharesToSell > currentValue) {
-            addToast('error', `You only have $${currentValue.toLocaleString()} available to sell`)
+        if (sharesToSell > (currentValue || 0)) {
+            addToast('error', `You only have $${(currentValue || 0).toLocaleString()} available to sell`)
             return
         }
 
-        if (!pricePerUnit || pricePerUnit <= 0) {
+        if (isNaN(pricePerUnit) || pricePerUnit <= 0) {
             addToast('error', 'Please enter a valid price per unit')
             return
         }
@@ -43,17 +47,13 @@ export default function SellPositionModal({ investmentId, dealName, currentValue
         setIsLoading(true)
 
         try {
-            // Calculate implied pricePerShare if we treat $1 principal = 1 share
-            // But the backend expects 'pricePerShare'. If user inputs "Total Sale Price", we might need to adjust.
-            // Let's assume user inputs "Price per $1 unit". E.g. Selling $10k worth for $1.10 per dollar (total $11k).
-
             const response = await authorizedRequest('/api/secondary-trading/listings', {
                 method: 'POST',
                 body: JSON.stringify({
                     dealInvestorId: investmentId,
-                    sharesAvailable: sharesToSell, // Amount of principal to sell
-                    pricePerShare: pricePerUnit,   // Price per unit of principal
-                    minPurchase: 100 // Default min purchase size
+                    sharesAvailable: sharesToSell,
+                    pricePerShare: pricePerUnit,
+                    minPurchase: Math.min(100, sharesToSell) // Ensure min purchase isn't larger than total
                 })
             })
 

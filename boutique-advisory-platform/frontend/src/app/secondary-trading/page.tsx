@@ -24,7 +24,7 @@ import DashboardLayout from '../../components/layout/DashboardLayout'
 import { useToast } from '../../contexts/ToastContext'
 import usePermissions from '../../hooks/usePermissions'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003'
+import { authorizedRequest, API_URL } from '../../lib/api'
 
 interface Listing {
     id: string
@@ -157,54 +157,41 @@ export default function SecondaryTradingPage() {
 
     const fetchData = async () => {
         try {
-            const token = localStorage.getItem('token')
-            if (!token) {
-                window.location.href = '/auth/login'
-                return
-            }
-
             // Fetch listings
-            const listingsRes = await fetch(`${API_URL}/api/secondary-trading/listings`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            })
+            const listingsRes = await authorizedRequest('/api/secondary-trading/listings')
             if (listingsRes.ok) {
                 setListings(await listingsRes.json())
+            } else {
+                console.error('Failed to fetch listings:', listingsRes.status)
+                addToast('error', 'Failed to load deal listings')
             }
 
             // Fetch my trades
-            const tradesRes = await fetch(`${API_URL}/api/secondary-trading/trades/my`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            })
+            const tradesRes = await authorizedRequest('/api/secondary-trading/trades/my')
             if (tradesRes.ok) {
                 setMyTrades(await tradesRes.json())
             }
 
             // Fetch stats
-            const statsRes = await fetch(`${API_URL}/api/secondary-trading/stats`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            })
+            const statsRes = await authorizedRequest('/api/secondary-trading/stats')
             if (statsRes.ok) {
                 setStats(await statsRes.json())
             }
 
             // Fetch syndicate token listings
-            const tokenListingsRes = await fetch(`${API_URL}/api/syndicate-tokens/listings`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            })
+            const tokenListingsRes = await authorizedRequest('/api/syndicate-tokens/listings')
             if (tokenListingsRes.ok) {
                 setTokenListings(await tokenListingsRes.json())
             }
 
             // Fetch my token trades
-            const tokenTradesRes = await fetch(`${API_URL}/api/syndicate-tokens/trades/my`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            })
+            const tokenTradesRes = await authorizedRequest('/api/syndicate-tokens/trades/my')
             if (tokenTradesRes.ok) {
                 setMyTokenTrades(await tokenTradesRes.json())
             }
         } catch (error) {
             console.error('Error fetching data:', error)
-            addToast('error', 'Error loading marketplace')
+            addToast('error', 'Error loading marketplace. Please try again.')
         } finally {
             setIsLoading(false)
         }
@@ -221,13 +208,8 @@ export default function SecondaryTradingPage() {
         setIsBuying(true)
 
         try {
-            const token = localStorage.getItem('token')
-            const response = await fetch(`${API_URL}/api/secondary-trading/listings/${selectedListing.id}/buy`, {
+            const response = await authorizedRequest(`/api/secondary-trading/listings/${selectedListing.id}/buy`, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
                 body: JSON.stringify({
                     shares: parseFloat(buyShares),
                     simulate_payment: true // DEMO: Enable immediate execution
@@ -261,13 +243,8 @@ export default function SecondaryTradingPage() {
         setIsBuyingTokens(true)
 
         try {
-            const token = localStorage.getItem('token')
-            const response = await fetch(`${API_URL}/api/syndicate-tokens/buy`, {
+            const response = await authorizedRequest('/api/syndicate-tokens/buy', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
                 body: JSON.stringify({
                     listingId: selectedTokenListing.id,
                     tokens: parseFloat(buyTokens)
@@ -462,8 +439,8 @@ export default function SecondaryTradingPage() {
                                     {/* Header */}
                                     <div className="flex items-start justify-between mb-4">
                                         <div>
-                                            <h3 className="text-lg font-bold text-white mb-1">{listing.deal.title}</h3>
-                                            <p className="text-sm text-gray-400">{listing.deal.sme.name}</p>
+                                            <h3 className="text-lg font-bold text-white mb-1">{listing.deal?.title || 'Unknown Deal'}</h3>
+                                            <p className="text-sm text-gray-400">{listing.deal?.sme?.name || 'Project Name'}</p>
                                         </div>
                                         {getStatusBadge(listing.status)}
                                     </div>
@@ -572,8 +549,8 @@ export default function SecondaryTradingPage() {
                                         {/* Header */}
                                         <div className="flex items-start justify-between mb-4">
                                             <div>
-                                                <h3 className="text-lg font-bold text-white mb-1">{listing.syndicate.name}</h3>
-                                                <p className="text-sm text-cyan-400">{listing.syndicate.tokenSymbol}</p>
+                                                <h3 className="text-lg font-bold text-white mb-1">{listing.syndicate?.name || 'Syndicate'}</h3>
+                                                <p className="text-sm text-cyan-400">{listing.syndicate?.tokenSymbol || 'TOKEN'}</p>
                                             </div>
                                             {getStatusBadge(listing.status)}
                                         </div>
@@ -739,8 +716,8 @@ export default function SecondaryTradingPage() {
                         <div className="space-y-4">
                             {/* Deal Info */}
                             <div className="bg-gray-700/50 rounded-lg p-4">
-                                <p className="text-white font-medium">{selectedListing.deal.title}</p>
-                                <p className="text-sm text-gray-400">{selectedListing.deal.sme.name}</p>
+                                <p className="text-white font-medium">{selectedListing.deal?.title || 'Unknown Deal'}</p>
+                                <p className="text-sm text-gray-400">{selectedListing.deal?.sme?.name || 'Project'}</p>
                             </div>
 
                             {/* Price Info */}
