@@ -310,6 +310,15 @@ model Syndicate {
   maxInvestment   Float?
   managementFee   Float    @default(2.0)  // Percentage
   carryFee        Float    @default(20.0) // Percentage of profits
+  
+  // Tokenization
+  isTokenized     Boolean  @default(false)
+  tokenName       String?
+  tokenSymbol     String?
+  pricePerToken   Float?
+  totalTokens     Float?
+  tokensSold      Float    @default(0)
+
   status          SyndicateStatus @default(FORMING)
   dealId          String?
   closingDate     DateTime?
@@ -329,6 +338,7 @@ model SyndicateMember {
   syndicateId   String
   investorId    String
   amount        Float
+  tokens        Float?   @default(0) // Number of tokens owned
   status        SyndicateMemberStatus @default(PENDING)
   joinedAt      DateTime @default(now())
   

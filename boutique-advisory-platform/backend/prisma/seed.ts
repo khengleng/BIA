@@ -282,6 +282,55 @@ async function main() {
     });
     console.log('✅ Created Syndicate:', syndicate2.name);
 
+    // Create a TOKENIZED Syndicate
+    const syndicate3 = await prisma.syndicate.upsert({
+        where: { id: 'synd_real_estate_token' },
+        update: {},
+        create: {
+            id: 'synd_real_estate_token',
+            tenantId: 'default',
+            name: 'Prime PP Real Estate Fund',
+            description: 'Tokenized real estate fund for prime commercial properties in Phnom Penh.',
+            leadInvestorId: investor.id,
+            targetAmount: 2000000,
+            minInvestment: 500, // Low entry barrier due to tokenization
+            maxInvestment: 100000,
+            managementFee: 1.5,
+            carryFee: 15.0,
+            status: 'OPEN',
+
+            // Tokenization Details
+            isTokenized: true,
+            tokenName: 'Prime Property Token',
+            tokenSymbol: 'PPT',
+            pricePerToken: 100.0, // 1 Token = $100
+            totalTokens: 20000,   // $2M / $100
+            tokensSold: 1500,     // Initial sales
+
+            closingDate: new Date('2025-06-30'),
+        },
+    });
+    console.log('✅ Created Tokenized Syndicate:', syndicate3.name);
+
+    // Add investor to tokenized syndicate
+    await prisma.syndicateMember.upsert({
+        where: {
+            syndicateId_investorId: {
+                syndicateId: syndicate3.id,
+                investorId: investor2.id
+            }
+        },
+        update: {},
+        create: {
+            syndicateId: syndicate3.id,
+            investorId: investor2.id,
+            amount: 5000,      // Invested $5,000
+            tokens: 50,        // Owns 50 tokens ($5000 / $100)
+            status: 'APPROVED',
+        },
+    });
+    console.log('✅ Added member to tokenized syndicate (50 PPT tokens)');
+
     // Create syndicate members
     await prisma.syndicateMember.upsert({
         where: {
