@@ -240,7 +240,7 @@ export default function NotificationCenter() {
                                                 </span>
                                                 {notification.actionUrl && (
                                                     <Link
-                                                        href={notification.actionUrl}
+                                                        href={notification.actionUrl === '/matches' ? '/matchmaking' : notification.actionUrl}
                                                         onClick={() => {
                                                             markAsRead(notification.id)
                                                             setIsOpen(false)

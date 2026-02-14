@@ -63,7 +63,7 @@ export function initSocket(server: HttpServer) {
         console.log(`👤 User connected: ${user.email} (${socket.id})`);
 
         // Join user-specific room for targeted notifications
-        socket.join(`user_${user.id}`);
+        socket.join(`user_${user.userId}`);
 
         // Join role-specific rooms
         socket.join(`role_${user.role}`);
@@ -84,22 +84,42 @@ export function initSocket(server: HttpServer) {
         });
 
         // Handle sending messages
-        socket.on('send_message', (data: {
+        socket.on('send_message', async (data: {
             conversationId: string;
             content: string;
             type?: string;
             attachments?: any[]
         }) => {
-            // Broadcast to conversation room (excluding sender)
-            socket.to(`conversation_${data.conversationId}`).emit('new_message', {
-                conversationId: data.conversationId,
-                content: data.content,
-                type: data.type || 'TEXT',
-                attachments: data.attachments || [],
-                senderId: user.id,
-                senderName: user.firstName,
-                createdAt: new Date().toISOString()
-            });
+            try {
+                // Find all participants for this conversation
+                const { prisma } = await import('./database');
+                const conversation = await (prisma as any).conversation.findUnique({
+                    where: { id: data.conversationId },
+                    include: { participants: true }
+                });
+
+                if (!conversation) return;
+
+                const messagePayload = {
+                    conversationId: data.conversationId,
+                    content: data.content,
+                    type: data.type || 'TEXT',
+                    attachments: data.attachments || [],
+                    senderId: user.userId,
+                    senderName: user.firstName,
+                    createdAt: new Date().toISOString()
+                };
+
+                // Broadcast to all other participants in their personal rooms
+                conversation.participants.forEach((p: any) => {
+                    if (p.userId === user.userId) return; // Skip sender to avoid duplicates
+                    io.to(`user_${p.userId}`).emit('new_message', messagePayload);
+                });
+
+                console.log(`📡 Message broadcast to ${conversation.participants.length} participants in conversation ${data.conversationId}`);
+            } catch (error) {
+                console.error('Error broadcasting message:', error);
+            }
         });
     });
 

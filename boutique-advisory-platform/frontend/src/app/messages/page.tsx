@@ -148,16 +148,19 @@ export default function MessagesPage() {
                 setMessages(prev => [...prev, data])
             }
 
-            // Update conversation list item
-            setConversations(prev => prev.map(c =>
-                c.id === data.conversationId
-                    ? {
-                        ...c,
-                        lastMessage: data.type === 'IMAGE' ? '[Image]' : (data.type === 'FILE' ? `[File]` : data.content),
-                        lastMessageAt: data.createdAt
-                    }
-                    : c
-            ))
+            // Update conversation list item and move to top
+            setConversations(prev => {
+                const existing = prev.find(c => c.id === data.conversationId)
+                if (!existing) return prev // Or fetch new list if it's a completely new convo
+
+                const updated = {
+                    ...existing,
+                    lastMessage: data.type === 'IMAGE' ? '[Image]' : (data.type === 'FILE' ? `[File]` : data.content),
+                    lastMessageAt: data.createdAt
+                }
+
+                return [updated, ...prev.filter(c => c.id !== data.conversationId)]
+            })
         }
 
         socket.on('new_message', handleNewMessage)

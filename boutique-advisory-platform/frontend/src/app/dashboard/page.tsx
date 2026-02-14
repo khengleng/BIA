@@ -181,7 +181,7 @@ function InvestorDashboard({ t, stats }: { t: any; stats: any }) {
   const dashboardStats = [
     { label: t('dashboard.portfolioValue') || 'Portfolio Value', value: stats?.portfolioValue ? `$${(stats.portfolioValue / 1000).toFixed(0)}K` : '$0', icon: DollarSign, color: 'text-green-500', link: '/investor/portfolio' },
     { label: t('dashboard.activeInvestments') || 'Active Investments', value: stats?.activeInvestments || '0', icon: TrendingUp, color: 'text-blue-500', link: '/investor/portfolio' },
-    { label: 'Match Score', value: stats?.avgMatchScore ? `${stats.avgMatchScore}%` : '0%', icon: BarChart3, color: 'text-purple-500', link: '/matches' },
+    { label: 'Match Score', value: stats?.avgMatchScore ? `${stats.avgMatchScore}%` : '0%', icon: BarChart3, color: 'text-purple-500', link: '/matchmaking' },
     { label: 'Pending Offers', value: stats?.pendingOffers || '0', icon: Clock, color: 'text-yellow-500', link: '/deals' }
   ]
 

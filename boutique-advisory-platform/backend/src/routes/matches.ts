@@ -75,7 +75,7 @@ async function handleMatchInterestNotifications(matchId: string, userId: string,
             'New Interest Received',
             `${actorName} is interested in connecting with you!`,
             'INTEREST_RECEIVED',
-            `/matches`
+            `/matchmaking`
         );
 
         // 2. Check for Mutual Interest
@@ -95,7 +95,7 @@ async function handleMatchInterestNotifications(matchId: string, userId: string,
                 "It's a Match! 🎉",
                 `You have a new mutual match with ${isInvestor ? match.sme.name : match.investor.name}.`,
                 'MATCH_FOUND',
-                `/matches`
+                `/matchmaking`
             );
 
             await sendNotification(
@@ -103,7 +103,7 @@ async function handleMatchInterestNotifications(matchId: string, userId: string,
                 "It's a Match! 🎉",
                 `You have a new mutual match with ${isInvestor ? match.investor.name : match.sme.name}.`,
                 'MATCH_FOUND',
-                `/matches`
+                `/matchmaking`
             );
         }
     }
