@@ -38,16 +38,46 @@ router.get('/', authorize('report.list'), async (req: AuthenticatedRequest, res:
 // Get stats for reports
 router.get('/stats', authorize('report.read'), async (req: AuthenticatedRequest, res: Response) => {
     try {
-        const [dealCount, smeCount] = await Promise.all([
-            prisma.deal.count(),
-            prisma.sME.count()
+        const tenantId = req.user?.tenantId || 'default';
+
+        const [
+            dealCount,
+            syndicateCount,
+            smeCount,
+            dealInvestments,
+            syndicateInvestments,
+            closedDeals
+        ] = await Promise.all([
+            prisma.deal.count({ where: { tenantId } }),
+            prisma.syndicate.count({ where: { tenantId } }),
+            prisma.sME.count({ where: { tenantId, status: 'CERTIFIED' } }),
+            prisma.dealInvestor.aggregate({
+                where: { status: 'COMPLETED' },
+                _sum: { amount: true }
+            }),
+            prisma.syndicateMember.aggregate({
+                where: { syndicate: { tenantId }, status: 'APPROVED' },
+                _sum: { amount: true }
+            }),
+            prisma.deal.count({ where: { tenantId, status: 'CLOSED' } })
         ]);
 
+        const totalDeals = dealCount + syndicateCount;
+        const totalInvestment = (dealInvestments._sum.amount || 0) + (syndicateInvestments._sum.amount || 0);
+        const successRate = dealCount > 0 ? Math.round((closedDeals / dealCount) * 100) : 0;
+
+        // Format investment value
+        const formatInvestment = (value: number): string => {
+            if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
+            if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
+            return `$${value}`;
+        };
+
         const stats = [
-            { title: 'Total Deals', value: dealCount.toString(), change: '+12%', trend: 'up' },
+            { title: 'Total Deals', value: totalDeals.toString(), change: '+12%', trend: 'up' },
             { title: 'Active SMEs', value: smeCount.toString(), change: '+5%', trend: 'up' },
-            { title: 'Total Investment', value: '$12.5M', change: '+20%', trend: 'up' },
-            { title: 'Success Rate', value: '85%', change: '+3%', trend: 'up' }
+            { title: 'Total Investment', value: formatInvestment(totalInvestment), change: '+20%', trend: 'up' },
+            { title: 'Success Rate', value: `${successRate}%`, change: '+3%', trend: 'up' }
         ];
 
         res.json({ stats });
