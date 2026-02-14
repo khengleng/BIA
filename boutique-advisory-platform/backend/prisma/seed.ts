@@ -442,15 +442,70 @@ async function main() {
     console.log('✅ Created Comments');
 
     // ============================================
+    // CREATE DEALS
+    // ============================================
+    console.log('\n💰 Creating Deals...');
+
+    const deal1 = await prisma.deal.upsert({
+        where: { id: 'deal_techcorp_series_a' },
+        update: {},
+        create: {
+            id: 'deal_techcorp_series_a',
+            tenantId: 'default',
+            smeId: sme.id,
+            title: 'TechCorp Series A',
+            description: 'Series A funding to expand operations to 5 new provinces.',
+            amount: 1000000,
+            equity: 10.0, // 10% equity
+            status: 'FUNDED',
+            successFee: 5.0,
+            terms: 'Standard Series A terms with 1x liquidation preference.',
+        },
+    });
+    console.log('✅ Created Deal:', deal1.title);
+
+    // ============================================
+    // CREATE INVESTMENTS (DEAL INVESTORS)
+    // ============================================
+    console.log('\n🤝 Creating Investments...');
+
+    const investment1 = await prisma.dealInvestor.upsert({
+        where: {
+            dealId_investorId: {
+                dealId: deal1.id,
+                investorId: investor.id
+            }
+        },
+        update: {},
+        create: {
+            dealId: deal1.id,
+            investorId: investor.id,
+            amount: 50000,
+            status: 'COMPLETED',
+        },
+    });
+    console.log('✅ Created Investment for:', investor.name);
+
+    // ============================================
     // CREATE SECONDARY TRADING LISTINGS
     // ============================================
     console.log('\n📈 Creating Secondary Trading Data...');
 
-    // Note: Secondary listings require a DealInvestor record, which requires a Deal
-    // For now, we'll skip this as it has more dependencies
-    // This can be added once deals are created through the platform
-
-    console.log('⏭️  Skipping secondary trading (requires deal investments first)');
+    const listing1 = await prisma.secondaryListing.upsert({
+        where: { id: 'listing_techcorp_1' },
+        update: {},
+        create: {
+            id: 'listing_techcorp_1',
+            tenantId: 'default',
+            sellerId: investor.id,
+            dealInvestorId: investment1.id,
+            sharesAvailable: 5000,
+            pricePerShare: 12.50,
+            minPurchase: 1000,
+            status: 'ACTIVE',
+        },
+    });
+    console.log('✅ Created Secondary Listing for:', deal1.title);
 
     console.log('\n🎉 Database seeding completed successfully!');
     console.log('\n📋 Login credentials:');
