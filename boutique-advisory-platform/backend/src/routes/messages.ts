@@ -213,7 +213,7 @@ router.get('/conversations/:id', async (req: AuthenticatedRequest, res: Response
             }
         });
 
-        const { getPresignedUrl } = await import('../utils/fileUpload');
+        const { getPresignedUrl, extractKeyFromUrl } = await import('../utils/fileUpload');
 
         const formatted = await Promise.all(messages.map(async (m: any) => {
             let attachments = m.attachments;
@@ -223,9 +223,8 @@ router.get('/conversations/:id', async (req: AuthenticatedRequest, res: Response
                 attachments = await Promise.all(attachments.map(async (attr: any) => {
                     if (attr.url && (attr.url.includes('storage.googleapis.com') || attr.url.includes('s3'))) {
                         try {
-                            // Extract key: folder/filename
-                            const urlParts = attr.url.split('/');
-                            const key = urlParts.slice(-2).join('/');
+                            // Prefer using the stored key, fallback to safe extraction from URL
+                            const key = attr.key || extractKeyFromUrl(attr.url);
                             const signedUrl = await getPresignedUrl(key, 3600);
                             return { ...attr, url: signedUrl };
                         } catch (e) {

@@ -31,9 +31,9 @@ const nextConfig: NextConfig = {
       `script-src 'self' 'unsafe-inline' ${isProduction ? '' : "'unsafe-eval'"} https://js.stripe.com https://*.stripe.com https://*.sumsub.com`,
       `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
       "font-src 'self' data: https://fonts.gstatic.com",
-      "img-src 'self' blob: data: https://*.stripe.com https://*.sumsub.com",
+      "img-src 'self' blob: data: https://storage.googleapis.com https://*.stripe.com https://*.sumsub.com",
       "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://*.stripe.com https://*.sumsub.com",
-      `connect-src 'self' ${apiBaseUrl} ${wsUrl} ${isProduction ? '' : 'http://localhost:3001 http://127.0.0.1:3001 http://localhost:3003 http://127.0.0.1:3003'} https://api.stripe.com https://maps.googleapis.com https://*.stripe.com https://r.stripe.com https://*.stripe.network https://m.stripe.network https://*.sumsub.com`,
+      `connect-src 'self' ${apiBaseUrl} ${wsUrl} ${isProduction ? '' : 'http://localhost:3001 http://127.0.0.1:3001 http://localhost:3003 http://127.0.0.1:3003'} https://api.stripe.com https://maps.googleapis.com https://storage.googleapis.com https://*.stripe.com https://r.stripe.com https://*.stripe.network https://m.stripe.network https://*.sumsub.com`,
       "object-src 'none'",
       "upgrade-insecure-requests"
     ].join('; ');

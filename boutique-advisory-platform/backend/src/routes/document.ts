@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import { prisma } from '../database';
 import { AuthenticatedRequest, authorize } from '../middleware/authorize';
 import { upload } from '../middleware/upload';
-import { uploadFile, deleteFile, getPresignedUrl } from '../utils/fileUpload';
+import { uploadFile, deleteFile, getPresignedUrl, extractKeyFromUrl } from '../utils/fileUpload';
 
 const router = Router();
 
@@ -106,9 +106,16 @@ router.get('/:id', authorize('document.read'), async (req: AuthenticatedRequest,
             return res.status(403).json({ error: 'Access denied to this document' });
         }
 
-        // Return document without internal relations
+        // Extract key safely from URL
+        const key = extractKeyFromUrl(document.url);
+        const presignedUrl = await getPresignedUrl(key, 3600);
+
         const { sme, deal, ...documentData } = document as any;
-        return res.json(documentData);
+        return res.json({
+            ...documentData,
+            url: presignedUrl,
+            originalUrl: document.url // Keep reference if needed
+        });
     } catch (error) {
         console.error('Get document error:', error);
         return res.status(500).json({ error: 'Internal server error' });
@@ -160,8 +167,7 @@ router.get('/:id/download', authorize('document.download'), async (req: Authenti
         }
 
         // Extract S3 key from URL
-        const urlParts = document.url.split('/');
-        const key = urlParts.slice(-2).join('/'); // Get folder/filename
+        const key = extractKeyFromUrl(document.url);
 
         // Generate presigned URL (valid for 1 hour)
         const presignedUrl = await getPresignedUrl(key, 3600);
@@ -200,9 +206,8 @@ router.delete('/:id', authorize('document.delete'), async (req: AuthenticatedReq
             return res.status(403).json({ error: 'Only the uploader or admin can delete this document' });
         }
 
-        // Extract S3 key from URL
-        const urlParts = document.url.split('/');
-        const key = urlParts.slice(-2).join('/');
+        // Extract key safely from URL
+        const key = extractKeyFromUrl(document.url);
 
         // Delete from cloud storage
         await deleteFile(key);
@@ -239,6 +244,7 @@ router.get('/', authorize('document.list'), async (req: AuthenticatedRequest, re
             select: {
                 id: true,
                 name: true,
+                url: true,
                 type: true,
                 size: true,
                 mimeType: true,
@@ -248,7 +254,18 @@ router.get('/', authorize('document.list'), async (req: AuthenticatedRequest, re
             }
         });
 
-        return res.json(documents);
+        const formatted = await Promise.all(documents.map(async (doc: any) => {
+            try {
+                // If the document has a URL, we need to sign it
+                const key = extractKeyFromUrl(doc.url);
+                const signedUrl = await getPresignedUrl(key, 3600);
+                return { ...doc, url: signedUrl };
+            } catch (e) {
+                return doc;
+            }
+        }));
+
+        return res.json(formatted);
     } catch (error) {
         console.error('List documents error:', error);
         return res.status(500).json({ error: 'Failed to list documents' });

@@ -166,6 +166,24 @@ export async function deleteFile(key: string): Promise<void> {
 }
 
 /**
+ * Safely extract the storage key from a URL, stripping query parameters
+ */
+export function extractKeyFromUrl(url: string): string {
+    // 1. Remove query parameters
+    const baseUrl = url.split('?')[0];
+
+    // 2. Split by / after the protocol
+    // Standard format is .../bucket/folder/filename
+    // Or .../bucket/filename
+    const parts = baseUrl.split('/');
+
+    // We typically want the last 2 parts (folder/filename)
+    // If the path is just bucket/filename, slice(-1) would be enough,
+    // but our system uses folder-based storage.
+    return parts.slice(-2).join('/');
+}
+
+/**
  * Generate a presigned URL
  */
 export async function getPresignedUrl(key: string, expiresIn: number = 3600): Promise<string> {

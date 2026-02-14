@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import { AuthenticatedRequest, authorize } from '../middleware/authorize';
 import { prisma } from '../database';
 import { upload } from '../middleware/upload';
-import { uploadFile } from '../utils/fileUpload';
+import { uploadFile, deleteFile, getPresignedUrl, extractKeyFromUrl } from '../utils/fileUpload';
 
 const router = Router();
 
@@ -13,7 +13,7 @@ router.get('/', authorize('dataroom.list'), async (req: AuthenticatedRequest, re
         const userRole = req.user?.role;
 
         // Get deals with documents
-        const deals = await prisma.deal.findMany({
+        const deals = await (prisma as any).deal.findMany({
             where: userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' ? {} : {
                 OR: [
                     { sme: { userId } }, // User owns the SME
@@ -21,60 +21,45 @@ router.get('/', authorize('dataroom.list'), async (req: AuthenticatedRequest, re
                 ]
             },
             include: {
-                sme: {
-                    select: {
-                        id: true,
-                        name: true,
-                        userId: true
-                    }
-                },
-                documents: {
-                    orderBy: { createdAt: 'desc' },
-                    select: {
-                        id: true,
-                        name: true,
-                        type: true,
-                        size: true,
-                        mimeType: true,
-                        uploadedBy: true,
-                        createdAt: true,
-                        url: true
-                    }
-                },
+                documents: true,
+                sme: true,
                 investors: {
-                    select: {
-                        investor: {
-                            select: {
-                                id: true,
-                                name: true,
-                                userId: true
-                            }
-                        }
+                    include: {
+                        investor: true
                     }
                 }
             }
         });
 
-        // Transform deals into dataroom format
-        const dataRooms = deals.map(deal => {
-            // Get access list (SME owner + investors)
-            const accessList = [
-                deal.sme.userId,
-                ...deal.investors.map(inv => inv.investor.userId)
-            ].filter(Boolean);
+        // Group by deal the datarooms
+        const formattedDatarooms = await Promise.all(deals.map(async (deal: any) => {
+            // Check if user is investor in this deal
+            const isInvestor = deal.investors.some((inv: any) => inv.investor.userId === userId);
+            const isOwner = deal.sme.userId === userId;
+            const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
 
-            // Format documents
-            // Group documents by name to handle versioning
+            if (!isInvestor && !isOwner && !isAdmin) return null;
+
+            // Group documents by base name to show versions
             const docsByName = new Map<string, any[]>();
-            deal.documents.forEach(doc => {
+            deal.documents.forEach((doc: any) => {
                 const key = doc.name;
                 if (!docsByName.has(key)) docsByName.set(key, []);
                 docsByName.get(key)!.push(doc);
             });
 
-            const documents = Array.from(docsByName.entries()).map(([name, versions]) => {
+            const documents = await Promise.all(Array.from(docsByName.entries()).map(async ([name, versions]) => {
                 versions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
                 const latest = versions[0];
+
+                // Sign latest URL safely
+                let signedUrl = latest.url;
+                try {
+                    const key = extractKeyFromUrl(latest.url);
+                    signedUrl = await getPresignedUrl(key, 3600);
+                } catch (e) {
+                    console.warn(`[GCS] Failed to sign dataroom URL: ${latest.url}`);
+                }
 
                 return {
                     id: latest.id,
@@ -86,73 +71,59 @@ router.get('/', authorize('dataroom.list'), async (req: AuthenticatedRequest, re
                     accessCount: 0,
                     lastAccessedBy: null,
                     lastAccessedAt: null,
-                    url: latest.url,
-                    mimeType: latest.mimeType,
-                    versionCount: versions.length // Just show count in list view
+                    versions: versions.length,
+                    url: signedUrl
                 };
-            });
+            }));
 
             return {
                 id: deal.id,
-                dealId: deal.id,
-                name: `${deal.title} - Data Room`,
-                status: deal.status === 'PUBLISHED' || deal.status === 'NEGOTIATION' ? 'ACTIVE' : 'CLOSED',
-                createdBy: deal.sme.name,
-                accessList,
-                documents,
-                activityLog: [], // Will be fetched in detail route
-                createdAt: deal.createdAt.toISOString()
+                dealName: deal.title,
+                smeName: deal.sme.companyName,
+                documentCount: documents.length,
+                lastUpdate: deal.updatedAt.toISOString(),
+                status: deal.status,
+                documents
             };
-        });
+        }));
 
-        return res.json(dataRooms);
-    } catch (error) {
-        console.error('Error fetching data rooms:', error);
-        return res.status(500).json({ error: 'Internal server error' });
+        return res.json(formattedDatarooms.filter(d => d !== null));
+    } catch (error: any) {
+        console.error('List dataroom error:', error);
+        return res.status(500).json({ error: 'Internal server error', details: error.message });
     }
 });
 
-// Upload document to dataroom (deal)
-router.post('/:dealId/documents', authorize('dataroom.upload'), upload.single('file'), async (req: AuthenticatedRequest, res: Response) => {
+// Upload document to dataroom
+router.post('/upload', authorize('dataroom.upload'), upload.single('file'), async (req: AuthenticatedRequest, res: Response) => {
     try {
-        const { dealId } = req.params;
-        const { name, category } = req.body;
+        const { dealId, name, type } = req.body;
         const file = req.file;
 
-        if (!file) {
-            return res.status(400).json({ error: 'No file uploaded' });
+        if (!file || !dealId) {
+            return res.status(400).json({ error: 'Missing required fields' });
         }
 
-        // Verify deal exists and user has access
-        const deal = await prisma.deal.findUnique({
+        // Verify access to deal
+        const deal = await (prisma as any).deal.findUnique({
             where: { id: dealId },
-            include: {
-                sme: { select: { userId: true } }
-            }
+            include: { sme: true }
         });
 
-        if (!deal) {
-            return res.status(404).json({ error: 'Deal not found' });
+        if (!deal) return res.status(404).json({ error: 'Deal not found' });
+        if (deal.sme.userId !== req.user?.id && req.user?.role !== 'ADMIN' && req.user?.role !== 'SUPER_ADMIN') {
+            return res.status(403).json({ error: 'Unauthorized to upload to this dataroom' });
         }
 
-        const userId = req.user?.id;
-        const userRole = req.user?.role;
-        const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
-        const isSmeOwner = deal.sme.userId === userId;
+        // Upload to folder: deal/{id}/dataroom
+        const uploadResult = await uploadFile(file, `deal/${dealId}/dataroom`);
 
-        if (!isAdmin && !isSmeOwner) {
-            return res.status(403).json({ error: 'Only the SME owner or admin can upload to this data room' });
-        }
-
-        // Upload file to cloud storage
-        const uploadResult = await uploadFile(file, `dataroom/${dealId}`);
-
-        // Save document metadata
-        const document = await prisma.document.create({
+        // Create document entry
+        const document = await (prisma as any).document.create({
             data: {
                 tenantId: req.user?.tenantId || 'default',
                 name: name || file.originalname,
-                type: category || 'OTHER',
+                type: type || 'OTHER',
                 url: uploadResult.url,
                 size: uploadResult.size,
                 mimeType: file.mimetype,
@@ -161,208 +132,93 @@ router.post('/:dealId/documents', authorize('dataroom.upload'), upload.single('f
             }
         });
 
-        // Return formatted document
-        const formattedDoc = {
-            id: document.id,
-            name: document.name,
-            category: document.type,
-            size: `${(document.size / 1024 / 1024).toFixed(2)} MB`,
-            uploadedBy: req.user!.id,
-            uploadedAt: document.createdAt.toISOString(),
-            accessCount: 0,
-            lastAccessedBy: null,
-            lastAccessedAt: null,
-            url: document.url
-        };
+        // Sign the URL immediately for the response
+        const key = extractKeyFromUrl(document.url);
+        const signedUrl = await getPresignedUrl(key, 3600);
 
-        return res.status(201).json(formattedDoc);
+        return res.status(201).json({
+            ...document,
+            url: signedUrl,
+            message: 'File added to dataroom'
+        });
     } catch (error: any) {
-        console.error('Error uploading document to dataroom:', error);
-        return res.status(500).json({
-            error: 'Failed to upload document',
-            details: error.message
-        });
+        console.error('Dataroom upload error:', error);
+        return res.status(500).json({ error: 'Internal server error', details: error.message });
     }
 });
 
-// Log document access (for tracking)
-router.post('/:dealId/documents/:docId/access', authorize('dataroom.read'), async (req: AuthenticatedRequest, res: Response) => {
-    try {
-        const { docId } = req.params;
-        const { action } = req.body;
-
-        // Verify document exists
-        const document = await prisma.document.findUnique({
-            where: { id: docId }
-        });
-
-        if (!document) {
-            return res.status(404).json({ error: 'Document not found' });
-        }
-
-        // Create persistent activity log
-        await (prisma as any).activityLog.create({
-            data: {
-                tenantId: req.user?.tenantId || 'default',
-                userId: req.user!.id,
-                action: action || 'VIEWED',
-                entityId: docId,
-                entityType: 'DOCUMENT',
-                metadata: {
-                    dealId: req.params.dealId,
-                    ip: req.ip,
-                    userAgent: req.get('User-Agent')
-                }
-            }
-        });
-
-        return res.json({
-            success: true,
-            action,
-            timestamp: new Date().toISOString()
-        });
-    } catch (error) {
-        console.error('Error logging document access:', error);
-        return res.status(500).json({ error: 'Failed to log access' });
-    }
-});
-
-// Get specific dataroom by deal ID
-router.get('/:dealId', authorize('dataroom.read'), async (req: AuthenticatedRequest, res: Response) => {
+// Get single dataroom details
+router.get('/:dealId', authorize('dataroom.view'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const { dealId } = req.params;
         const userId = req.user?.id;
-        const userRole = req.user?.role;
 
-        const deal = await prisma.deal.findUnique({
+        const deal = await (prisma as any).deal.findUnique({
             where: { id: dealId },
             include: {
-                sme: {
-                    select: {
-                        id: true,
-                        name: true,
-                        userId: true
-                    }
-                },
-                documents: {
-                    orderBy: { createdAt: 'desc' },
-                    select: {
-                        id: true,
-                        name: true,
-                        type: true,
-                        size: true,
-                        mimeType: true,
-                        uploadedBy: true,
-                        createdAt: true,
-                        url: true,
-                        accessLevel: true,
-                        isLocked: true
-                    } as any
-                },
+                documents: true,
+                sme: true,
                 investors: {
-                    select: {
-                        investor: {
-                            select: {
-                                id: true,
-                                name: true,
-                                userId: true
-                            }
-                        }
+                    include: {
+                        investor: true
                     }
                 }
             }
         });
 
-        if (!deal) {
-            return res.status(404).json({ error: 'Data room not found' });
-        }
+        if (!deal) return res.status(404).json({ error: 'Data room not found' });
 
-        // Check access
-        const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
-        const isSmeOwner = (deal as any).sme.userId === userId;
-        const isInvestor = (deal as any).investors.some((inv: any) => inv.investor.userId === userId);
+        // Verify access
+        const isInvestor = deal.investors.some((inv: any) => inv.investor.userId === userId);
+        const isOwner = deal.sme.userId === userId;
+        const isAdmin = req.user?.role === 'ADMIN' || req.user?.role === 'SUPER_ADMIN';
 
-        if (!isAdmin && !isSmeOwner && !isInvestor) {
+        if (!isInvestor && !isOwner && !isAdmin) {
             return res.status(403).json({ error: 'Access denied to this data room' });
         }
 
-        // Filter documents based on access level
-        const filteredDocumentsMetadata = (deal as any).documents.filter((doc: any) => {
-            if (isAdmin || isSmeOwner) return true;
-            if (doc.isLocked) return false;
-
-            switch (doc.accessLevel) {
-                case 'PUBLIC':
-                    return true;
-                case 'QUALIFIED':
-                    // Investor must have started due diligence or some other condition
-                    return deal.status !== 'PUBLISHED'; // Example: Only show after it moves past initial listing
-                case 'CONFIDENTIAL':
-                    // Only show if deal is in deep negotiation
-                    return deal.status === ('NEGOTIATION' as any) || deal.status === ('DUE_DILIGENCE' as any);
-                case 'ADMIN_ONLY':
-                    return false;
-                default:
-                    return true;
-            }
-        });
-
-        // Format response
-        const accessList = [
-            (deal as any).sme.userId,
-            ...(deal as any).investors.map((inv: any) => inv.investor.userId)
-        ].filter(Boolean);
-
-        // Get activity logs for documents in this deal
-        const docIds = (deal as any).documents.map((d: any) => d.id);
-        const activityLogs = await (prisma as any).activityLog.findMany({
-            where: {
-                entityId: { in: docIds },
-                entityType: 'DOCUMENT'
-            },
-            include: {
-                user: {
-                    select: { firstName: true, lastName: true, email: true }
-                }
-            },
-            orderBy: { timestamp: 'desc' },
-            take: 50
-        });
-
-        // Group activity by document for access counts
-        const activityByDoc = new Map<string, { count: number, lastAccessedAt: string, lastAccessedBy: string }>();
-        activityLogs.forEach((log: any) => {
-            if (!activityByDoc.has(log.entityId)) {
-                activityByDoc.set(log.entityId, {
-                    count: 0,
-                    lastAccessedAt: log.timestamp.toISOString(),
-                    lastAccessedBy: `${log.user.firstName} ${log.user.lastName}`
-                });
-            }
-            const stats = activityByDoc.get(log.entityId)!;
-            stats.count++;
-        });
-
-        // Format documents with history and real stats
+        // Group documents by name to handle versioning
         const docsByName = new Map<string, any[]>();
-        (deal as any).documents.forEach((doc: any) => {
+        deal.documents.forEach((doc: any) => {
             const key = doc.name;
             if (!docsByName.has(key)) docsByName.set(key, []);
             docsByName.get(key)!.push(doc);
         });
 
-        const documents = Array.from(docsByName.entries()).map(([name, versions]) => {
+        const documents = await Promise.all(Array.from(docsByName.entries()).map(async ([name, versions]) => {
+            // Sort by date newest first
             versions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
             const latest = versions[0];
-            const stats = activityByDoc.get(latest.id) || { count: 0, lastAccessedAt: null, lastAccessedBy: null };
 
-            const previousVersions = versions.slice(1).map((v, index) => ({
-                version: versions.length - index - 1,
-                id: v.id,
-                uploadedAt: v.createdAt.toISOString(),
-                uploadedBy: v.uploadedBy,
-                size: `${(v.size / 1024 / 1024).toFixed(2)} MB`
+            // Sign URLs for all versions safely
+            const previousVersions = await Promise.all(versions.slice(1).map(async (v) => {
+                // Sign version URL
+                let vSignedUrl = v.url;
+                try {
+                    const vKey = extractKeyFromUrl(v.url);
+                    vSignedUrl = await getPresignedUrl(vKey, 3600);
+                } catch (vError) {
+                    console.warn(`[GCS] Failed to sign version URL: ${v.url}`);
+                }
+
+                return {
+                    id: v.id,
+                    version: 'Previous',
+                    uploadedBy: v.uploadedBy,
+                    uploadedAt: v.createdAt.toISOString(),
+                    size: `${(v.size / 1024 / 1024).toFixed(2)} MB`,
+                    url: vSignedUrl
+                };
             }));
+
+            // Sign latest URL safely
+            let latestSignedUrl = latest.url;
+            try {
+                const lKey = extractKeyFromUrl(latest.url);
+                latestSignedUrl = await getPresignedUrl(lKey, 3600);
+            } catch (lError) {
+                console.warn(`[GCS] Failed to sign latest URL: ${latest.url}`);
+            }
 
             return {
                 id: latest.id,
@@ -371,131 +227,62 @@ router.get('/:dealId', authorize('dataroom.read'), async (req: AuthenticatedRequ
                 size: `${(latest.size / 1024 / 1024).toFixed(2)} MB`,
                 uploadedBy: latest.uploadedBy,
                 uploadedAt: latest.createdAt.toISOString(),
-                version: versions.length,
-                accessCount: stats.count,
-                lastAccessedBy: stats.lastAccessedBy,
-                lastAccessedAt: stats.lastAccessedAt,
-                url: latest.url,
-                mimeType: latest.mimeType,
-                versions: previousVersions
+                versions: previousVersions,
+                url: latestSignedUrl,
+                status: 'current'
             };
-        });
+        }));
 
-        const dataRoom = {
+        return res.json({
             id: deal.id,
-            dealId: deal.id,
-            name: `${deal.title} - Data Room`,
-            status: deal.status === 'PUBLISHED' || deal.status === 'NEGOTIATION' ? 'ACTIVE' : 'CLOSED',
-            createdBy: (deal as any).sme.name,
-            accessList,
-            documents,
-            activityLog: activityLogs.map((log: any) => ({
-                action: log.action,
-                documentId: log.entityId,
-                userName: `${log.user.firstName} ${log.user.lastName}`,
-                timestamp: log.timestamp.toISOString()
-            })),
-            createdAt: deal.createdAt.toISOString()
-        };
-
-        return res.json(dataRoom);
-    } catch (error) {
-        console.error('Error fetching dataroom:', error);
-        return res.status(500).json({ error: 'Internal server error' });
+            name: deal.title,
+            sme: deal.sme.companyName,
+            documents
+        });
+    } catch (error: any) {
+        console.error('Get dataroom error:', error);
+        return res.status(500).json({ error: 'Internal server error', details: error.message });
     }
 });
 
-// GET /api/dataroom/:id/analytics
-// Compute engagement metrics for SME dashboard
-router.get('/:id/analytics', authorize('dataroom.read'), async (req: AuthenticatedRequest, res: Response) => {
+// Delete document from dataroom
+router.delete('/:documentId', authorize('dataroom.delete'), async (req: AuthenticatedRequest, res: Response) => {
     try {
-        const dealId = req.params.id;
-        const tenantId = req.user?.tenantId || 'default';
+        const { documentId } = req.params;
+        const userId = req.user?.id;
 
-        // 1. Get all activity for this deal's documents
-        const deal = await prisma.deal.findUnique({
-            where: { id: dealId },
-            include: { documents: { select: { id: true, name: true } } }
+        const document = await (prisma as any).document.findUnique({
+            where: { id: documentId },
+            include: { deal: { include: { sme: true } } }
         });
 
-        if (!deal) return res.status(404).json({ error: 'Deal not found' });
+        if (!document) return res.status(404).json({ error: 'Document not found' });
 
-        const docIds = deal.documents.map(d => d.id);
-        const logs = await (prisma as any).activityLog.findMany({
-            where: {
-                tenantId,
-                entityId: { in: docIds },
-                entityType: 'DOCUMENT'
-            },
-            include: {
-                user: {
-                    select: { id: true, firstName: true, lastName: true, email: true, role: true }
-                }
-            }
+        // Verify ownership/admin
+        const isOwner = document.deal.sme.userId === userId;
+        const isAdmin = req.user?.role === 'ADMIN' || req.user?.role === 'SUPER_ADMIN';
+
+        if (!isOwner && !isAdmin) {
+            return res.status(403).json({ error: 'Unauthorized to delete from this data room' });
+        }
+
+        // Delete from GCS
+        try {
+            const key = extractKeyFromUrl(document.url);
+            await deleteFile(key);
+        } catch (e) {
+            console.warn('Failed to delete file from cloud storage:', e);
+        }
+
+        // Delete from database
+        await (prisma as any).document.delete({
+            where: { id: documentId }
         });
 
-        // 2. Compute Visitor Stats
-        const uniqueVisitors = new Set(logs.map((l: any) => l.userId)).size;
-        const totalViews = logs.filter((l: any) => l.action === 'VIEWED').length;
-        const totalDownloads = logs.filter((l: any) => l.action === 'DOWNLOADED').length;
-
-        // 3. Document Heatmap (Most popular docs)
-        const docStats = new Map<string, { views: number, downloads: number, name: string }>();
-        deal.documents.forEach(d => {
-            docStats.set(d.id, { views: 0, downloads: 0, name: d.name });
-        });
-
-        logs.forEach((l: any) => {
-            const stats = docStats.get(l.entityId);
-            if (stats) {
-                if (l.action === 'VIEWED') stats.views++;
-                if (l.action === 'DOWNLOADED') stats.downloads++;
-            }
-        });
-
-        const topDocuments = Array.from(docStats.values())
-            .sort((a, b) => (b.views + b.downloads * 2) - (a.views + a.downloads * 2))
-            .slice(0, 5);
-
-        // 4. Investor Engagement Scoring
-        // Score = (Views * 1) + (Downloads * 5)
-        const investorScores = new Map<string, { name: string, email: string, score: number, lastActive: Date }>();
-
-        logs.forEach((l: any) => {
-            if (l.user.role === 'INVESTOR') {
-                const key = l.userId;
-                if (!investorScores.has(key)) {
-                    investorScores.set(key, {
-                        name: `${l.user.firstName} ${l.user.lastName}`,
-                        email: l.user.email,
-                        score: 0,
-                        lastActive: new Date(0) // epoch
-                    });
-                }
-                const inv = investorScores.get(key)!;
-                if (l.action === 'VIEWED') inv.score += 1;
-                if (l.action === 'DOWNLOADED') inv.score += 5;
-                if (new Date(l.timestamp) > inv.lastActive) inv.lastActive = new Date(l.timestamp);
-            }
-        });
-
-        const topInvestors = Array.from(investorScores.values())
-            .sort((a, b) => b.score - a.score)
-            .slice(0, 5);
-
-        return res.json({
-            visitorStats: {
-                uniqueVisitors,
-                totalViews,
-                totalDownloads
-            },
-            topDocuments,
-            topInvestors
-        });
-
-    } catch (error) {
-        console.error('Error computing dataroom analytics:', error);
-        return res.status(500).json({ error: 'Internal server error' });
+        return res.json({ message: 'Document deleted from data room' });
+    } catch (error: any) {
+        console.error('Delete dataroom file error:', error);
+        return res.status(500).json({ error: 'Internal server error', details: error.message });
     }
 });
 
