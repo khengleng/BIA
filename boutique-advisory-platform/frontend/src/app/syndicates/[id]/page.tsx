@@ -164,8 +164,9 @@ export default function SyndicateDetailsPage() {
                 body: JSON.stringify({ amount: parseFloat(joinAmount) })
             })
 
+            const data = await response.json()
             if (response.ok) {
-                addToast('success', 'Request to join syndicate submitted!')
+                addToast('success', data.message || 'Request submitted successfully!')
                 setShowJoinModal(false)
                 fetchSyndicate()
             } else {
@@ -224,16 +225,16 @@ export default function SyndicateDetailsPage() {
                         <p className="text-gray-400 mt-2 max-w-2xl">{syndicate.description}</p>
                     </div>
 
-                    {!isLead && !isMember && (syndicate.status === 'OPEN' || syndicate.status === 'FORMING') && (
+                    {!isLead && (syndicate.status === 'OPEN' || syndicate.status === 'FORMING') && (
                         <button
                             onClick={() => {
                                 setJoinAmount(syndicate.minInvestment.toString())
                                 setShowJoinModal(true)
                             }}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-blue-500/25"
+                            className={`${isMember ? 'bg-cyan-600 hover:bg-cyan-700 shadow-cyan-500/25' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/25'} text-white px-6 py-3 rounded-xl flex items-center gap-2 transition-all shadow-lg`}
                         >
-                            <UserPlus className="w-5 h-5" />
-                            Join Syndicate
+                            {isMember ? <TrendingUp className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
+                            {isMember ? 'Top Up Investment' : 'Join Syndicate'}
                         </button>
                     )}
                 </div>
@@ -329,6 +330,7 @@ export default function SyndicateDetailsPage() {
                                             <tr>
                                                 <th className="px-6 py-4">Investor</th>
                                                 <th className="px-6 py-4">Amount</th>
+                                                {syndicate.isTokenized && <th className="px-6 py-4">Tokens</th>}
                                                 <th className="px-6 py-4">Status</th>
                                                 <th className="px-6 py-4">Date</th>
                                                 <th className="px-6 py-4">Actions</th>
@@ -344,6 +346,14 @@ export default function SyndicateDetailsPage() {
                                                     <td className="px-6 py-4 text-white font-bold">
                                                         ${member.amount.toLocaleString()}
                                                     </td>
+                                                    {syndicate.isTokenized && (
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex flex-col">
+                                                                <span className="text-white font-bold">{(member as any).tokens?.toLocaleString() || '0'}</span>
+                                                                <span className="text-[10px] text-cyan-400">{syndicate.tokenSymbol}</span>
+                                                            </div>
+                                                        </td>
+                                                    )}
                                                     <td className="px-6 py-4">
                                                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${member.status === 'APPROVED' ? 'bg-green-500/20 text-green-400' :
                                                             member.status === 'PENDING' ? 'bg-amber-500/20 text-amber-400' :
@@ -474,13 +484,18 @@ export default function SyndicateDetailsPage() {
                 </div>
             </div>
 
-            {/* Join Modal (same as list page) */}
+            {/* Join / Top Up Modal */}
             {showJoinModal && (
                 <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
                     <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md border border-gray-700">
-                        <h3 className="text-xl font-bold text-white mb-4">Join Syndicate</h3>
+                        <h3 className="text-xl font-bold text-white mb-4">
+                            {isMember ? 'Top Up Investment' : 'Join Syndicate'}
+                        </h3>
                         <p className="text-gray-400 mb-6">
-                            You are about to request to join <strong className="text-white">{syndicate.name}</strong>
+                            {isMember
+                                ? <span>You are adding to your existing investment in <strong className="text-white">{syndicate.name}</strong></span>
+                                : <span>You are about to request to join <strong className="text-white">{syndicate.name}</strong></span>
+                            }
                         </p>
 
                         <div className="space-y-4">
@@ -514,7 +529,10 @@ export default function SyndicateDetailsPage() {
                                 <div className="flex items-start gap-3">
                                     <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
                                     <div className="text-sm text-gray-300">
-                                        Your request will be reviewed by the lead investor. You will be notified once approved.
+                                        {isMember
+                                            ? 'Additional funds will be registered immediately. Approval updates will align with your current status.'
+                                            : 'Your request will be reviewed by the lead investor. You will be notified once approved.'
+                                        }
                                     </div>
                                 </div>
                             </div>
@@ -536,7 +554,7 @@ export default function SyndicateDetailsPage() {
                                     ) : (
                                         <>
                                             <CheckCircle2 className="w-5 h-5" />
-                                            Submit Request
+                                            {isMember ? 'Confirm Top Up' : 'Submit Request'}
                                         </>
                                     )}
                                 </button>
