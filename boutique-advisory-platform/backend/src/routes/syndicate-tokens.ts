@@ -67,6 +67,12 @@ router.post('/listings', authorize('secondary_trading.create_listing'), async (r
 
         const { syndicateId, tokensAvailable, pricePerToken, minTokens, expiresAt } = req.body;
 
+        // Only INVESTOR role can create listings
+        if (req.user?.role !== 'INVESTOR') {
+            res.status(403).json({ error: 'Only investors can list tokens' });
+            return;
+        }
+
         // Get investor ID
         const investor = await prisma.investor.findFirst({
             where: { userId: req.user?.id }
@@ -139,6 +145,12 @@ router.post('/buy', authorize('secondary_trading.buy'), async (req: Authenticate
         }
 
         const { listingId, tokens } = req.body;
+
+        // Only INVESTOR role can buy tokens
+        if (req.user?.role !== 'INVESTOR') {
+            res.status(403).json({ error: 'Only investors can buy tokens' });
+            return;
+        }
 
         // Get buyer investor
         const buyer = await prisma.investor.findFirst({

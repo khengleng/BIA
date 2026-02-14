@@ -210,34 +210,56 @@ function InvestorDashboard({ t, stats }: { t: any; stats: any }) {
         <div className="bg-gray-800 rounded-lg p-6">
           <h2 className="text-xl font-semibold text-white mb-4">{t('dashboard.recentActivity')}</h2>
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-white font-medium">Tech Startup A</p>
-                <p className="text-sm text-gray-400">$500K invested</p>
+            {stats?.recentInvestments && stats.recentInvestments.length > 0 ? (
+              stats.recentInvestments.map((inv: any) => (
+                <div key={inv.id} className="flex items-center justify-between border-b border-gray-700/50 pb-3 last:border-0 last:pb-0">
+                  <div>
+                    <p className="text-white font-medium">{inv.name}</p>
+                    <p className="text-sm text-gray-400">
+                      ${(inv.amount || 0).toLocaleString()} {inv.type === 'SYNDICATE' ? 'syndicate' : ''} invested
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${inv.status === 'COMPLETED' || inv.status === 'APPROVED' ? 'bg-green-500/10 text-green-400' : 'bg-yellow-500/10 text-yellow-500'}`}>
+                      {inv.status}
+                    </span>
+                    <p className="text-[10px] text-gray-500 mt-1">
+                      {new Date(inv.date).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-4">
+                <p className="text-gray-500 text-sm">No recent investment activity</p>
+                <Link href="/deals" className="text-blue-400 text-xs hover:underline mt-2 inline-block">
+                  Browse opportunities
+                </Link>
               </div>
-              <span className="text-green-500 text-sm">+8.5%</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-white font-medium">Manufacturing Co</p>
-                <p className="text-sm text-gray-400">$300K invested</p>
-              </div>
-              <span className="text-green-500 text-sm">+12.3%</span>
-            </div>
+            )}
           </div>
         </div>
 
         <div className="bg-gray-800 rounded-lg p-6">
           <h2 className="text-xl font-semibold text-white mb-4">Market Opportunities</h2>
           <div className="space-y-4">
-            <Link href="/matchmaking" className="block border-l-4 border-blue-500 pl-4 py-2 hover:bg-gray-700 transition-colors">
-              <p className="text-white font-medium">New SME in FinTech</p>
-              <p className="text-sm text-gray-400">Seeking $750K investment</p>
-            </Link>
-            <Link href="/matchmaking" className="block border-l-4 border-green-500 pl-4 py-2 hover:bg-gray-700 transition-colors">
-              <p className="text-white font-medium">Green Energy Startup</p>
-              <p className="text-sm text-gray-400">Seeking $1.2M investment</p>
-            </Link>
+            {stats?.marketOpportunities && stats.marketOpportunities.length > 0 ? (
+              stats.marketOpportunities.map((opportunity: any) => (
+                <Link key={opportunity.id} href={`/deals/${opportunity.id}`} className="block border-l-4 border-blue-500 pl-4 py-2 hover:bg-gray-700 transition-colors">
+                  <p className="text-white font-medium">{opportunity.name}</p>
+                  <p className="text-sm text-gray-400">
+                    Seeking ${(opportunity.amount || 0).toLocaleString()} investment {opportunity.sector ? `in ${opportunity.sector}` : ''}
+                  </p>
+                </Link>
+              ))
+            ) : (
+              <div className="text-center py-4">
+                <p className="text-gray-500 text-sm">No new opportunities available</p>
+                <Link href="/matchmaking" className="text-blue-400 text-xs hover:underline mt-2 inline-block">
+                  Update your preferences
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </div>

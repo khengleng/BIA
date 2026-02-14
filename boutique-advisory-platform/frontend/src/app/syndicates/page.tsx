@@ -64,7 +64,7 @@ interface SyndicateStats {
 
 export default function SyndicatesPage() {
     const { addToast } = useToast()
-    const { isAdmin, canCreateDeal } = usePermissions()
+    const { isAdmin, isInvestor } = usePermissions()
 
     const [syndicates, setSyndicates] = useState<Syndicate[]>([])
     const [stats, setStats] = useState<SyndicateStats | null>(null)
@@ -183,7 +183,7 @@ export default function SyndicatesPage() {
                     </h1>
                     <p className="text-gray-400 mt-2">Pool investments with other investors for larger opportunities</p>
                 </div>
-                {(isAdmin || canCreateDeal) && (
+                {isInvestor && (
                     <Link
                         href="/syndicates/create"
                         className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-3 rounded-xl flex items-center gap-2 transition-all shadow-lg hover:shadow-blue-500/25"
@@ -361,7 +361,7 @@ export default function SyndicatesPage() {
                                     Details
                                     <ChevronRight className="w-4 h-4" />
                                 </Link>
-                                {syndicate.status === 'OPEN' && (
+                                {syndicate.status === 'OPEN' && isInvestor && (
                                     <button
                                         onClick={() => handleJoinClick(syndicate)}
                                         className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm flex items-center gap-1 transition-colors"

@@ -14,6 +14,7 @@ interface PortfolioSummary {
     activePositions: number
     realizedRoi: number
     startDate: string
+    kycStatus?: string
 }
 
 interface SectorAllocation {
@@ -121,21 +122,26 @@ export default function PortfolioOverview() {
                     </div>
                 </div>
 
-                <div className="bg-blue-600/10 border border-blue-500/20 rounded-2xl p-6 flex flex-col justify-between">
+                <div className={`border rounded-2xl p-6 flex flex-col justify-between ${summary.kycStatus === 'VERIFIED' ? 'bg-green-600/10 border-green-500/20' : 'bg-blue-600/10 border-blue-500/20'}`}>
                     <div>
                         <div className="flex items-center gap-2 mb-1">
-                            <ShieldCheck className="w-4 h-4 text-blue-400" />
-                            <p className="text-blue-400 text-xs font-bold uppercase tracking-wider">Identity Status</p>
+                            <ShieldCheck className={`w-4 h-4 ${summary.kycStatus === 'VERIFIED' ? 'text-green-400' : 'text-blue-400'}`} />
+                            <p className={`${summary.kycStatus === 'VERIFIED' ? 'text-green-400' : 'text-blue-400'} text-xs font-bold uppercase tracking-wider`}>Identity Status</p>
                         </div>
-                        <p className="text-white font-bold text-sm">Verification Required</p>
+                        <p className="text-white font-bold text-sm">
+                            {summary.kycStatus === 'VERIFIED' ? 'Verified Investor' :
+                                summary.kycStatus === 'PENDING' ? 'Verification Pending' : 'Verification Required'}
+                        </p>
                     </div>
-                    <button
-                        onClick={startKyc}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-all mt-2 flex items-center justify-center gap-2 shadow-lg shadow-blue-900/40"
-                    >
-                        Verify Now
-                        <ChevronRight className="w-3 h-3" />
-                    </button>
+                    {summary.kycStatus !== 'VERIFIED' && (
+                        <button
+                            onClick={startKyc}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-all mt-2 flex items-center justify-center gap-2 shadow-lg shadow-blue-900/40"
+                        >
+                            {summary.kycStatus === 'PENDING' ? 'Check Status' : 'Verify Now'}
+                            <ChevronRight className="w-3 h-3" />
+                        </button>
+                    )}
                 </div>
             </div>
 

@@ -34,7 +34,7 @@
     "@aws-sdk/client-s3": "^3.984.0",
     "@aws-sdk/s3-request-presigner": "^3.984.0",
     "@google/generative-ai": "^0.24.1",
-    "@prisma/client": "5.7.1",
+    "@prisma/client": "^5.7.1",
     "@temporalio/client": "^1.8.7",
     "@temporalio/worker": "^1.8.7",
     "@types/crypto-js": "^4.2.2",

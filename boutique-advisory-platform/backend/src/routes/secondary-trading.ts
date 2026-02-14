@@ -112,6 +112,12 @@ router.post('/listings', authorize('secondary_trading.create_listing'), async (r
             expiresAt
         } = req.body;
 
+        // Only INVESTOR role can create listings
+        if (req.user?.role !== 'INVESTOR') {
+            res.status(403).json({ error: 'Only investors can create listings' });
+            return;
+        }
+
         // Get investor ID for the current user
         const investor = await prisma.investor.findFirst({
             where: { userId: req.user?.id }
@@ -211,6 +217,12 @@ router.post('/listings/:id/buy', authorize('secondary_trading.buy'), async (req:
         }
 
         const { shares } = req.body;
+
+        // Only INVESTOR role can buy shares
+        if (req.user?.role !== 'INVESTOR') {
+            res.status(403).json({ error: 'Only investors can buy shares' });
+            return;
+        }
 
         // Get buyer investor ID
         const buyer = await prisma.investor.findFirst({

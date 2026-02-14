@@ -70,6 +70,11 @@ router.post('/:dealId/deposit', authorize('payment.create'), validateBody(create
         const escrow = await (prisma as any).escrowAccount.findUnique({ where: { dealId } });
         if (!escrow) return res.status(404).json({ error: 'Escrow account not found' });
 
+        // Only INVESTOR role can deposit funds
+        if (req.user?.role !== 'INVESTOR') {
+            return res.status(403).json({ error: 'Only investors can deposit funds' });
+        }
+
         // In a real app, verify payment success here (e.g. Stripe PaymentIntent)
 
         // Create transaction record

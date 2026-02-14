@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import DashboardLayout from '../../../components/layout/DashboardLayout'
 import { useToast } from '../../../contexts/ToastContext'
+import usePermissions from '../../../hooks/usePermissions'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003'
 
@@ -27,6 +28,7 @@ interface Deal {
 export default function CreateSyndicatePage() {
     const router = useRouter()
     const { addToast } = useToast()
+    const { isInvestor, isLoading: isPermissionsLoading } = usePermissions()
     const [isLoading, setIsLoading] = useState(false)
     const [isFetchingDeals, setIsFetchingDeals] = useState(true)
     const [deals, setDeals] = useState<Deal[]>([])
@@ -48,8 +50,13 @@ export default function CreateSyndicatePage() {
     })
 
     useEffect(() => {
+        if (!isPermissionsLoading && !isInvestor) {
+            addToast('error', 'Only investors can create syndicates')
+            router.push('/syndicates')
+            return
+        }
         fetchDeals()
-    }, [])
+    }, [isInvestor, isPermissionsLoading])
 
     const fetchDeals = async () => {
         try {

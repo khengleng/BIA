@@ -102,9 +102,50 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
                         })
                     ]);
 
-                    const dealPortfolioValue = completedDealInvestments.reduce((sum, inv) => sum + inv.amount, 0);
-                    const syndicatePortfolioValue = syndicateInvestments.reduce((sum, inv) => sum + inv.amount, 0);
+                    const dealPortfolioValue = completedDealInvestments.reduce((sum, sum_inv) => sum + sum_inv.amount, 0);
+                    const syndicatePortfolioValue = syndicateInvestments.reduce((sum, sum_inv) => sum + sum_inv.amount, 0);
                     const portfolioValue = dealPortfolioValue + syndicatePortfolioValue;
+
+                    // Fetch recent activity for the dashboard
+                    const [recentDealInvestments, recentSyndicateInvestments, openDeals] = await Promise.all([
+                        prisma.dealInvestor.findMany({
+                            where: { investorId: investor.id },
+                            include: { deal: { include: { sme: true } } },
+                            orderBy: { createdAt: 'desc' },
+                            take: 3
+                        }),
+                        prisma.syndicateMember.findMany({
+                            where: { investorId: investor.id },
+                            include: { syndicate: true },
+                            orderBy: { joinedAt: 'desc' },
+                            take: 3
+                        }),
+                        prisma.deal.findMany({
+                            where: { status: 'PUBLISHED' },
+                            include: { sme: true },
+                            take: 2,
+                            orderBy: { createdAt: 'desc' }
+                        })
+                    ]);
+
+                    const recentInvestments = [
+                        ...recentDealInvestments.map(inv => ({
+                            id: inv.id,
+                            name: inv.deal?.sme?.name || 'Unknown SME',
+                            amount: inv.amount,
+                            type: 'DEAL',
+                            date: inv.createdAt,
+                            status: inv.status
+                        })),
+                        ...recentSyndicateInvestments.map(inv => ({
+                            id: inv.id,
+                            name: inv.syndicate?.name || 'Syndicate',
+                            amount: inv.amount,
+                            type: 'SYNDICATE',
+                            date: inv.joinedAt,
+                            status: inv.status
+                        }))
+                    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5);
 
                     stats = {
                         totalMatches: matchCount,
@@ -112,7 +153,15 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
                         pendingOffers: activeOffers,
                         portfolioValue,
                         syndicateMemberships: syndicateMembershipCount,
-                        avgMatchScore: 85 // This would require complex aggregation of match scores
+                        avgMatchScore: 85,
+                        recentInvestments,
+                        marketOpportunities: openDeals.map(d => ({
+                            id: d.id,
+                            name: d.sme?.name || 'SME',
+                            title: d.title,
+                            amount: d.amount,
+                            sector: d.sme?.sector
+                        }))
                     };
                 }
                 break;

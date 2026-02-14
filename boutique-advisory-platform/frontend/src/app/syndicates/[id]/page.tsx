@@ -90,7 +90,7 @@ export default function SyndicateDetailsPage() {
     const params = useParams()
     const router = useRouter()
     const { addToast } = useToast()
-    const { isAdmin, user } = usePermissions()
+    const { isAdmin, isInvestor, user } = usePermissions()
 
     const [syndicate, setSyndicate] = useState<Syndicate | null>(null)
     const [isLoading, setIsLoading] = useState(true)
@@ -230,7 +230,7 @@ export default function SyndicateDetailsPage() {
                         <p className="text-gray-400 mt-2 max-w-2xl">{syndicate.description}</p>
                     </div>
 
-                    {!isLead && (syndicate.status === 'OPEN' || syndicate.status === 'FORMING') && (
+                    {!isLead && isInvestor && (syndicate.status === 'OPEN' || syndicate.status === 'FORMING') && (
                         <button
                             onClick={() => {
                                 setJoinAmount(syndicate.minInvestment.toString())
@@ -518,13 +518,24 @@ export default function SyndicateDetailsPage() {
                                 </p>
                             </div>
 
-                            {syndicate.isTokenized && syndicate.pricePerToken && (
-                                <div className="bg-blue-900/30 border border-blue-500/30 rounded-lg p-3 flex justify-between items-center">
-                                    <span className="text-blue-300 text-sm">Estimated Tokens:</span>
-                                    <span className="text-white font-bold text-lg">
-                                        {joinAmount ? (parseFloat(joinAmount) / syndicate.pricePerToken).toLocaleString() : '0'}
-                                        <span className="text-blue-400 text-xs ml-1">{syndicate.tokenSymbol}</span>
-                                    </span>
+                            {/* Token Calculation for Tokenized Syndicates */}
+                            {syndicate.isTokenized && syndicate.pricePerToken && joinAmount && parseFloat(joinAmount) > 0 && (
+                                <div className="bg-cyan-900/20 border border-cyan-700/50 rounded-lg p-4">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-xs text-cyan-400 mb-1">
+                                                {isMember ? 'Additional Tokens' : 'You will receive'}
+                                            </p>
+                                            <p className="text-2xl font-bold text-white">
+                                                {(parseFloat(joinAmount) / syndicate.pricePerToken).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                                <span className="text-sm text-cyan-400 ml-2">{syndicate.tokenSymbol}</span>
+                                            </p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-xs text-gray-400">Token Price</p>
+                                            <p className="text-sm font-medium text-white">${syndicate.pricePerToken.toLocaleString()}</p>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
 

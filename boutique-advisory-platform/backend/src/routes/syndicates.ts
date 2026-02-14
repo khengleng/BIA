@@ -165,29 +165,19 @@ router.post('/', authorize('syndicate.create'), async (req: AuthenticatedRequest
             closingDate
         } = req.body;
 
+        // Only INVESTOR role can create syndicates
+        if (req.user?.role !== 'INVESTOR') {
+            res.status(403).json({ error: 'Only investors can create syndicates' });
+            return;
+        }
+
         // Get investor ID for the current user
-        let investor = await prisma.investor.findFirst({
+        const investor = await prisma.investor.findFirst({
             where: { userId: req.user?.id }
         });
 
-        // Auto-onboard Admin as Investor if missing, to allow them to act as Lead Investor
-        if (!investor && (req.user?.role === 'ADMIN' || req.user?.role === 'SUPER_ADMIN')) {
-            const userDetail = await prisma.user.findUnique({ where: { id: req.user?.id } });
-            if (userDetail) {
-                investor = await prisma.investor.create({
-                    data: {
-                        userId: userDetail.id,
-                        tenantId: userDetail.tenantId,
-                        name: `${userDetail.firstName} ${userDetail.lastName}`,
-                        type: 'INSTITUTIONAL',
-                        kycStatus: 'VERIFIED'
-                    }
-                });
-            }
-        }
-
         if (!investor) {
-            res.status(403).json({ error: 'Only investors can create syndicates' });
+            res.status(403).json({ error: 'Investor profile not found. Please complete your investor onboarding first.' });
             return;
         }
 
@@ -238,29 +228,19 @@ router.post('/:id/join', authorize('syndicate.join'), async (req: AuthenticatedR
 
         const { amount } = req.body;
 
+        // Only INVESTOR role can join syndicates
+        if (req.user?.role !== 'INVESTOR') {
+            res.status(403).json({ error: 'Only investors can join syndicates' });
+            return;
+        }
+
         // Get investor ID for the current user
-        let investor = await prisma.investor.findFirst({
+        const investor = await prisma.investor.findFirst({
             where: { userId: req.user?.id }
         });
 
-        // Auto-onboard Admin as Investor if missing, to allow them to act as Lead Investor
-        if (!investor && (req.user?.role === 'ADMIN' || req.user?.role === 'SUPER_ADMIN')) {
-            const userDetail = await prisma.user.findUnique({ where: { id: req.user?.id } });
-            if (userDetail) {
-                investor = await prisma.investor.create({
-                    data: {
-                        userId: userDetail.id,
-                        tenantId: userDetail.tenantId,
-                        name: `${userDetail.firstName} ${userDetail.lastName}`,
-                        type: 'INSTITUTIONAL',
-                        kycStatus: 'VERIFIED'
-                    }
-                });
-            }
-        }
-
         if (!investor) {
-            res.status(403).json({ error: 'Only investors can create syndicates' });
+            res.status(403).json({ error: 'Investor profile not found. Please complete your investor onboarding first.' });
             return;
         }
 

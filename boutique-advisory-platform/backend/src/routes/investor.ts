@@ -72,23 +72,6 @@ router.get('/profile', async (req: any, res: Response) => {
       include: { user: true }
     });
 
-    // Auto-onboard Admin as Platform Operator (Investor)
-    if (!investor && (req.user?.role === 'ADMIN' || req.user?.role === 'SUPER_ADMIN')) {
-      const userDetail = await prisma.user.findUnique({ where: { id: userId } });
-      if (userDetail) {
-        investor = await prisma.investor.create({
-          data: {
-            userId: userDetail.id,
-            tenantId: userDetail.tenantId,
-            name: `${userDetail.firstName} ${userDetail.lastName}`,
-            type: 'INSTITUTIONAL',
-            kycStatus: 'VERIFIED'
-          },
-          include: { user: true }
-        }) as any;
-      }
-    }
-
     if (!investor) {
       return res.status(404).json({ error: 'Investor not found' });
     }
@@ -116,44 +99,45 @@ router.get('/portfolio/stats', authorize('investor.read', { getOwnerId: (req) =>
       where: { userId }
     });
 
-    // Auto-onboard Admin as Platform Operator (Investor)
-    if (!investor && (req.user?.role === 'ADMIN' || req.user?.role === 'SUPER_ADMIN')) {
-      const userDetail = await prisma.user.findUnique({ where: { id: userId } });
-      if (userDetail) {
-        investor = await prisma.investor.create({
-          data: {
-            userId: userDetail.id,
-            tenantId: userDetail.tenantId,
-            name: `${userDetail.firstName} ${userDetail.lastName}`,
-            type: 'INSTITUTIONAL',
-            kycStatus: 'VERIFIED'
-          }
-        }) as any;
-      }
-    }
-
     if (!investor) {
       return res.status(404).json({ error: 'Investor profile not found' });
     }
 
-    // 1. Get all completed/approved investments
-    // We filter for investments that are effectively part of the portfolio
-    // For MVP, APPROVED counts as "Active Position", COMPLETED counts as "Funded"
-    const investments = await prisma.dealInvestor.findMany({
-      where: {
-        investorId: investor.id,
-        status: { in: ['COMPLETED', 'APPROVED'] }
-      },
-      include: {
-        deal: {
-          include: {
-            sme: true
+    // 1. Get all completed/approved investments (Deals & Syndicates)
+    const [dealInvestments, syndicateInvestments] = await Promise.all([
+      prisma.dealInvestor.findMany({
+        where: {
+          investorId: investor.id,
+          status: { in: ['COMPLETED', 'APPROVED'] }
+        },
+        include: {
+          deal: {
+            include: {
+              sme: true
+            }
           }
         }
-      }
-    });
+      }),
+      prisma.syndicateMember.findMany({
+        where: {
+          investorId: investor.id,
+          status: 'APPROVED'
+        },
+        include: {
+          syndicate: {
+            include: {
+              deal: {
+                include: {
+                  sme: true
+                }
+              }
+            }
+          }
+        }
+      })
+    ]);
 
-    if (investments.length === 0) {
+    if (dealInvestments.length === 0 && syndicateInvestments.length === 0) {
       return res.json({
         summary: {
           totalAum: 0,
@@ -167,18 +151,26 @@ router.get('/portfolio/stats', authorize('investor.read', { getOwnerId: (req) =>
     }
 
     // 2. Calculate Portfolio Metrics
-    const totalAum = investments.reduce((sum, inv) => sum + (inv.amount || 0), 0);
-    const activePositions = investments.length;
+    const dealAum = dealInvestments.reduce((sum, inv) => sum + (inv.amount || 0), 0);
+    const syndicateAum = syndicateInvestments.reduce((sum, inv) => sum + (inv.amount || 0), 0);
+    const totalAum = dealAum + syndicateAum;
+    const activePositions = dealInvestments.length + syndicateInvestments.length;
+
     // Find the earliest investment date
-    const startDate = investments.reduce((earliest, inv) => {
-      return inv.createdAt < earliest ? inv.createdAt : earliest;
+    const allInvestments = [
+      ...dealInvestments.map(i => ({ date: i.createdAt, amount: i.amount, sector: i.deal?.sme?.sector })),
+      ...syndicateInvestments.map(i => ({ date: i.joinedAt, amount: i.amount, sector: i.syndicate?.deal?.sme?.sector || 'Syndicate' }))
+    ];
+
+    const startDate = allInvestments.reduce((earliest, inv) => {
+      return inv.date < earliest ? inv.date : earliest;
     }, new Date());
 
     // 3. Calculate Sector Allocation
     const sectorMap = new Map<string, number>();
 
-    investments.forEach(inv => {
-      const sector = inv.deal?.sme?.sector || 'General';
+    allInvestments.forEach(inv => {
+      const sector = inv.sector || 'General';
       const current = sectorMap.get(sector) || 0;
       sectorMap.set(sector, current + (inv.amount || 0));
     });
@@ -195,21 +187,35 @@ router.get('/portfolio/stats', authorize('investor.read', { getOwnerId: (req) =>
     }).sort((a, b) => b.value - a.value);
 
     // 4. Format individual portfolio items
-    const portfolioItems = investments.map(inv => {
+    const dealItems = dealInvestments.map(inv => {
       const percentage = totalAum > 0 ? (inv.amount / totalAum) * 100 : 0;
-
       return {
         id: inv.dealId,
-        investmentId: inv.id, // Primary Key of DealInvestor
+        investmentId: inv.id,
         name: inv.deal?.sme?.name || 'Unknown Company',
         sector: inv.deal?.sme?.sector || 'General',
         allocation: parseFloat(percentage.toFixed(1)),
         value: inv.amount,
-        // Placeholder: Real ROI requires secondary market data or valuation updates
-        returns: 0,
+        returns: 0, // Placeholder
         color: getColorForSector(inv.deal?.sme?.sector || 'General')
       };
     });
+
+    const syndicateItems = syndicateInvestments.map(inv => {
+      const percentage = totalAum > 0 ? (inv.amount / totalAum) * 100 : 0;
+      return {
+        id: inv.syndicateId,
+        investmentId: inv.id,
+        name: inv.syndicate?.name || 'Syndicate',
+        sector: inv.syndicate?.deal?.sme?.sector || 'Syndicate',
+        allocation: parseFloat(percentage.toFixed(1)),
+        value: inv.amount,
+        returns: 0, // Placeholder
+        color: getColorForSector(inv.syndicate?.deal?.sme?.sector || 'Syndicate')
+      };
+    });
+
+    const portfolioItems = [...dealItems, ...syndicateItems];
 
     // 5. Calculate Realized ROI from Secondary Trades
     // Fetch all completed sales where this investor was the seller
@@ -238,7 +244,8 @@ router.get('/portfolio/stats', authorize('investor.read', { getOwnerId: (req) =>
         totalAum,
         activePositions,
         realizedRoi,
-        startDate
+        startDate,
+        kycStatus: investor.kycStatus
       },
       sectors: sectors,
       items: portfolioItems

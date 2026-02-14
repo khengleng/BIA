@@ -130,7 +130,7 @@ interface SyndicateTokenTrade {
 
 export default function SecondaryTradingPage() {
     const { addToast } = useToast()
-    const { isAdmin, user } = usePermissions()
+    const { isAdmin, isInvestor, user } = usePermissions()
 
     const [listings, setListings] = useState<Listing[]>([])
     const [myTrades, setMyTrades] = useState<{ purchases: Trade[], sales: Trade[] }>({ purchases: [], sales: [] })
@@ -517,10 +517,11 @@ export default function SecondaryTradingPage() {
                                     {listing.status === 'ACTIVE' && listing.sellerId !== user?.id && (
                                         <button
                                             onClick={() => handleBuyClick(listing)}
-                                            className="px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center gap-2 transition-colors"
+                                            disabled={!isInvestor}
+                                            className="px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center gap-2 transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
                                         >
                                             <ShoppingCart className="w-4 h-4" />
-                                            Buy Shares
+                                            {isInvestor ? 'Buy Shares' : 'View Only'}
                                         </button>
                                     )}
                                     {listing.sellerId === user?.id && (
@@ -620,10 +621,11 @@ export default function SecondaryTradingPage() {
                                         {listing.status === 'ACTIVE' && listing.sellerId !== user?.id && (
                                             <button
                                                 onClick={() => handleBuyTokenClick(listing)}
-                                                className="px-5 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg flex items-center gap-2 transition-colors"
+                                                disabled={!isInvestor}
+                                                className="px-5 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg flex items-center gap-2 transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
                                             >
                                                 <ShoppingCart className="w-4 h-4" />
-                                                Buy Tokens
+                                                {isInvestor ? 'Buy Tokens' : 'View Only'}
                                             </button>
                                         )}
                                         {listing.sellerId === user?.id && (
