@@ -129,14 +129,26 @@ router.get('/:id', authorize('syndicate.read'), async (req: AuthenticatedRequest
             return;
         }
 
-        const raisedAmount = syndicate.members
+        // Auto-fix member tokens if missing for display
+        const members = syndicate.members.map(member => {
+            if (syndicate.isTokenized && syndicate.pricePerToken && (!member.tokens || member.tokens === 0)) {
+                return {
+                    ...member,
+                    tokens: member.amount / syndicate.pricePerToken
+                };
+            }
+            return member;
+        });
+
+        const raisedAmount = members
             .filter(m => m.status === 'APPROVED')
             .reduce((sum, m) => sum + m.amount, 0);
 
         res.json({
             ...syndicate,
+            members,
             raisedAmount,
-            memberCount: syndicate.members.length,
+            memberCount: members.length,
             progress: Math.round((raisedAmount / syndicate.targetAmount) * 100)
         });
     } catch (error) {
@@ -162,7 +174,12 @@ router.post('/', authorize('syndicate.create'), async (req: AuthenticatedRequest
             managementFee,
             carryFee,
             dealId,
-            closingDate
+            closingDate,
+            isTokenized,
+            tokenName,
+            tokenSymbol,
+            pricePerToken,
+            totalTokens
         } = req.body;
 
         // Only INVESTOR role can create syndicates
@@ -194,6 +211,11 @@ router.post('/', authorize('syndicate.create'), async (req: AuthenticatedRequest
                 carryFee: carryFee ? Number(carryFee) : 20.0,
                 dealId: dealId || null,
                 closingDate: closingDate ? new Date(closingDate) : null,
+                isTokenized: !!isTokenized,
+                tokenName,
+                tokenSymbol,
+                pricePerToken: pricePerToken ? Number(pricePerToken) : null,
+                totalTokens: totalTokens ? Number(totalTokens) : null,
                 status: 'FORMING'
             },
             include: {
@@ -379,6 +401,77 @@ router.post('/:id/join', authorize('syndicate.join'), async (req: AuthenticatedR
     } catch (error) {
         console.error('Error joining syndicate:', error);
         res.status(500).json({ error: 'Failed to join syndicate' });
+    }
+});
+
+// Update syndicate
+router.patch('/:id', authorize('syndicate.manage'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+        if (!shouldUseDatabase()) {
+            res.status(503).json({ error: 'Database not available' });
+            return;
+        }
+
+        const syndicate = await prisma.syndicate.findUnique({
+            where: { id: req.params.id },
+            include: { leadInvestor: true }
+        });
+
+        if (!syndicate) {
+            res.status(404).json({ error: 'Syndicate not found' });
+            return;
+        }
+
+        // Check ownership
+        const investor = await prisma.investor.findFirst({
+            where: { userId: req.user?.id }
+        });
+        if (investor?.id !== syndicate.leadInvestorId && req.user?.role !== 'ADMIN' && req.user?.role !== 'SUPER_ADMIN') {
+            res.status(403).json({ error: 'Unauthorized to update this syndicate' });
+            return;
+        }
+
+        const updateData = { ...req.body };
+        // Clean up numeric fields
+        ['targetAmount', 'minInvestment', 'maxInvestment', 'managementFee', 'carryFee', 'pricePerToken', 'totalTokens'].forEach(field => {
+            if (updateData[field] !== undefined) updateData[field] = updateData[field] === null ? null : Number(updateData[field]);
+        });
+        if (updateData.closingDate) updateData.closingDate = new Date(updateData.closingDate);
+
+        const updatedSyndicate = await prisma.syndicate.update({
+            where: { id: req.params.id },
+            data: updateData
+        });
+
+        // If newly tokenized or price changed, update all members
+        if (updatedSyndicate.isTokenized && updatedSyndicate.pricePerToken) {
+            const members = await prisma.syndicateMember.findMany({
+                where: { syndicateId: updatedSyndicate.id }
+            });
+
+            let totalTokensSold = 0;
+            for (const member of members) {
+                const tokens = member.amount / updatedSyndicate.pricePerToken;
+                await prisma.syndicateMember.update({
+                    where: { id: member.id },
+                    data: { tokens }
+                });
+                if (member.status === 'APPROVED') {
+                    totalTokensSold += tokens;
+                }
+            }
+
+            // Sync tokensSold
+            await prisma.syndicate.update({
+                where: { id: updatedSyndicate.id },
+                data: { tokensSold: totalTokensSold }
+            });
+        }
+
+        res.json(updatedSyndicate);
+    } catch (error) {
+        console.error('Error updating syndicate:', error);
+        res.status(500).json({ error: 'Failed to update syndicate' });
     }
 });
 

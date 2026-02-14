@@ -350,9 +350,9 @@ export default function SyndicateDetailsPage() {
                                                     <td className="px-6 py-4">
                                                         <div className="flex items-center gap-2">
                                                             <span className="text-white font-bold">${member.amount.toLocaleString()}</span>
-                                                            {syndicate.isTokenized && member.tokens && (
+                                                            {syndicate.isTokenized && member.tokens !== undefined && member.tokens !== null && (
                                                                 <span className="text-xs bg-cyan-900/50 text-cyan-400 px-2 py-0.5 rounded border border-cyan-800 whitespace-nowrap">
-                                                                    {member.tokens.toLocaleString()} {syndicate.tokenSymbol}
+                                                                    {member.tokens.toLocaleString()} {syndicate.tokenSymbol || 'TOKENS'}
                                                                 </span>
                                                             )}
                                                         </div>
