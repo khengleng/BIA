@@ -209,36 +209,42 @@ if (isProduction && !cookieSecret) {
 app.use(cookieParser(cookieSecret || 'dev-cookie-secret'));
 
 // CORS configuration - strict in production
-app.use(cors({
-  origin: (origin, callback) => {
-    // In production, strictly match the FRONTEND_URL
-    const frontendUrl = process.env.FRONTEND_URL || '';
-    const allowedOrigins = [frontendUrl, frontendUrl.replace(/\/$/, '')];
+app.use((req, res, next) => {
+  cors({
+    origin: (origin, callback) => {
+      // In production, strictly match the FRONTEND_URL
+      const frontendUrl = process.env.FRONTEND_URL || '';
+      const allowedOrigins = [frontendUrl, frontendUrl.replace(/\/$/, '')];
 
-    if (!origin) {
-      if (isProduction) {
-        console.warn(`Blocked by CORS: Request with no origin rejected in production.`);
-        return callback(new Error('Not allowed by CORS: Origin required'), false);
+      if (!origin) {
+        if (isProduction) {
+          // Allow no-origin calls only for health and CSRF token endpoints
+          if (req.path === '/health' || req.path === '/api/csrf-token') {
+            return callback(null, true);
+          }
+          console.warn(`Blocked by CORS: Request with no origin rejected in production.`);
+          return callback(new Error('Not allowed by CORS: Origin required'), false);
+        }
+        return callback(null, true);
       }
-      return callback(null, true);
-    }
 
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else if (!isProduction || origin.includes('localhost') || origin.includes('127.0.0.1')) {
-      // In development or for localhost, be more permissive
-      callback(null, true);
-    } else {
-      console.warn(`Blocked by CORS: origin ${origin} not in ${allowedOrigins}`);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'X-CSRF-Token', 'x-csrf-token'],
-  exposedHeaders: ['Set-Cookie'],
-  maxAge: 86400,
-}));
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else if (!isProduction || origin.includes('localhost') || origin.includes('127.0.0.1')) {
+        // In development or for localhost, be more permissive
+        callback(null, true);
+      } else {
+        console.warn(`Blocked by CORS: origin ${origin} not in ${allowedOrigins}`);
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'X-CSRF-Token', 'x-csrf-token'],
+    exposedHeaders: ['Set-Cookie'],
+    maxAge: 86400,
+  })(req, res, next);
+});
 
 // ============================================
 // SECURITY MIDDLEWARE (Applied to all requests)
@@ -435,6 +441,13 @@ app.use('*', (req, res) => {
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (err?.code === 'EBADCSRFTOKEN') {
+    return res.status(403).json({
+      error: 'Invalid CSRF token',
+      message: 'CSRF validation failed'
+    });
+  }
+
   console.error('Unhandled error:', err);
   res.status(500).json({
     error: 'Internal server error',
