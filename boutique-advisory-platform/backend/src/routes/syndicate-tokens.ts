@@ -101,15 +101,37 @@ router.post('/listings', authorize('secondary_trading.create_listing'), async (r
             return;
         }
 
+        // Debug logging
+        console.log('=== Token Listing Debug ===');
+        console.log('Investor ID:', investor.id);
+        console.log('Syndicate ID:', syndicateId);
+        console.log('Membership Amount:', membership.amount);
+        console.log('Membership Tokens (DB):', membership.tokens);
+        console.log('Syndicate isTokenized:', membership.syndicate.isTokenized);
+        console.log('Syndicate pricePerToken:', membership.syndicate.pricePerToken);
+        console.log('Tokens to list:', tokensAvailable);
+
         // Auto-repair/Resilient check for tokens
         let currentTokens = membership.tokens || 0;
         if (currentTokens === 0 && membership.syndicate.isTokenized && membership.syndicate.pricePerToken) {
             currentTokens = membership.amount / membership.syndicate.pricePerToken;
+            console.log('Auto-calculated tokens:', currentTokens);
         }
 
+        console.log('Final currentTokens:', currentTokens);
+        console.log('Comparison:', currentTokens, '<', tokensAvailable, '=', currentTokens < tokensAvailable);
+
         if (currentTokens < tokensAvailable) {
-            console.warn(`Insufficient tokens for ${investor.id}: Has ${currentTokens}, tried to list ${tokensAvailable}`);
-            res.status(400).json({ error: 'Insufficient tokens to list' });
+            console.warn(`❌ Insufficient tokens for ${investor.id}: Has ${currentTokens}, tried to list ${tokensAvailable}`);
+            res.status(400).json({
+                error: 'Insufficient tokens to list',
+                debug: {
+                    available: currentTokens,
+                    requested: tokensAvailable,
+                    membershipAmount: membership.amount,
+                    pricePerToken: membership.syndicate.pricePerToken
+                }
+            });
             return;
         }
 
