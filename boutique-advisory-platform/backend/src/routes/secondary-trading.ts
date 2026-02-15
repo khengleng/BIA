@@ -7,7 +7,7 @@
 import { Router, Response } from 'express';
 import { AuthenticatedRequest, authorize } from '../middleware/authorize';
 import { prisma, prismaReplica } from '../database';
-import { payments } from '../utils/stripe';
+import { payments } from '../utils/mock-payments';
 import { shouldUseDatabase } from '../migration-manager';
 
 const router = Router();

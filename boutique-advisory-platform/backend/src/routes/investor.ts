@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import { prisma } from '../database';
 import { validateBody, updateInvestorSchema } from '../middleware/validation';
 import { authorize, AuthenticatedRequest } from '../middleware/authorize';
-import { kyc } from '../utils/stripe';
+
 import { sumsub } from '../utils/sumsub';
 
 import { encrypt, decrypt } from '../utils/encryption';
@@ -422,24 +422,7 @@ router.post('/kyc-submit', async (req: any, res: Response) => {
   }
 });
 
-// Create Stripe Identity Verification Session
-router.post('/kyc-session', authorize('investor.update'), async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    const session = await kyc.createVerificationSession(userId);
-
-    return res.json({
-      url: session.url,
-      sessionId: session.id,
-      clientSecret: session.client_secret
-    });
-  } catch (error) {
-    console.error('KYC Session Error:', error);
-    return res.status(500).json({ error: 'Failed to create verification session' });
-  }
-});
 
 
 // Create Sumsub SDK Access Token
