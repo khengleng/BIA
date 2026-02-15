@@ -98,7 +98,7 @@ export default function LoginPage() {
 
       if (response.ok) {
         const data = await response.json()
-        localStorage.setItem('token', data.token)
+        // localStorage.setItem('token', data.token)
         localStorage.setItem('user', JSON.stringify(data.user))
         router.push('/dashboard')
       } else {
@@ -140,7 +140,7 @@ export default function LoginPage() {
           setStep('2fa')
           setErrors({})
         } else {
-          localStorage.setItem('token', data.token)
+          // localStorage.setItem('token', data.token) // Token is now in HttpOnly cookie
           localStorage.setItem('user', JSON.stringify(data.user))
           router.push('/dashboard')
         }

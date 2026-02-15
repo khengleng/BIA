@@ -1,5 +1,13 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, CookieOptions } from 'express';
 import bcrypt from 'bcryptjs';
+
+const COOKIE_OPTIONS: CookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax', // Lax for local dev ease if needed, strict for prod
+  path: '/',
+  maxAge: 24 * 60 * 60 * 1000 // 24 hours
+};
 import jwt from 'jsonwebtoken';
 import { prisma } from '../database';
 import {
@@ -181,9 +189,11 @@ router.post('/register', async (req: Request, res: Response) => {
 
     console.log(`[DEV] Verification Token for ${email}: ${verificationToken}`);
 
+    // Set secure cookie
+    res.cookie('token', token, COOKIE_OPTIONS);
+
     return res.status(201).json({
       message: 'User registered successfully. Please accept the verification email sent to your inbox.',
-      token,
       user: {
         id: user.id,
         email: user.email,
@@ -460,9 +470,11 @@ router.post('/login', async (req: Request, res: Response) => {
       success: true
     });
 
+    // Set secure cookie
+    res.cookie('token', token, COOKIE_OPTIONS);
+
     return res.status(200).json({
       message: 'Login successful',
-      token,
       user: {
         id: user.id,
         email: user.email,
@@ -486,23 +498,16 @@ router.post('/login', async (req: Request, res: Response) => {
   }
 });
 
+// Logout endpoint
+router.post('/logout', (req: Request, res: Response) => {
+  res.clearCookie('token', { ...COOKIE_OPTIONS, maxAge: 0 });
+  res.status(200).json({ message: 'Logged out successfully' });
+});
+
 // Get current user
-router.get('/me', async (req: Request, res: Response) => {
+router.get('/me', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '');
-
-    if (!token) {
-      return res.status(401).json({ error: 'No token provided' });
-    }
-
-    if (!process.env.JWT_SECRET) {
-      return res.status(500).json({ error: 'Server configuration error' });
-    }
-    const decoded = jwt.verify(token, process.env.JWT_SECRET) as any;
-
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId }
-    });
+    const user = req.user;
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -516,7 +521,7 @@ router.get('/me', async (req: Request, res: Response) => {
         firstName: user.firstName,
         lastName: user.lastName,
         twoFactorEnabled: user.twoFactorEnabled,
-        language: user.language,
+        language: user.language || 'EN',
         preferences: user.preferences
       }
     });
@@ -941,9 +946,11 @@ router.post('/verify-2fa', async (req: Request, res: Response) => {
       success: true
     });
 
+    // Set secure cookie
+    res.cookie('token', token, COOKIE_OPTIONS);
+
     return res.json({
       message: 'Login successful',
-      token,
       user: {
         id: user.id,
         email: user.email,
@@ -1204,13 +1211,19 @@ router.post('/delete-account', authenticateToken, async (req: AuthenticatedReque
 
 
 // Switch Role Endpoint
+// Switch Role Endpoint
 router.post('/switch-role', async (req: Request, res: Response) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    let token = req.headers.authorization?.replace('Bearer ', '');
+    // Check cookie if header missing
+    if (!token && req.cookies && req.cookies['token']) {
+      token = req.cookies['token'];
+    }
+
+    if (!token) {
       return res.status(401).json({ error: 'Authentication required' });
     }
-    const token = authHeader.substring(7);
+
     if (!process.env.JWT_SECRET) return res.status(500).json({ error: 'Config error' });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET) as any;
@@ -1278,9 +1291,11 @@ router.post('/switch-role', async (req: Request, res: Response) => {
       { expiresIn: '24h' }
     );
 
+    // Set secure cookie
+    res.cookie('token', newToken, COOKIE_OPTIONS);
+
     return res.json({
       message: `Successfully switched to ${targetRole}`,
-      token: newToken,
       user: {
         id: updatedUser.id,
         email: updatedUser.email,

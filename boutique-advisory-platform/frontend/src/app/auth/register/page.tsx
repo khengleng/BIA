@@ -33,12 +33,12 @@ export default function RegisterPage() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
     const checked = (e.target as HTMLInputElement).checked
-    
+
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }))
-    
+
     // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }))
@@ -47,48 +47,48 @@ export default function RegisterPage() {
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
-    
+
     if (!formData.firstName) {
       newErrors.firstName = 'First name is required'
     }
-    
+
     if (!formData.lastName) {
       newErrors.lastName = 'Last name is required'
     }
-    
+
     if (!formData.email) {
       newErrors.email = 'Email is required'
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Email is invalid'
     }
-    
+
     if (!formData.password) {
       newErrors.password = 'Password is required'
     } else if (formData.password.length < 8) {
       newErrors.password = 'Password must be at least 8 characters'
     }
-    
+
     if (!formData.confirmPassword) {
       newErrors.confirmPassword = 'Please confirm your password'
     } else if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match'
     }
-    
+
     if (!formData.agreeToTerms) {
       newErrors.agreeToTerms = 'You must agree to the terms and conditions'
     }
-    
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!validateForm()) return
-    
+
     setIsLoading(true)
-    
+
     try {
       const response = await fetch(`${API_URL}/api/auth/register`, {
         method: 'POST',
@@ -103,11 +103,11 @@ export default function RegisterPage() {
           role: formData.role,
         }),
       })
-      
+
       if (response.ok) {
         const data = await response.json()
-        // Store token and user data
-        localStorage.setItem('token', data.token)
+        // Store user data
+        // localStorage.setItem('token', data.token) // Token is now in HttpOnly cookie
         localStorage.setItem('user', JSON.stringify(data.user))
         // Redirect to dashboard
         router.push('/dashboard')
@@ -137,14 +137,14 @@ export default function RegisterPage() {
             Create your Boutique Advisory account
           </p>
         </div>
-        
+
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {errors.general && (
             <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
               <p className="text-red-400 text-sm">{errors.general}</p>
             </div>
           )}
-          
+
           <div className="space-y-4">
             {/* Role Selection */}
             <div>
@@ -155,11 +155,10 @@ export default function RegisterPage() {
                 {roles.map((role) => (
                   <label
                     key={role.value}
-                    className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${
-                      formData.role === role.value
+                    className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${formData.role === role.value
                         ? 'border-blue-500 bg-blue-500/10'
                         : 'border-gray-600 bg-gray-800/50 hover:border-gray-500'
-                    }`}
+                      }`}
                   >
                     <input
                       type="radio"
@@ -170,11 +169,10 @@ export default function RegisterPage() {
                       className="sr-only"
                     />
                     <div className="flex items-center space-x-3">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                        formData.role === role.value
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${formData.role === role.value
                           ? 'bg-blue-500'
                           : 'bg-gray-600'
-                      }`}>
+                        }`}>
                         <role.icon className="w-4 h-4 text-white" />
                       </div>
                       <div>
@@ -186,7 +184,7 @@ export default function RegisterPage() {
                 ))}
               </div>
             </div>
-            
+
             {/* Name Fields */}
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -205,9 +203,8 @@ export default function RegisterPage() {
                     required
                     value={formData.firstName}
                     onChange={handleInputChange}
-                    className={`appearance-none relative block w-full pl-10 pr-3 py-3 border ${
-                      errors.firstName ? 'border-red-500' : 'border-gray-600'
-                    } placeholder-gray-400 text-white bg-gray-800/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                    className={`appearance-none relative block w-full pl-10 pr-3 py-3 border ${errors.firstName ? 'border-red-500' : 'border-gray-600'
+                      } placeholder-gray-400 text-white bg-gray-800/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                     placeholder="First name"
                   />
                 </div>
@@ -215,7 +212,7 @@ export default function RegisterPage() {
                   <p className="mt-1 text-sm text-red-400">{errors.firstName}</p>
                 )}
               </div>
-              
+
               <div>
                 <label htmlFor="lastName" className="block text-sm font-medium text-gray-300">
                   {t('auth.lastName')}
@@ -232,9 +229,8 @@ export default function RegisterPage() {
                     required
                     value={formData.lastName}
                     onChange={handleInputChange}
-                    className={`appearance-none relative block w-full pl-10 pr-3 py-3 border ${
-                      errors.lastName ? 'border-red-500' : 'border-gray-600'
-                    } placeholder-gray-400 text-white bg-gray-800/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                    className={`appearance-none relative block w-full pl-10 pr-3 py-3 border ${errors.lastName ? 'border-red-500' : 'border-gray-600'
+                      } placeholder-gray-400 text-white bg-gray-800/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                     placeholder="Last name"
                   />
                 </div>
@@ -243,7 +239,7 @@ export default function RegisterPage() {
                 )}
               </div>
             </div>
-            
+
             {/* Email */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-300">
@@ -261,9 +257,8 @@ export default function RegisterPage() {
                   required
                   value={formData.email}
                   onChange={handleInputChange}
-                  className={`appearance-none relative block w-full pl-10 pr-3 py-3 border ${
-                    errors.email ? 'border-red-500' : 'border-gray-600'
-                  } placeholder-gray-400 text-white bg-gray-800/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                  className={`appearance-none relative block w-full pl-10 pr-3 py-3 border ${errors.email ? 'border-red-500' : 'border-gray-600'
+                    } placeholder-gray-400 text-white bg-gray-800/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                   placeholder="Enter your email"
                 />
               </div>
@@ -271,7 +266,7 @@ export default function RegisterPage() {
                 <p className="mt-1 text-sm text-red-400">{errors.email}</p>
               )}
             </div>
-            
+
             {/* Password */}
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-300">
@@ -289,9 +284,8 @@ export default function RegisterPage() {
                   required
                   value={formData.password}
                   onChange={handleInputChange}
-                  className={`appearance-none relative block w-full pl-10 pr-12 py-3 border ${
-                    errors.password ? 'border-red-500' : 'border-gray-600'
-                  } placeholder-gray-400 text-white bg-gray-800/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                  className={`appearance-none relative block w-full pl-10 pr-12 py-3 border ${errors.password ? 'border-red-500' : 'border-gray-600'
+                    } placeholder-gray-400 text-white bg-gray-800/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                   placeholder="Create a password"
                 />
                 <button
@@ -310,7 +304,7 @@ export default function RegisterPage() {
                 <p className="mt-1 text-sm text-red-400">{errors.password}</p>
               )}
             </div>
-            
+
             {/* Confirm Password */}
             <div>
               <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300">
@@ -328,9 +322,8 @@ export default function RegisterPage() {
                   required
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
-                  className={`appearance-none relative block w-full pl-10 pr-12 py-3 border ${
-                    errors.confirmPassword ? 'border-red-500' : 'border-gray-600'
-                  } placeholder-gray-400 text-white bg-gray-800/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                  className={`appearance-none relative block w-full pl-10 pr-12 py-3 border ${errors.confirmPassword ? 'border-red-500' : 'border-gray-600'
+                    } placeholder-gray-400 text-white bg-gray-800/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                   placeholder="Confirm your password"
                 />
                 <button
@@ -350,7 +343,7 @@ export default function RegisterPage() {
               )}
             </div>
           </div>
-          
+
           {/* Terms Agreement */}
           <div className="flex items-center">
             <input
@@ -375,7 +368,7 @@ export default function RegisterPage() {
           {errors.agreeToTerms && (
             <p className="text-sm text-red-400">{errors.agreeToTerms}</p>
           )}
-          
+
           <div>
             <button
               type="submit"
@@ -392,7 +385,7 @@ export default function RegisterPage() {
               )}
             </button>
           </div>
-          
+
           <div className="text-center">
             <p className="text-sm text-gray-300">
               Already have an account?{' '}
