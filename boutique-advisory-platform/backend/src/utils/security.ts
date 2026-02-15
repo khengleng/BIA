@@ -153,10 +153,31 @@ export async function logAuditEvent(entry: AuditLogEntry): Promise<void> {
         ...logEntry
     }));
 
-    // In production, you would also:
-    // 1. Write to a secure audit log database table
-    // 2. Send to a SIEM system (Splunk, ELK, etc.)
-    // 3. Store in immutable storage (AWS S3 with object lock)
+    // SECURITY: Persist to Database for auditing and anomaly detection
+    try {
+        // Need to find the tenantId for the user if not provided in details or entry
+        // For simplicity, we assume 'default' or provided in details
+        const tenantId = (entry.details?.tenantId as string) || 'default';
+
+        await prisma.activityLog.create({
+            data: {
+                tenantId,
+                userId: entry.userId === 'unknown' ? 'cl6u8u8u80000uxuxuxuxuxux' : entry.userId, // Fallback to a system user ID if needed
+                action: entry.action,
+                entityId: entry.resourceId || 'system',
+                entityType: entry.resource,
+                metadata: {
+                    ip: entry.ipAddress,
+                    userAgent: entry.userAgent,
+                    success: entry.success,
+                    error: entry.errorMessage,
+                    ...logEntry.details
+                }
+            }
+        });
+    } catch (dbError) {
+        console.error('CRITICAL: Failed to persist audit log to database:', dbError);
+    }
 }
 
 /**
@@ -288,7 +309,14 @@ export function getSecurityHeaders(): Record<string, string> {
 // DATA ENCRYPTION
 // ============================================
 
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'default-fallback-key-must-be-very-long-and-secure';
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'dev-fallback-key-must-be-very-long-and-secure';
+
+if (!process.env.ENCRYPTION_KEY) {
+    if (process.env.NODE_ENV === 'production') {
+        throw new Error('CRITICAL: ENCRYPTION_KEY environment variable is NOT SET in production!');
+    }
+    console.warn('WARNING: ENCRYPTION_KEY is not set. Using unsafe development fallback.');
+}
 
 /**
  * Encrypt sensitive data using AES-256-GCM

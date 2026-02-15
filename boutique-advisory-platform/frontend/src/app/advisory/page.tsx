@@ -1,5 +1,5 @@
 'use client'
-import { API_URL } from '@/lib/api'
+import { API_URL, authorizedRequest } from '@/lib/api'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -49,10 +49,7 @@ export default function AdvisoryPage() {
     if (abaQrData && paymentId) {
       interval = setInterval(async () => {
         try {
-          const token = localStorage.getItem('token');
-          const res = await fetch(`${API_URL}/api/payments/aba/status/${paymentId}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
+          const res = await authorizedRequest(`/api/payments/aba/status/${paymentId}`);
           if (res.ok) {
             const data = await res.json();
             if (data.status === 'COMPLETED') {
@@ -78,12 +75,9 @@ export default function AdvisoryPage() {
           const bookingData = JSON.parse(decodeURIComponent(dataStr));
           setPendingBookingData(bookingData);
           // Call booking API
-          const token = localStorage.getItem('token');
-          fetch(`${API_URL}/api/advisory/book`, {
+          authorizedRequest('/api/advisory/book', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({ ...bookingData, amount: 0 }) // Amount handled by payment? Need to verify amount...
-            // Or pass original amount.
+            body: JSON.stringify({ ...bookingData, amount: 0 })
           }).then(res => {
             if (res.ok) {
               alert('ABA Payment successful! Booking confirmed.');
@@ -102,10 +96,9 @@ export default function AdvisoryPage() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const token = localStorage.getItem('token')
         const userData = localStorage.getItem('user')
 
-        if (!token || !userData) {
+        if (!userData) {
           window.location.href = '/auth/login'
           return
         }
@@ -118,7 +111,6 @@ export default function AdvisoryPage() {
         setUser(user)
       } catch (error) {
         console.error('Error fetching user:', error)
-        localStorage.removeItem('token')
         localStorage.removeItem('user')
         window.location.href = '/auth/login'
       } finally {
@@ -133,11 +125,10 @@ export default function AdvisoryPage() {
     const fetchData = async () => {
       setIsDataLoading(true)
       try {
-        const token = localStorage.getItem('token')
         const [servicesRes, advisorsRes, bookingsRes] = await Promise.all([
-          fetch(`${API_URL}/api/advisory/services`, { headers: { 'Authorization': `Bearer ${token}` } }),
-          fetch(`${API_URL}/api/advisory/advisors`, { headers: { 'Authorization': `Bearer ${token}` } }),
-          fetch(`${API_URL}/api/advisory/my-bookings`, { headers: { 'Authorization': `Bearer ${token}` } })
+          authorizedRequest('/api/advisory/services'),
+          authorizedRequest('/api/advisory/advisors'),
+          authorizedRequest('/api/advisory/my-bookings')
         ])
 
         if (servicesRes.ok) setAdvisoryServices(await servicesRes.json())
@@ -155,22 +146,12 @@ export default function AdvisoryPage() {
 
   const handleBookService = async (service: any) => {
     try {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        window.location.href = '/auth/login'
-        return
-      }
-
       const amount = typeof service.price === 'string'
         ? parseFloat(service.price.replace(/[^0-9.]/g, '')) || 0
         : service.price || 0;
 
-      const paymentRes = await fetch(`${API_URL}/api/payments/create-payment-intent`, {
+      const paymentRes = await authorizedRequest('/api/payments/create-payment-intent', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
         body: JSON.stringify({ amount, serviceId: service.id })
       })
 
@@ -194,13 +175,8 @@ export default function AdvisoryPage() {
 
   const handleBookingSuccess = async () => {
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`${API_URL}/api/advisory/book`, {
+      const response = await authorizedRequest('/api/advisory/book', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
         body: JSON.stringify({
           ...pendingBookingData,
           amount: paymentAmount
@@ -219,22 +195,12 @@ export default function AdvisoryPage() {
 
   const handleBookAdvisorSession = async (advisor: any) => {
     try {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        window.location.href = '/auth/login'
-        return
-      }
-
       const amount = typeof advisor.hourlyRate === 'string'
         ? parseFloat(advisor.hourlyRate.replace(/[^0-9.]/g, '')) || 250
         : 250;
 
-      const paymentRes = await fetch(`${API_URL}/api/payments/create-payment-intent`, {
+      const paymentRes = await authorizedRequest('/api/payments/create-payment-intent', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
         body: JSON.stringify({ amount, advisorId: advisor.id })
       })
 
@@ -262,13 +228,8 @@ export default function AdvisoryPage() {
 
   const handleViewDetails = async (service: any) => {
     try {
-      const token = localStorage.getItem('token')
-      setSelectedService(service)
-
-      if (token) {
-        const res = await fetch(`${API_URL}/api/advisory/services/${service.id}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
+      if (user) {
+        const res = await authorizedRequest(`/api/advisory/services/${service.id}`)
         if (res.ok) {
           const fullService = await res.json()
           setSelectedService(fullService)
@@ -630,15 +591,9 @@ export default function AdvisoryPage() {
           onAbaPay={async () => {
             // Logic to initiate ABA payment via Direct QR API
             try {
-              const token = localStorage.getItem('token');
-
               // Call Generate QR Endpoint
-              const res = await fetch(`${API_URL}/api/payments/aba/generate-qr`, {
+              const res = await authorizedRequest('/api/payments/aba/generate-qr', {
                 method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${token}`
-                },
                 body: JSON.stringify({
                   amount: paymentAmount,
                   items: [{ name: pendingBookingData.serviceName, price: paymentAmount, quantity: 1 }],

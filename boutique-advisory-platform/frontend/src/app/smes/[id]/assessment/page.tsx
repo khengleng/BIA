@@ -17,7 +17,7 @@ import {
 } from 'lucide-react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import { useToast } from '@/contexts/ToastContext'
-import { API_URL } from '@/lib/api'
+import { API_URL, authorizedRequest } from '@/lib/api'
 
 export default function AssessmentPage() {
     const params = useParams()
@@ -47,10 +47,9 @@ export default function AssessmentPage() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const token = localStorage.getItem('token')
                 const [smeRes, ddRes] = await Promise.all([
-                    fetch(`${API_URL}/api/smes/${params.id}`, { headers: { 'Authorization': `Bearer ${token}` } }),
-                    fetch(`${API_URL}/api/duediligence/sme/${params.id}`, { headers: { 'Authorization': `Bearer ${token}` } })
+                    authorizedRequest(`/api/smes/${params.id}`),
+                    authorizedRequest(`/api/duediligence/sme/${params.id}`)
                 ])
 
                 if (smeRes.ok) {
@@ -109,12 +108,8 @@ export default function AssessmentPage() {
     const handleSave = async (status: 'PENDING' | 'COMPLETED' = 'PENDING') => {
         setIsSaving(true)
         try {
-            const token = localStorage.getItem('token')
-
             // First check if DD exists
-            const ddCheckRes = await fetch(`${API_URL}/api/duediligence/sme/${params.id}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            })
+            const ddCheckRes = await authorizedRequest(`/api/duediligence/sme/${params.id}`)
 
             let method = 'POST'
             let url = `${API_URL}/api/duediligence`
@@ -129,12 +124,8 @@ export default function AssessmentPage() {
                 }
             }
 
-            const response = await fetch(url, {
+            const response = await authorizedRequest(url, {
                 method,
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
                 body: JSON.stringify(body)
             })
 

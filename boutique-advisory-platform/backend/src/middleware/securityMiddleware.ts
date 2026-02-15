@@ -6,6 +6,7 @@
 import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import { logAuditEvent } from '../utils/security';
+import redis from '../redis';
 
 // ============================================
 // REQUEST ID MIDDLEWARE
@@ -54,18 +55,20 @@ export const securityHeadersMiddleware = (req: Request, res: Response, next: Nex
 // IP SECURITY MIDDLEWARE
 // ============================================
 
-// Blocked IPs (in production, use Redis or database)
-const blockedIps = new Set<string>();
-const suspiciousIps = new Map<string, { count: number; lastSeen: Date }>();
+// Blocked IPs and Suspicious Activity are now managed in Redis
+const BLOCKED_IPS_KEY = 'bia:security:blocked_ips';
+const SUSPICIOUS_IPS_KEY = 'bia:security:suspicious_ips';
+const ROLE_RATE_LIMIT_PREFIX = 'bia:security:rate_limit:';
 
 /**
- * Block malicious IPs
+ * Block malicious IPs (Async version with Redis)
  */
-export const ipSecurityMiddleware = (req: Request, res: Response, next: NextFunction): void => {
+export const ipSecurityMiddleware = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const clientIp = getClientIp(req);
 
-    // Check if IP is blocked
-    if (blockedIps.has(clientIp)) {
+    // Check if IP is blocked in Redis
+    const isBlocked = await redis.sismember(BLOCKED_IPS_KEY, clientIp);
+    if (isBlocked) {
         logAuditEvent({
             userId: 'system',
             action: 'BLOCKED_IP_ACCESS',
@@ -94,11 +97,11 @@ export function getClientIp(req: Request): string {
 }
 
 /**
- * Block an IP address
+ * Block an IP address (Redis)
  */
-export function blockIp(ip: string): void {
-    blockedIps.add(ip);
-    logAuditEvent({
+export async function blockIp(ip: string): Promise<void> {
+    await redis.sadd(BLOCKED_IPS_KEY, ip);
+    await logAuditEvent({
         userId: 'system',
         action: 'IP_BLOCKED',
         resource: 'security',
@@ -109,10 +112,10 @@ export function blockIp(ip: string): void {
 }
 
 /**
- * Unblock an IP address
+ * Unblock an IP address (Redis)
  */
-export function unblockIp(ip: string): void {
-    blockedIps.delete(ip);
+export async function unblockIp(ip: string): Promise<void> {
+    await redis.srem(BLOCKED_IPS_KEY, ip);
 }
 
 // ============================================
@@ -315,44 +318,46 @@ const roleRateLimits: Record<string, RateLimitConfig> = {
 const roleRequestCounts = new Map<string, { count: number; resetTime: Date }>();
 
 /**
- * Role-based rate limiting middleware
+ * Role-based rate limiting middleware (Redis-backed)
  */
-export const roleBasedRateLimiting = (req: Request, res: Response, next: NextFunction): void => {
+export const roleBasedRateLimiting = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const user = (req as any).user;
     const role = user?.role || 'anonymous';
     const userId = user?.id || getClientIp(req);
-    const key = `${role}:${userId}`;
+    const key = `${ROLE_RATE_LIMIT_PREFIX}${role}:${userId}`;
 
     const config = roleRateLimits[role] || roleRateLimits['anonymous'];
-    const now = new Date();
+    const now = Date.now();
 
-    let record = roleRequestCounts.get(key);
+    // Use Redis for atomic increment and TTL
+    const currentCount = await redis.incr(key);
 
-    if (!record || record.resetTime < now) {
-        record = { count: 0, resetTime: new Date(now.getTime() + config.windowMs) };
+    // If it's a new key, set expiry
+    if (currentCount === 1) {
+        await redis.pexpire(key, config.windowMs);
     }
 
-    record.count++;
-    roleRequestCounts.set(key, record);
+    const ttl = await redis.pttl(key);
+    const resetTime = new Date(now + Math.max(0, ttl));
 
     // Set rate limit headers
     res.setHeader('X-RateLimit-Limit', config.maxRequests);
-    res.setHeader('X-RateLimit-Remaining', Math.max(0, config.maxRequests - record.count));
-    res.setHeader('X-RateLimit-Reset', record.resetTime.toISOString());
+    res.setHeader('X-RateLimit-Remaining', Math.max(0, config.maxRequests - currentCount));
+    res.setHeader('X-RateLimit-Reset', resetTime.toISOString());
 
-    if (record.count > config.maxRequests) {
+    if (currentCount > config.maxRequests) {
         logAuditEvent({
             userId: userId,
             action: 'RATE_LIMIT_EXCEEDED',
             resource: req.path,
-            details: { role, count: record.count, limit: config.maxRequests },
+            details: { role, count: currentCount, limit: config.maxRequests },
             ipAddress: getClientIp(req),
             success: false
         });
 
         res.status(429).json({
             error: 'Rate limit exceeded',
-            retryAfter: Math.ceil((record.resetTime.getTime() - now.getTime()) / 1000)
+            retryAfter: Math.ceil(ttl / 1000)
         });
         return;
     }

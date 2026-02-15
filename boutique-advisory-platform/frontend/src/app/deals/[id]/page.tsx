@@ -1,5 +1,5 @@
 'use client'
-import { API_URL } from '@/lib/api'
+import { authorizedRequest } from '@/lib/api'
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
@@ -112,10 +112,9 @@ export default function DealDetailPage() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const token = localStorage.getItem('token')
         const userData = localStorage.getItem('user')
 
-        if (!token || !userData) {
+        if (!userData) {
           router.push('/auth/login')
           return
         }
@@ -124,7 +123,6 @@ export default function DealDetailPage() {
         setUser(user)
       } catch (error) {
         console.error('Error fetching user:', error)
-        localStorage.removeItem('token')
         localStorage.removeItem('user')
         router.push('/auth/login')
       } finally {
@@ -142,7 +140,6 @@ export default function DealDetailPage() {
   }, [isLoading, user, searchParams])
 
   const handleLogout = () => {
-    localStorage.removeItem('token')
     localStorage.removeItem('user')
     router.push('/')
   }
@@ -252,23 +249,14 @@ export default function DealDetailPage() {
         return
       }
 
-      const token = localStorage.getItem('token')
-      if (!token) {
-        console.error('No authentication token')
-        return
-      }
-
       const formData = new FormData()
       formData.append('name', uploadDocumentForm.documentName)
       formData.append('type', uploadDocumentForm.documentType)
       formData.append('dealId', params.id as string)
       formData.append('file', uploadDocumentForm.file)
 
-      const response = await fetch(`${API_URL}/api/documents`, {
+      const response = await authorizedRequest('/api/documents', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
         body: formData
       })
 

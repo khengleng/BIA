@@ -88,9 +88,9 @@ export default function PushNotifications() {
             // Send subscription to backend
             await fetch('/api/push/subscribe', {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
                 },
                 body: JSON.stringify(subscription)
             })
@@ -110,9 +110,9 @@ export default function PushNotifications() {
                 // Notify backend
                 await fetch('/api/push/unsubscribe', {
                     method: 'POST',
+                    credentials: 'include',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
                     },
                     body: JSON.stringify({ endpoint: subscription.endpoint })
                 })

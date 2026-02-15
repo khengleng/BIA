@@ -1,0 +1,164 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { authorizedRequest } from '@/lib/api'
+import DashboardLayout from '@/components/layout/DashboardLayout'
+import { Shield, Smartphone, Globe, XCircle, Clock, CheckCircle } from 'lucide-react'
+
+interface Session {
+    id: string
+    ipAddress: string
+    userAgent: string
+    createdAt: string
+    expiresAt: string
+}
+
+export default function SessionsPage() {
+    const [sessions, setSessions] = useState<Session[]>([])
+    const [isLoading, setIsLoading] = useState(true)
+    const [error, setError] = useState('')
+
+    useEffect(() => {
+        fetchSessions()
+    }, [])
+
+    const fetchSessions = async () => {
+        setIsLoading(true)
+        try {
+            const res = await authorizedRequest('/api/auth/sessions')
+            if (res.ok) {
+                const data = await res.json()
+                setSessions(data.sessions)
+            } else {
+                setError('Failed to load active sessions')
+            }
+        } catch (err) {
+            setError('An error occurred while fetching sessions')
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    const revokeSession = async (sessionId: string) => {
+        if (!confirm('Are you sure you want to revoke this session? You will be logged out on that device.')) {
+            return
+        }
+
+        try {
+            const res = await authorizedRequest(`/api/auth/sessions/${sessionId}`, {
+                method: 'DELETE'
+            })
+            if (res.ok) {
+                setSessions(sessions.filter(s => s.id !== sessionId))
+            } else {
+                alert('Failed to revoke session')
+            }
+        } catch (err) {
+            alert('Error revoking session')
+        }
+    }
+
+    const parseUserAgent = (ua: string) => {
+        if (ua.includes('iPhone')) return 'iPhone'
+        if (ua.includes('Android')) return 'Android Device'
+        if (ua.includes('Macintosh')) return 'Mac'
+        if (ua.includes('Windows')) return 'Windows PC'
+        return 'Unknown Device'
+    }
+
+    const parseBrowser = (ua: string) => {
+        if (ua.includes('Chrome')) return 'Chrome'
+        if (ua.includes('Firefox')) return 'Firefox'
+        if (ua.includes('Safari')) return 'Safari'
+        if (ua.includes('Edge')) return 'Edge'
+        return 'Web Browser'
+    }
+
+    return (
+        <DashboardLayout>
+            <div className="max-w-4xl mx-auto">
+                <div className="flex items-center gap-3 mb-8">
+                    <div className="p-3 bg-blue-600/20 rounded-xl">
+                        <Shield className="w-8 h-8 text-blue-500" />
+                    </div>
+                    <div>
+                        <h1 className="text-3xl font-bold text-white">Active Sessions</h1>
+                        <p className="text-gray-400">Manage your active logins across all devices</p>
+                    </div>
+                </div>
+
+                {error && (
+                    <div className="bg-red-500/10 border border-red-500/50 p-4 rounded-xl text-red-500 mb-6 flex items-center gap-3">
+                        <XCircle className="w-5 h-5" />
+                        {error}
+                    </div>
+                )}
+
+                <div className="space-y-4">
+                    {isLoading ? (
+                        <div className="flex justify-center py-12">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                        </div>
+                    ) : sessions.length > 0 ? (
+                        sessions.map((session) => (
+                            <div key={session.id} className="bg-gray-800 border border-gray-700 rounded-2xl p-6 transition-all hover:border-gray-600 shadow-xl">
+                                <div className="flex items-start justify-between">
+                                    <div className="flex gap-4">
+                                        <div className="p-3 bg-gray-700 rounded-xl">
+                                            <Smartphone className="w-6 h-6 text-gray-300" />
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="text-xl font-semibold text-white">
+                                                    {parseUserAgent(session.userAgent)}
+                                                </h3>
+                                                {/* Current Session indicator logic would go here if we had currentToken ID */}
+                                            </div>
+                                            <p className="text-gray-400 text-sm mb-3">
+                                                {parseBrowser(session.userAgent)} • {session.ipAddress}
+                                            </p>
+
+                                            <div className="flex flex-wrap gap-4 text-xs text-gray-500">
+                                                <div className="flex items-center gap-1.5">
+                                                    <Clock className="w-4 h-4" />
+                                                    Started: {new Date(session.createdAt).toLocaleString()}
+                                                </div>
+                                                <div className="flex items-center gap-1.5">
+                                                    <CheckCircle className="w-4 h-4 text-green-500/50" />
+                                                    Expires: {new Date(session.expiresAt).toLocaleDateString()}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        onClick={() => revokeSession(session.id)}
+                                        className="px-4 py-2 bg-red-600/10 hover:bg-red-600/20 text-red-500 rounded-lg text-sm font-medium transition-colors border border-red-500/20"
+                                    >
+                                        Log Out
+                                    </button>
+                                </div>
+                            </div>
+                        ))
+                    ) : (
+                        <div className="text-center py-12 bg-gray-800 rounded-2xl border border-dashed border-gray-700">
+                            <Globe className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                            <p className="text-gray-400 text-lg font-medium">No other active sessions found</p>
+                            <p className="text-gray-500 text-sm px-4">You are currently only logged in on this browser.</p>
+                        </div>
+                    )}
+                </div>
+
+                <div className="mt-8 bg-blue-600/5 border border-blue-500/20 rounded-2xl p-6">
+                    <h4 className="text-blue-400 font-semibold mb-2 flex items-center gap-2">
+                        <Shield className="w-4 h-4" />
+                        Security Tip
+                    </h4>
+                    <p className="text-sm text-gray-400 leading-relaxed">
+                        If you see a session or device that you don't recognize, log out immediately and consider changing your password. Enabling Two-Factor Authentication (2FA) adds an extra layer of security to your account.
+                    </p>
+                </div>
+            </div>
+        </DashboardLayout>
+    )
+}

@@ -125,7 +125,7 @@ router.post('/aba/create-transaction', authorize('payment.create'), async (req: 
 
         return res.json({
             paymentId: payment.id,
-            abaUrl: process.env.ABA_PAYWAY_API_URL || 'https://checkout-sandbox.payway.com.kh/api/payment-gateway/v1/payments/purchase',
+            abaUrl: process.env.ABA_PAYWAY_API_URL,
             abaRequest
         });
 

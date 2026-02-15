@@ -21,9 +21,10 @@ import {
     FolderLock,
     TrendingUp,
     Calendar,
+    Shield,
+    ShieldCheck,
     // New feature icons
     UsersRound,
-    Shield,
     MessagesSquare,
     ArrowLeftRight,
     LayoutDashboard,
@@ -73,13 +74,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             }
 
             try {
-                // Check if token exists before making request
-                const token = localStorage.getItem('token');
-                if (!token) {
-                    throw new Error('No session');
-                }
-
-                // Try to get user from API (checks Authorization header)
+                // Try to get user from API (checks cookies)
                 const response = await authorizedRequest('/api/auth/me')
 
                 if (response.ok) {
@@ -92,11 +87,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 }
             } catch (error: any) {
                 // Only log unexpected errors, not standard "no session" redirects
-                if (error?.message !== 'No session' && error?.message !== 'Session invalid') {
+                if (error?.message !== 'Session invalid') {
                     console.error('Error fetching user:', error);
                 }
 
-                localStorage.removeItem('token')
                 localStorage.removeItem('user')
                 // Only redirect if we're not already on the login page
                 if (pathname !== '/auth/login' && pathname !== '/auth/register') {
@@ -122,7 +116,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
             if (response.ok) {
                 const data = await response.json();
-                localStorage.setItem('token', data.token);
                 localStorage.setItem('user', JSON.stringify(data.user));
                 setUser(data.user);
                 window.location.reload();
@@ -133,7 +126,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
 
     const handleLogout = () => {
-        localStorage.removeItem('token')
         localStorage.removeItem('user')
         router.push('/')
     }
@@ -169,6 +161,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         { href: '/due-diligence', label: t('advisory.assessment'), icon: Shield, isNew: true, roles: ['ADMIN', 'ADVISOR'] },
         { href: '/community', label: 'Community', icon: MessagesSquare, isNew: true, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
         { href: '/secondary-trading', label: 'Trading', icon: ArrowLeftRight, isNew: true, roles: ['INVESTOR'] },
+        // Security Section (Universal)
+        { href: '', label: '― Security ―', icon: null, divider: true, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
+        { href: '/settings/sessions', label: 'Manage Sessions', icon: ShieldCheck, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
         // Settings at the end
         { href: '/settings', label: t('navigation.settings'), icon: Settings, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
     ]

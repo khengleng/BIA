@@ -60,13 +60,9 @@ export default function DocumentCenterPage() {
         formData.append('name', file.name)
         formData.append('type', 'OTHER') // Default
 
-        const token = localStorage.getItem('token')
         try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003'}/api/documents/upload`, {
+            const response = await authorizedRequest('/api/documents/upload', {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                },
                 body: formData
             })
 

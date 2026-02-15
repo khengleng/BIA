@@ -21,7 +21,7 @@ import {
   FileText,
   Settings
 } from 'lucide-react'
-import { API_URL } from '@/lib/api'
+import { API_URL, authorizedRequest } from '@/lib/api'
 
 interface User {
   id: string
@@ -60,10 +60,8 @@ export default function ReportsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const token = localStorage.getItem('token')
         const userData = localStorage.getItem('user')
-
-        if (!token || !userData) {
+        if (!userData) {
           window.location.href = '/auth/login'
           return
         }
@@ -72,12 +70,7 @@ export default function ReportsPage() {
         setUser(parsedUser)
 
         // Fetch reports from API
-        const reportsResponse = await fetch(`${API_URL}/api/reports`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        })
+        const reportsResponse = await authorizedRequest('/api/reports')
 
         if (reportsResponse.ok) {
           const reportsData = await reportsResponse.json()
@@ -85,12 +78,7 @@ export default function ReportsPage() {
         }
 
         // Fetch stats from API
-        const statsResponse = await fetch(`${API_URL}/api/reports/stats`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        })
+        const statsResponse = await authorizedRequest('/api/reports/stats')
 
         if (statsResponse.ok) {
           const statsData = await statsResponse.json()
@@ -126,7 +114,6 @@ export default function ReportsPage() {
   }, [])
 
   const handleLogout = () => {
-    localStorage.removeItem('token')
     localStorage.removeItem('user')
     window.location.href = '/'
   }
@@ -134,12 +121,6 @@ export default function ReportsPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleDownloadReport = async (report: any) => {
     try {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        window.location.href = '/auth/login'
-        return
-      }
-
       // Download report as PDF
       console.log(`Downloading report: ${report.title}`)
       const blob = new Blob([`${report.title}\n\n${report.description}\n\nGenerated: ${report.date}`], { type: 'application/pdf' })
@@ -158,20 +139,10 @@ export default function ReportsPage() {
 
   const handleGenerateReport = async () => {
     try {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        window.location.href = '/auth/login'
-        return
-      }
-
       setIsGenerating(true)
 
-      const response = await fetch(`${API_URL}/api/reports/generate`, {
+      const response = await authorizedRequest('/api/reports/generate', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({ reportType: 'Monthly Summary' })
       })
 

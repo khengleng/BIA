@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 import DashboardLayout from '../../components/layout/DashboardLayout'
 import { useToast } from '../../contexts/ToastContext'
-import { API_URL } from '@/lib/api'
+import { authorizedRequest } from '@/lib/api'
 
 interface PipelineStage {
     id: string
@@ -62,20 +62,14 @@ export default function PipelinePage() {
     useEffect(() => {
         const fetchPipeline = async () => {
             try {
-                const token = localStorage.getItem('token')
                 const userData = localStorage.getItem('user')
 
-                if (!token || !userData) {
+                if (!userData) {
                     window.location.href = '/auth/login'
                     return
                 }
 
-                const response = await fetch(`${API_URL}/api/pipeline/deals`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                })
+                const response = await authorizedRequest('/api/pipeline/deals')
 
                 if (response.ok) {
                     const data = await response.json()
@@ -109,13 +103,8 @@ export default function PipelinePage() {
         }
 
         try {
-            const token = localStorage.getItem('token')
-            const response = await fetch(`${API_URL}/api/pipeline/deals/${draggedDeal.id}/stage`, {
+            const response = await authorizedRequest(`/api/pipeline/deals/${draggedDeal.id}/stage`, {
                 method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
                 body: JSON.stringify({ newStage: stageName })
             })
 

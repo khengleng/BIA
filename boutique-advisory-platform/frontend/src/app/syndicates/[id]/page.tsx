@@ -22,6 +22,7 @@ import {
 import DashboardLayout from '../../../components/layout/DashboardLayout'
 import { useToast } from '../../../contexts/ToastContext'
 import usePermissions from '../../../hooks/usePermissions'
+import { authorizedRequest } from '@/lib/api'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003'
 
@@ -125,10 +126,7 @@ export default function SyndicateDetailsPage() {
 
     const fetchSyndicate = async () => {
         try {
-            const token = localStorage.getItem('token')
-            const response = await fetch(`${API_URL}/api/syndicates/${params.id}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            })
+            const response = await authorizedRequest(`/api/syndicates/${params.id}`)
             if (response.ok) {
                 const data = await response.json()
                 setSyndicate(data)
@@ -156,10 +154,8 @@ export default function SyndicateDetailsPage() {
 
     const handleApproveMember = async (memberId: string) => {
         try {
-            const token = localStorage.getItem('token')
-            const response = await fetch(`${API_URL}/api/syndicates/${params.id}/members/${memberId}/approve`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
+            const response = await authorizedRequest(`/api/syndicates/${params.id}/members/${memberId}/approve`, {
+                method: 'POST'
             })
             if (response.ok) {
                 addToast('success', 'Member approved!')
@@ -179,13 +175,8 @@ export default function SyndicateDetailsPage() {
         setIsJoining(true)
 
         try {
-            const token = localStorage.getItem('token')
-            const response = await fetch(`${API_URL}/api/syndicates/${syndicate.id}/join`, {
+            const response = await authorizedRequest(`/api/syndicates/${syndicate.id}/join`, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
                 body: JSON.stringify({ amount: parseFloat(joinAmount) })
             })
 
@@ -210,13 +201,8 @@ export default function SyndicateDetailsPage() {
         setIsUpdating(true)
 
         try {
-            const token = localStorage.getItem('token')
-            const response = await fetch(`${API_URL}/api/syndicates/${syndicate.id}`, {
+            const response = await authorizedRequest(`/api/syndicates/${syndicate.id}`, {
                 method: 'PATCH',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
                 body: JSON.stringify({
                     isTokenized: tokenForm.isTokenized,
                     tokenName: tokenForm.tokenName,

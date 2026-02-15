@@ -19,6 +19,7 @@ import {
 import DashboardLayout from '../../components/layout/DashboardLayout'
 import { useToast } from '../../contexts/ToastContext'
 import usePermissions from '../../hooks/usePermissions'
+import { authorizedRequest } from '@/lib/api'
 
 // Updated API URL to match the backend
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003'
@@ -81,25 +82,21 @@ export default function SyndicatesPage() {
 
     const fetchData = async () => {
         try {
-            const token = localStorage.getItem('token')
-            if (!token) {
+            const userData = localStorage.getItem('user')
+            if (!userData) {
                 window.location.href = '/auth/login'
                 return
             }
 
             // Fetch syndicates
-            const syndicatesRes = await fetch(`${API_URL}/api/syndicates`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            })
+            const syndicatesRes = await authorizedRequest('/api/syndicates')
             if (syndicatesRes.ok) {
                 const data = await syndicatesRes.json()
                 setSyndicates(data)
             }
 
             // Fetch stats
-            const statsRes = await fetch(`${API_URL}/api/syndicates/stats/overview`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            })
+            const statsRes = await authorizedRequest('/api/syndicates/stats/overview')
             if (statsRes.ok) {
                 setStats(await statsRes.json())
             }
@@ -122,13 +119,8 @@ export default function SyndicatesPage() {
         setIsJoining(true)
 
         try {
-            const token = localStorage.getItem('token')
-            const response = await fetch(`${API_URL}/api/syndicates/${selectedSyndicate.id}/join`, {
+            const response = await authorizedRequest(`/api/syndicates/${selectedSyndicate.id}/join`, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
                 body: JSON.stringify({ amount: parseFloat(joinAmount) })
             })
 

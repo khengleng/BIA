@@ -4,19 +4,27 @@ import { NotificationType } from '@prisma/client';
 import webpush from 'web-push';
 
 // Configure Web Push
-const publicVapidKey = process.env.VAPID_PUBLIC_KEY || 'BO2WrnjdJYmlc9gEeHjYpRn1p7r4TMB33gh70AqQQzIrcBAN_kNQZ-kX2b-G9HQ7Z4GVjGVISUC2NEjGpNBzgkY';
-const privateVapidKey = process.env.VAPID_PRIVATE_KEY || 'Inv2_qvKv8rCsnDG2VmoEi99mBExvU0cbecVWCApbTc';
-const vapidEmail = 'mailto:contact@cambobia.com';
+const publicVapidKey = process.env.VAPID_PUBLIC_KEY;
+const privateVapidKey = process.env.VAPID_PRIVATE_KEY;
+const vapidEmail = process.env.VAPID_EMAIL || 'mailto:contact@cambobia.com';
 
-try {
-    webpush.setVapidDetails(
-        vapidEmail,
-        publicVapidKey,
-        privateVapidKey
-    );
-    console.log('✅ Web Push initialized in NotificationService');
-} catch (error) {
-    console.error('❌ Failed to initialize Web Push in NotificationService:', error);
+const isProduction = process.env.NODE_ENV === 'production';
+
+if (isProduction && (!publicVapidKey || !privateVapidKey)) {
+    console.warn('⚠️ WARNING: VAPID keys for push notifications are not configured. Web push will be disabled.');
+}
+
+if (publicVapidKey && privateVapidKey) {
+    try {
+        webpush.setVapidDetails(
+            vapidEmail,
+            publicVapidKey,
+            privateVapidKey
+        );
+        console.log('✅ Web Push initialized in NotificationService');
+    } catch (error) {
+        console.error('❌ Failed to initialize Web Push in NotificationService:', error);
+    }
 }
 
 /**

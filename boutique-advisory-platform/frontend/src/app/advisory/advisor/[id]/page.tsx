@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { API_URL } from '@/lib/api'
+import { API_URL, authorizedRequest } from '@/lib/api'
 import {
     ChevronLeft,
     Calendar,
@@ -26,19 +26,35 @@ export default function AdvisorProfilePage() {
     const [paymentClientSecret, setPaymentClientSecret] = useState<string | null>(null)
     const [paymentAmount, setPaymentAmount] = useState<number>(0)
     const [pendingBookingData, setPendingBookingData] = useState<any>(null)
+    const [abaQrData, setAbaQrData] = useState<{ qrString: string; qrImage: string } | null>(null)
+    const [paymentId, setPaymentId] = useState<string | null>(null)
+
+    // Polling for ABA Payment Status
+    useEffect(() => {
+        let interval: NodeJS.Timeout;
+        if (abaQrData && paymentId) {
+            interval = setInterval(async () => {
+                try {
+                    const res = await authorizedRequest(`/api/payments/aba/status/${paymentId}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.status === 'COMPLETED') {
+                            clearInterval(interval);
+                            handleBookingSuccess();
+                        }
+                    }
+                } catch (e) {
+                    console.error('Polling error', e);
+                }
+            }, 3000);
+        }
+        return () => clearInterval(interval);
+    }, [abaQrData, paymentId]);
 
     useEffect(() => {
         const fetchAdvisor = async () => {
             try {
-                const token = localStorage.getItem('token')
-                if (!token) {
-                    router.push('/auth/login')
-                    return
-                }
-
-                const res = await fetch(`${API_URL}/api/advisory/advisors/${params.id}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                })
+                const res = await authorizedRequest(`/api/advisory/advisors/${params.id}`)
 
                 if (res.ok) {
                     const data = await res.json()
@@ -59,12 +75,6 @@ export default function AdvisorProfilePage() {
 
     const handleBookSession = async (service?: any) => {
         try {
-            const token = localStorage.getItem('token')
-            if (!token) {
-                router.push('/auth/login')
-                return
-            }
-
             // Determine amount and type
             let amount = 0
             let notes = ''
@@ -89,12 +99,8 @@ export default function AdvisorProfilePage() {
             }
 
             // Create Payment Intent
-            const paymentRes = await fetch(`${API_URL}/api/payments/create-payment-intent`, {
+            const paymentRes = await authorizedRequest('/api/payments/create-payment-intent', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
                 body: JSON.stringify({
                     amount,
                     advisorId: advisor.id,
@@ -123,13 +129,8 @@ export default function AdvisorProfilePage() {
 
     const handleBookingSuccess = async () => {
         try {
-            const token = localStorage.getItem('token')
-            const response = await fetch(`${API_URL}/api/advisory/book`, {
+            const response = await authorizedRequest('/api/advisory/book', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
                 body: JSON.stringify({
                     ...pendingBookingData,
                     amount: paymentAmount
@@ -322,7 +323,38 @@ export default function AdvisorProfilePage() {
                     amount={paymentAmount}
                     clientSecret={paymentClientSecret}
                     onSuccess={handleBookingSuccess}
-                    onCancel={() => setShowPaymentModal(false)}
+                    abaQrData={abaQrData}
+                    onAbaPay={async () => {
+                        try {
+                            const res = await authorizedRequest('/api/payments/aba/generate-qr', {
+                                method: 'POST',
+                                body: JSON.stringify({
+                                    amount: paymentAmount,
+                                    items: [{ name: pendingBookingData.serviceName, price: paymentAmount, quantity: 1 }],
+                                })
+                            });
+
+                            if (res.ok) {
+                                const data = await res.json();
+                                if (data.qrString || data.qrImage) {
+                                    setAbaQrData({ qrString: data.qrString, qrImage: data.qrImage });
+                                    setPaymentId(data.paymentId);
+                                } else {
+                                    alert('Failed to generate Direct QR');
+                                }
+                            } else {
+                                alert('Failed to initiate ABA QR Payment');
+                            }
+                        } catch (e) {
+                            console.error(e);
+                            alert('Error initiating ABA Payment');
+                        }
+                    }}
+                    onCancel={() => {
+                        setShowPaymentModal(false)
+                        setAbaQrData(null)
+                        setPaymentId(null)
+                    }}
                 />
             )}
         </div>

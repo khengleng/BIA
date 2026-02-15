@@ -1,5 +1,5 @@
 'use client'
-import { API_URL } from '@/lib/api'
+import { API_URL, authorizedRequest } from '@/lib/api'
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
@@ -146,12 +146,6 @@ export default function AddSMEPage() {
     setIsLoading(true)
 
     try {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        window.location.href = '/auth/login'
-        return
-      }
-
       // Create FormData for file uploads
       const formDataToSend = new FormData()
 
@@ -173,11 +167,8 @@ export default function AddSMEPage() {
         formDataToSend.append('legalDocuments', formData.legalDocuments)
       }
 
-      const response = await fetch(`${API_URL}/api/smes`, {
+      const response = await authorizedRequest('/api/smes', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
         body: formDataToSend
       })
 

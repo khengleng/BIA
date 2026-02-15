@@ -30,6 +30,9 @@ export function validateSecurityConfiguration(): { success: boolean; results: Se
     // Check DATABASE_URL
     results.push(checkDatabaseUrl());
 
+    // Check ENCRYPTION_KEY
+    results.push(checkEncryptionKey());
+
     // ============================================
     // HIGH PRIORITY CHECKS
     // ============================================
@@ -194,6 +197,36 @@ function checkDatabaseUrl(): SecurityCheckResult {
         name: 'DATABASE_URL',
         passed: true,
         message: 'DATABASE_URL is configured',
+        severity: 'CRITICAL'
+    };
+}
+
+function checkEncryptionKey(): SecurityCheckResult {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const key = process.env.ENCRYPTION_KEY || '';
+
+    if (isProduction && !key) {
+        return {
+            name: 'ENCRYPTION_KEY',
+            passed: false,
+            message: 'ENCRYPTION_KEY is missing in production - DATA ENCRYPTION WILL FAIL',
+            severity: 'CRITICAL'
+        };
+    }
+
+    if (isProduction && key.length < 32) {
+        return {
+            name: 'ENCRYPTION_KEY',
+            passed: false,
+            message: 'ENCRYPTION_KEY is too short (min 32 characters required for production)',
+            severity: 'HIGH'
+        };
+    }
+
+    return {
+        name: 'ENCRYPTION_KEY',
+        passed: true,
+        message: key ? `ENCRYPTION_KEY is configured (${key.length} characters)` : 'ENCRYPTION_KEY not set (local dev mode)',
         severity: 'CRITICAL'
     };
 }

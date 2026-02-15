@@ -20,7 +20,7 @@ import {
 } from 'lucide-react'
 import DashboardLayout from '../../components/layout/DashboardLayout'
 import { useToast } from '../../contexts/ToastContext'
-import { API_URL } from '@/lib/api'
+import { authorizedRequest } from '@/lib/api'
 
 interface Attendee {
     id: string
@@ -67,20 +67,14 @@ export default function CalendarPage() {
     useEffect(() => {
         const fetchEvents = async () => {
             try {
-                const token = localStorage.getItem('token')
                 const userData = localStorage.getItem('user')
 
-                if (!token || !userData) {
+                if (!userData) {
                     window.location.href = '/auth/login'
                     return
                 }
 
-                const response = await fetch(`${API_URL}/api/calendar`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                })
+                const response = await authorizedRequest('/api/calendar')
 
                 if (response.ok) {
                     const data = await response.json()
@@ -104,13 +98,8 @@ export default function CalendarPage() {
         }
 
         try {
-            const token = localStorage.getItem('token')
-            const response = await fetch(`${API_URL}/api/calendar`, {
+            const response = await authorizedRequest('/api/calendar', {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
                 body: JSON.stringify(createForm)
             })
 
@@ -137,13 +126,8 @@ export default function CalendarPage() {
 
     const handleDeleteEvent = async (eventId: string) => {
         try {
-            const token = localStorage.getItem('token')
-            const response = await fetch(`${API_URL}/api/calendar/${eventId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
+            const response = await authorizedRequest(`/api/calendar/${eventId}`, {
+                method: 'DELETE'
             })
 
             if (response.ok) {

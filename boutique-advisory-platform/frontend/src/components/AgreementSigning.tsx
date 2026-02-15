@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { API_URL } from '@/lib/api';
+import { API_URL, authorizedRequest } from '@/lib/api';
 import { useToast } from '@/contexts/ToastContext';
 import { FileSignature, CheckCircle, Clock, XCircle, Eye } from 'lucide-react';
 
@@ -44,10 +44,7 @@ export default function AgreementSigning({ dealId, userRole }: Props) {
 
     const fetchAgreements = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${API_URL}/api/agreements/deal/${dealId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const response = await authorizedRequest(`/api/agreements/deal/${dealId}`);
             if (response.ok) {
                 const data = await response.json();
                 setAgreements(data);
@@ -68,13 +65,8 @@ export default function AgreementSigning({ dealId, userRole }: Props) {
 
         setIsSubmitting(true);
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${API_URL}/api/agreements/${selectedAgreement.id}/sign`, {
+            const response = await authorizedRequest(`/api/agreements/${selectedAgreement.id}/sign`, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
                 body: JSON.stringify({ signature: signatureInput })
             });
 
@@ -114,8 +106,8 @@ export default function AgreementSigning({ dealId, userRole }: Props) {
                                 <div className="flex items-center gap-2 mb-1">
                                     <h4 className="font-semibold text-white text-lg">{agreement.title}</h4>
                                     <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${agreement.status === 'COMPLETED' ? 'bg-green-500/20 text-green-400' :
-                                            agreement.status === 'PENDING_SIGNATURES' ? 'bg-blue-500/20 text-blue-400' :
-                                                'bg-gray-700 text-gray-400'
+                                        agreement.status === 'PENDING_SIGNATURES' ? 'bg-blue-500/20 text-blue-400' :
+                                            'bg-gray-700 text-gray-400'
                                         }`}>
                                         {agreement.status.replace('_', ' ')}
                                     </span>

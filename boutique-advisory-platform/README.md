@@ -182,6 +182,18 @@ The platform has been hardened against modern attack vectors following a manual 
 8.  **Crawler & SEO Control**:
     - Added comprehensive `robots.txt` to block indexing of `/admin`, `/api`, and private user routes.
     - Added `sitemap.xml` for optimized search engine discovery of public pages.
+9.  **Breached Password Enforcement**:
+    - Real-time checks for breached passwords during registration, reset, and change using `isBreachedPassword` utility.
+10. **Session Revocation (Security Events)**:
+    - Automatic revocation of all refresh tokens upon 2FA activation/deactivation, password reset, and password change.
+    - Prevents session hijacking after credential updates.
+11. **Strict CORS Lockdown**:
+    - Production CORS strictly enforces `FRONTEND_URL` and rejects requests with no `Origin` header (e.g., unauthorized `curl` requests).
+12. **Automated Security CI**:
+    - GitHub Actions automated workflow for verifying security headers and encryption key enforcement on every push.
+13. **Encryption Key Enforcement**:
+    - Critical startup check ensures `ENCRYPTION_KEY` is present and meets strength requirements (min 32 chars) in production.
+    - Server fails to start if insecure defaults are detected in production.
 
 ---
 

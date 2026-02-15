@@ -95,6 +95,7 @@ export default function RegisterPage() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           firstName: formData.firstName,
           lastName: formData.lastName,
@@ -156,8 +157,8 @@ export default function RegisterPage() {
                   <label
                     key={role.value}
                     className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${formData.role === role.value
-                        ? 'border-blue-500 bg-blue-500/10'
-                        : 'border-gray-600 bg-gray-800/50 hover:border-gray-500'
+                      ? 'border-blue-500 bg-blue-500/10'
+                      : 'border-gray-600 bg-gray-800/50 hover:border-gray-500'
                       }`}
                   >
                     <input
@@ -170,8 +171,8 @@ export default function RegisterPage() {
                     />
                     <div className="flex items-center space-x-3">
                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${formData.role === role.value
-                          ? 'bg-blue-500'
-                          : 'bg-gray-600'
+                        ? 'bg-blue-500'
+                        : 'bg-gray-600'
                         }`}>
                         <role.icon className="w-4 h-4 text-white" />
                       </div>

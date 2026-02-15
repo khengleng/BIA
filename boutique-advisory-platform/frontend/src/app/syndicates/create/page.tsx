@@ -16,6 +16,7 @@ import {
 import DashboardLayout from '../../../components/layout/DashboardLayout'
 import { useToast } from '../../../contexts/ToastContext'
 import usePermissions from '../../../hooks/usePermissions'
+import { authorizedRequest } from '@/lib/api'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003'
 
@@ -60,10 +61,7 @@ export default function CreateSyndicatePage() {
 
     const fetchDeals = async () => {
         try {
-            const token = localStorage.getItem('token')
-            const response = await fetch(`${API_URL}/api/deals`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            })
+            const response = await authorizedRequest('/api/deals')
             if (response.ok) {
                 const data = await response.json()
                 setDeals(data)
@@ -85,13 +83,8 @@ export default function CreateSyndicatePage() {
         setIsLoading(true)
 
         try {
-            const token = localStorage.getItem('token')
-            const response = await fetch(`${API_URL}/api/syndicates`, {
+            const response = await authorizedRequest('/api/syndicates', {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
                 body: JSON.stringify({
                     ...formData,
                     targetAmount: parseFloat(formData.targetAmount),

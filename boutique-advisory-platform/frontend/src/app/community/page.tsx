@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import DashboardLayout from '../../components/layout/DashboardLayout'
 import { useToast } from '../../contexts/ToastContext'
+import { authorizedRequest } from '@/lib/api'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003'
 
@@ -122,25 +123,21 @@ export default function CommunityPage() {
 
     const fetchData = async () => {
         try {
-            const token = localStorage.getItem('token')
-            if (!token) {
+            const userData = localStorage.getItem('user')
+            if (!userData) {
                 window.location.href = '/auth/login'
                 return
             }
 
             // Fetch posts
-            const postsRes = await fetch(`${API_URL}/api/community/posts`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            })
+            const postsRes = await authorizedRequest('/api/community/posts')
             if (postsRes.ok) {
                 const data = await postsRes.json()
                 setPosts(data.posts || data)
             }
 
             // Fetch stats
-            const statsRes = await fetch(`${API_URL}/api/community/stats`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            })
+            const statsRes = await authorizedRequest('/api/community/stats')
             if (statsRes.ok) {
                 setStats(await statsRes.json())
             }
@@ -154,10 +151,7 @@ export default function CommunityPage() {
 
     const fetchPostDetails = async (post: Post) => {
         try {
-            const token = localStorage.getItem('token')
-            const res = await fetch(`${API_URL}/api/community/posts/${post.id}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            })
+            const res = await authorizedRequest(`/api/community/posts/${post.id}`)
             if (res.ok) {
                 const data = await res.json()
                 setSelectedPost(data)
@@ -170,10 +164,8 @@ export default function CommunityPage() {
 
     const handleLikePost = async (postId: string) => {
         try {
-            const token = localStorage.getItem('token')
-            const res = await fetch(`${API_URL}/api/community/posts/${postId}/like`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
+            const res = await authorizedRequest(`/api/community/posts/${postId}/like`, {
+                method: 'POST'
             })
             if (res.ok) {
                 setPosts(posts.map(p => p.id === postId ? { ...p, likes: p.likes + 1 } : p))
@@ -194,13 +186,8 @@ export default function CommunityPage() {
 
         setIsSubmitting(true)
         try {
-            const token = localStorage.getItem('token')
-            const res = await fetch(`${API_URL}/api/community/posts`, {
+            const res = await authorizedRequest('/api/community/posts', {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
                 body: JSON.stringify({
                     title: newPostTitle,
                     content: newPostContent,
@@ -231,13 +218,8 @@ export default function CommunityPage() {
 
         setIsSubmitting(true)
         try {
-            const token = localStorage.getItem('token')
-            const res = await fetch(`${API_URL}/api/community/posts/${selectedPost.id}/comments`, {
+            const res = await authorizedRequest(`/api/community/posts/${selectedPost.id}/comments`, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
                 body: JSON.stringify({ content: newComment })
             })
 

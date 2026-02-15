@@ -15,7 +15,8 @@ import {
     Pie,
     Cell
 } from 'recharts'
-import { TrendingUp, DollarSign, Target, Award } from 'lucide-react'
+import { DollarSign, Target, Award } from 'lucide-react'
+import { authorizedRequest } from '@/lib/api'
 
 const COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444']
 
@@ -29,10 +30,7 @@ export default function AnalyticsDashboard() {
 
     const fetchAnalytics = async () => {
         try {
-            const token = localStorage.getItem('token')
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/analytics/performance`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            })
+            const res = await authorizedRequest('/api/analytics/performance')
             if (res.ok) {
                 setData(await res.json())
             }

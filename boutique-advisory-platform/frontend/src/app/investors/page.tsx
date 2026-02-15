@@ -55,9 +55,8 @@ export default function InvestorsPage() {
       try {
         // Check for user and token FIRST
         const userData = localStorage.getItem('user')
-        const token = localStorage.getItem('token')
 
-        if (!userData || !token) {
+        if (!userData) {
           setIsLoading(false)
           router.push('/auth/login')
           return
@@ -74,7 +73,6 @@ export default function InvestorsPage() {
           setFilteredInvestors(data)
         } else if (response.status === 401) {
           // Unauthorized - clear auth and redirect
-          localStorage.removeItem('token')
           localStorage.removeItem('user')
           router.push('/auth/login')
         } else {
@@ -85,7 +83,6 @@ export default function InvestorsPage() {
         console.error('Error fetching data:', error)
         // Check if it's a JSON parse error from trying to parse HTML
         if (error instanceof SyntaxError) {
-          localStorage.removeItem('token')
           localStorage.removeItem('user')
           router.push('/auth/login')
         } else {
@@ -171,7 +168,6 @@ export default function InvestorsPage() {
       } else if (response.status === 401) {
         console.error('Unauthorized - 401')
         addToast('error', 'Session expired. Please login again.')
-        localStorage.removeItem('token')
         localStorage.removeItem('user')
         router.push('/auth/login')
       } else {

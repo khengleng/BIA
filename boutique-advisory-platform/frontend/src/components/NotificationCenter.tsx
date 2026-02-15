@@ -15,7 +15,7 @@ import {
     Calendar,
     AlertCircle
 } from 'lucide-react'
-import { API_URL } from '@/lib/api'
+import { API_URL, authorizedRequest } from '@/lib/api'
 import { useSocket } from '@/hooks/useSocket'
 
 interface Notification {
@@ -46,7 +46,6 @@ export default function NotificationCenter() {
                 }
 
                 setIsLoading(true)
-                const { authorizedRequest } = await import('@/lib/api')
                 const response = await authorizedRequest('/api/notifications')
 
                 if (response.ok) {
@@ -72,8 +71,7 @@ export default function NotificationCenter() {
         return () => clearInterval(interval)
     }, [])
 
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-    const { lastNotification } = useSocket(token)
+    const { lastNotification } = useSocket()
 
     useEffect(() => {
         if (lastNotification) {
@@ -97,7 +95,6 @@ export default function NotificationCenter() {
 
     const markAsRead = async (notifId: string) => {
         try {
-            const { authorizedRequest } = await import('@/lib/api')
             await authorizedRequest(`/api/notifications/${notifId}/read`, {
                 method: 'PUT'
             })
@@ -113,7 +110,6 @@ export default function NotificationCenter() {
 
     const markAllAsRead = async () => {
         try {
-            const { authorizedRequest } = await import('@/lib/api')
             await authorizedRequest('/api/notifications/read-all', {
                 method: 'PUT'
             })

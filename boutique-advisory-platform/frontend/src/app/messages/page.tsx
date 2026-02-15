@@ -62,7 +62,6 @@ interface User {
 export default function MessagesPage() {
     const { addToast } = useToast()
     const [user, setUser] = useState<User | null>(null)
-    const [token, setToken] = useState<string | null>(null)
     const [conversations, setConversations] = useState<Conversation[]>([])
     const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null)
     const [messages, setMessages] = useState<Message[]>([])
@@ -75,23 +74,21 @@ export default function MessagesPage() {
     const fileInputRef = useRef<HTMLInputElement>(null)
     const imageInputRef = useRef<HTMLInputElement>(null)
 
-    const { socket, joinConversation, leaveConversation, sendMessage: socketSendMessage } = useSocket(token)
+    const { socket, joinConversation, leaveConversation, sendMessage: socketSendMessage } = useSocket()
 
     useEffect(() => {
-        const storedToken = localStorage.getItem('token')
         const userData = localStorage.getItem('user')
 
-        if (!storedToken || !userData) {
+        if (!userData) {
             window.location.href = '/auth/login'
             return
         }
 
-        setToken(storedToken)
         setUser(JSON.parse(userData))
     }, [])
 
     useEffect(() => {
-        if (!token) return
+        if (!user) return
 
         const fetchConversations = async () => {
             try {
@@ -113,7 +110,7 @@ export default function MessagesPage() {
         }
 
         fetchConversations()
-    }, [token, addToast])
+    }, [user, addToast])
 
     useEffect(() => {
         if (!selectedConversation) return

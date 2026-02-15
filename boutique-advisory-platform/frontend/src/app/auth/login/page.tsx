@@ -93,6 +93,7 @@ export default function LoginPage() {
       const response = await fetch(`${API_URL}/api/auth/verify-2fa`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ tempToken, code: twoFactorCode })
       })
 

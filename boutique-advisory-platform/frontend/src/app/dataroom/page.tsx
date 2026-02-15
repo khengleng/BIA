@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import DashboardLayout from '../../components/layout/DashboardLayout'
 import { useToast } from '../../contexts/ToastContext'
-import { API_URL } from '@/lib/api'
+import { API_URL, authorizedRequest } from '@/lib/api'
 
 interface DataRoomDocument {
     id: string
@@ -106,22 +106,16 @@ export default function DataRoomPage() {
 
     const fetchDataRooms = async () => {
         try {
-            const token = localStorage.getItem('token')
             const userData = localStorage.getItem('user')
 
-            if (!token || !userData) {
+            if (!userData) {
                 window.location.href = '/auth/login'
                 return
             }
 
             setUser(JSON.parse(userData))
 
-            const response = await fetch(`${API_URL}/api/dataroom`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            })
+            const response = await authorizedRequest('/api/dataroom')
 
             if (response.ok) {
                 const data = await response.json()
@@ -146,10 +140,7 @@ export default function DataRoomPage() {
         if (!selectedRoom) return
 
         try {
-            const token = localStorage.getItem('token')
-            const response = await fetch(`${API_URL}/api/dataroom/${selectedRoom.dealId}/analytics`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            })
+            const response = await authorizedRequest(`/api/dataroom/${selectedRoom.dealId}/analytics`)
 
             if (response.ok) {
                 const data = await response.json()
@@ -235,7 +226,6 @@ export default function DataRoomPage() {
                 })
             }, 200)
 
-            const token = localStorage.getItem('token')
             const formData = new FormData()
             formData.append('file', uploadForm.file)
             formData.append('name', uploadForm.name)
@@ -292,13 +282,8 @@ export default function DataRoomPage() {
         }
 
         try {
-            const token = localStorage.getItem('token')
-            await fetch(`${API_URL}/api/dataroom/${selectedRoom.dealId}/documents/${doc.id}/access`, {
+            await authorizedRequest(`/api/dataroom/${selectedRoom.dealId}/documents/${doc.id}/access`, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
                 body: JSON.stringify({ action: 'VIEWED' })
             })
 
@@ -332,13 +317,8 @@ export default function DataRoomPage() {
         }
 
         try {
-            const token = localStorage.getItem('token')
-            await fetch(`${API_URL}/api/dataroom/${selectedRoom.dealId}/documents/${doc.id}/access`, {
+            await authorizedRequest(`/api/dataroom/${selectedRoom.dealId}/documents/${doc.id}/access`, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
                 body: JSON.stringify({ action: 'DOWNLOADED' })
             })
 

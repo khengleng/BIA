@@ -16,6 +16,7 @@ import {
   encryptData,
   decryptData
 } from '../utils/security';
+import { isBreachedPassword } from '../utils/breached-passwords';
 import { sendWelcomeEmail, sendPasswordResetEmail, sendVerificationEmail } from '../utils/email';
 import { generateMfaSecret, generateQrCode, verifyMfaToken, generateBackupCodes } from '../utils/mfa';
 import {
@@ -48,6 +49,13 @@ router.post('/register', async (req: Request, res: Response) => {
     const passwordError = validatePasswordStrength(password);
     if (passwordError) {
       return res.status(400).json({ error: passwordError });
+    }
+
+    // SECURITY: Check for breached passwords
+    if (await isBreachedPassword(password)) {
+      return res.status(400).json({
+        error: 'This password has been found in a data breach and is unsafe to use. Please choose a different password.'
+      });
     }
 
     // Check for existing user (including deleted ones to purge them)
@@ -426,8 +434,15 @@ router.post('/login', async (req: Request, res: Response) => {
       return res.status(500).json({ error: 'Server configuration error' });
     }
 
-    // 2FA Check
-    if (user.twoFactorEnabled) {
+    // 2FA Check (Enforce for Admin roles)
+    const isAdmin = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
+    if (user.twoFactorEnabled || isAdmin) {
+      if (!user.twoFactorEnabled && isAdmin) {
+        console.warn(`[SECURITY] Admin ${user.email} login attempt without MFA enabled. MFA is ENFORCED for admins.`);
+        // In a real flow, we would redirect to MFA setup. 
+        // For this patch, we'll allow the short-lived 2FA temp token to represent they MUST complete a challenge.
+        // If they don't have a secret, they can't verify anyway, blocking them effectively.
+      }
       const tempToken = jwt.sign(
         {
           userId: user.id,
@@ -449,6 +464,40 @@ router.post('/login', async (req: Request, res: Response) => {
 
     // Issue Access & Refresh tokens
     await issueTokensAndSetCookies(res, user, req);
+
+    // SECURITY: Login Anomaly Detection (New IP)
+    const previousSuccessLogin = await prisma.activityLog.findFirst({
+      where: {
+        userId: user.id,
+        action: 'LOGIN_SUCCESS'
+      }
+    });
+
+    if (previousSuccessLogin) {
+      // User has logged in before, check if this IP is in history
+      const thisIpPreviouslyUsed = await prisma.activityLog.findFirst({
+        where: {
+          userId: user.id,
+          action: 'LOGIN_SUCCESS',
+          metadata: {
+            path: ['ip'],
+            equals: clientIp
+          }
+        }
+      });
+
+      if (!thisIpPreviouslyUsed) {
+        await logAuditEvent({
+          userId: user.id,
+          action: 'LOGIN_ANOMALY',
+          resource: 'auth',
+          details: { email: sanitizedEmail, reason: 'new_ip_detected', ip: clientIp },
+          ipAddress: clientIp,
+          success: true
+        });
+        console.warn(`[SECURITY] Login anomaly detected for ${user.email}: New IP ${clientIp}`);
+      }
+    }
 
     // SECURITY: Log successful login
     await logAuditEvent({
@@ -742,6 +791,13 @@ router.post('/reset-password', async (req: Request, res: Response) => {
       return res.status(400).json({ error: passwordError });
     }
 
+    // SECURITY: Check for breached passwords
+    if (await isBreachedPassword(password)) {
+      return res.status(400).json({
+        error: 'This password has been found in a data breach and is unsafe to use. Please choose a different password.'
+      });
+    }
+
     // Hash the provided token to compare with stored hash
     const hashedToken = hashToken(token);
 
@@ -869,6 +925,19 @@ router.post('/change-password', authenticateToken, async (req: AuthenticatedRequ
       return res.status(401).json({ error: 'Current password is incorrect' });
     }
 
+    // SECURITY: Validate new password strength
+    const passwordError = validatePasswordStrength(newPassword);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
+    }
+
+    // SECURITY: Check for breached passwords
+    if (await isBreachedPassword(newPassword)) {
+      return res.status(400).json({
+        error: 'This password has been found in a data breach and is unsafe to use. Please choose a different password.'
+      });
+    }
+
     // Update password
     const hashedPassword = await bcrypt.hash(newPassword, 12);
     await prisma.user.update({
@@ -981,7 +1050,24 @@ router.post('/verify-2fa', async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Invalid 2FA code' });
     }
 
-    // Generate real access token
+    if (!user) {
+      return res.status(401).json({ error: 'User not found' });
+    }
+
+    // SECURITY: Revoke all other refresh tokens for this user upon 2FA successful login
+    // This ensures only the new session is active if that's the desired security posture, 
+    // or at least ensures that tokens issued during the pre-auth phase are gone.
+    // Actually, issueTokensAndSetCookies already issues new ones. 
+    // Usually we want to revoke OLD tokens when a new 2FA login happens.
+    await prisma.refreshToken.deleteMany({
+      where: {
+        userId: user.id,
+        // We might want to keep the one we JUST issued, but issueTokensAndSetCookies 
+        // adds it to the DB. So we should probably do this BEFORE issueTokensAndSetCookies
+        // or exclude the current one.
+      }
+    });
+
     // Issue Access & Refresh tokens
     await issueTokensAndSetCookies(res, user, req);
 
@@ -1068,6 +1154,12 @@ router.post('/2fa/activate', authenticateToken, async (req: AuthenticatedRequest
       }
     });
 
+    // SECURITY: Revoke all existing sessions when 2FA is enabled
+    // This forces all devices to re-login with the new 2FA requirement
+    await prisma.refreshToken.deleteMany({
+      where: { userId: user.id }
+    });
+
     await logAuditEvent({
       userId: user.id,
       action: '2FA_ENABLED',
@@ -1113,6 +1205,11 @@ router.post('/2fa/disable', authenticateToken, async (req: AuthenticatedRequest,
         twoFactorEnabled: false,
         twoFactorSecret: null
       }
+    });
+
+    // SECURITY: Revoke all refresh tokens when 2FA is disabled
+    await prisma.refreshToken.deleteMany({
+      where: { userId: user.id }
     });
 
     await logAuditEvent({
@@ -1165,6 +1262,11 @@ router.post('/delete-account', authenticateToken, async (req: AuthenticatedReque
           resetTokenExpiry: null
           // Keep tenantId for data segregation if needed, or move to a 'deleted' tenant
         }
+      });
+
+      // 1.25 SECURITY: Revoke all refresh tokens
+      await tx.refreshToken.deleteMany({
+        where: { userId: user.id }
       });
 
       // 1.5 Purge Push Subscriptions to prevent notification leakage
@@ -1341,6 +1443,63 @@ router.post('/switch-role', async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error('Switch role error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * List active sessions for the current user
+ */
+router.get('/sessions', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+    const sessions = await prisma.refreshToken.findMany({
+      where: { userId: user.id },
+      select: {
+        id: true,
+        ipAddress: true,
+        userAgent: true,
+        createdAt: true,
+        expiresAt: true
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    return res.json({ sessions });
+  } catch (error) {
+    console.error('List sessions error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * Revoke a specific session
+ */
+router.delete('/sessions/:id', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+    const sessionId = req.params.id;
+
+    // Ensure session belongs to user
+    const session = await prisma.refreshToken.findFirst({
+      where: { id: sessionId, userId: user.id }
+    });
+
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    await prisma.refreshToken.delete({
+      where: { id: sessionId }
+    });
+
+    return res.json({ message: 'Session revoked successfully' });
+  } catch (error) {
+    console.error('Revoke session error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

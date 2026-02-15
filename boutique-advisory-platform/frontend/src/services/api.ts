@@ -3,10 +3,9 @@
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003';
 
-// Helper function to get auth token
+// Helper function to get auth token (Legacy - token is now in HttpOnly cookie)
 const getAuthToken = (): string | null => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('token');
+    return null;
 };
 
 // Helper function to get auth headers (now just for content-type)
@@ -64,9 +63,8 @@ export const authAPI = {
             body: JSON.stringify({ email, password }),
         });
 
-        // Store token and user in localStorage
+        // Store user in localStorage (for UI profile), token is handled via HttpOnly cookie
         if (typeof window !== 'undefined') {
-            localStorage.setItem('token', response.token);
             localStorage.setItem('user', JSON.stringify(response.user));
         }
 
@@ -94,9 +92,8 @@ export const authAPI = {
             body: JSON.stringify(data),
         });
 
-        // Store token and user in localStorage
+        // Store user in localStorage (for UI profile), token is handled via HttpOnly cookie
         if (typeof window !== 'undefined') {
-            localStorage.setItem('token', response.token);
             localStorage.setItem('user', JSON.stringify(response.user));
         }
 

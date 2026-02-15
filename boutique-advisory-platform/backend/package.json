@@ -13,7 +13,8 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "npx ts-node prisma/seed.ts",
-    "test": "node -r ts-node/register --test src/**/*.test.ts"
+    "test": "node -r ts-node/register --test src/**/*.test.ts",
+    "security:check": "node scripts/security-check.js"
   },
   "prisma": {
     "seed": "npx ts-node prisma/seed.ts"

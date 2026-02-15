@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Plus, Edit, Trash2, Save, X } from 'lucide-react'
-import { API_URL } from '@/lib/api'
+import { API_URL, authorizedRequest } from '@/lib/api'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 
 interface Service {
@@ -35,12 +35,7 @@ export default function ManageServicesPage() {
 
     const fetchMyServices = async () => {
         try {
-            const token = localStorage.getItem('token')
-            const response = await fetch(`${API_URL}/api/advisory/my-services`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            })
+            const response = await authorizedRequest('/api/advisory/my-services')
             if (response.ok) {
                 const data = await response.json()
                 setServices(data)
@@ -52,7 +47,6 @@ export default function ManageServicesPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        const token = localStorage.getItem('token')
 
         const payload = {
             ...formData,
@@ -62,12 +56,8 @@ export default function ManageServicesPage() {
 
         try {
             if (editingId) {
-                const response = await fetch(`${API_URL}/api/advisory/services/${editingId}`, {
+                const response = await authorizedRequest(`/api/advisory/services/${editingId}`, {
                     method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
                     body: JSON.stringify(payload)
                 })
 
@@ -78,12 +68,8 @@ export default function ManageServicesPage() {
                     fetchMyServices()
                 }
             } else {
-                const response = await fetch(`${API_URL}/api/advisory/services`, {
+                const response = await authorizedRequest('/api/advisory/services', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
                     body: JSON.stringify(payload)
                 })
 
@@ -117,12 +103,8 @@ export default function ManageServicesPage() {
         if (!confirm('Are you sure you want to delete this service?')) return
 
         try {
-            const token = localStorage.getItem('token')
-            const response = await fetch(`${API_URL}/api/advisory/services/${id}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+            const response = await authorizedRequest(`/api/advisory/services/${id}`, {
+                method: 'DELETE'
             })
 
             if (response.ok) {

@@ -23,7 +23,7 @@ import {
 } from 'lucide-react'
 import DashboardLayout from '../../components/layout/DashboardLayout'
 import { useToast } from '../../contexts/ToastContext'
-import { API_URL } from '@/lib/api'
+import { API_URL, authorizedRequest } from '@/lib/api'
 
 interface Match {
     id: string
@@ -71,22 +71,16 @@ export default function MatchmakingPage() {
 
     const fetchData = async () => {
         try {
-            const token = localStorage.getItem('token')
             const userData = localStorage.getItem('user')
 
-            if (!token || !userData) {
+            if (!userData) {
                 window.location.href = '/auth/login'
                 return
             }
 
             setUser(JSON.parse(userData))
 
-            const response = await fetch(`${API_URL}/api/matches`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            })
+            const response = await authorizedRequest('/api/matches')
 
             if (response.ok) {
                 const data = await response.json()
@@ -110,10 +104,8 @@ export default function MatchmakingPage() {
     const handleRecompute = async () => {
         setIsRecomputing(true)
         try {
-            const token = localStorage.getItem('token')
-            const response = await fetch(`${API_URL}/api/matches/recompute`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
+            const response = await authorizedRequest('/api/matches/recompute', {
+                method: 'POST'
             })
             if (response.ok) {
                 addToast('success', 'Matches recomputed successfully!')
@@ -128,13 +120,8 @@ export default function MatchmakingPage() {
 
     const handleInterest = async (matchId: string, interest: boolean) => {
         try {
-            const token = localStorage.getItem('token')
-            const response = await fetch(`${API_URL}/api/matches/${matchId}/interest`, {
+            const response = await authorizedRequest(`/api/matches/${matchId}/interest`, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
                 body: JSON.stringify({ interest })
             })
 

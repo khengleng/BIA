@@ -153,11 +153,14 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "https://fonts.googleapis.com"], // SECURITY: Removed 'unsafe-inline' for better posture
       imgSrc: ["'self'", "data:", "blob:", "https://storage.googleapis.com", "https://*.stripe.com", "https://*.sumsub.com"],
       connectSrc: ["'self'", process.env.FRONTEND_URL || "https://www.cambobia.com", "https://storage.googleapis.com", "https://*.stripe.com", "https://*.sumsub.com"],
-      fontSrc: ["'self'"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
       objectSrc: ["'none'"],
+      frameAncestors: ["'none'"],
+      formAction: ["'self'"],
+      baseUri: ["'self'"],
       upgradeInsecureRequests: [],
     }
   } : false,
@@ -179,7 +182,13 @@ app.use(express.json({
   }
 }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use(cookieParser(process.env.COOKIE_SECRET || 'dev-cookie-secret-change-me'));
+
+const cookieSecret = process.env.COOKIE_SECRET;
+if (isProduction && !cookieSecret) {
+  console.error('FATAL: COOKIE_SECRET environment variable is not set!');
+  process.exit(1);
+}
+app.use(cookieParser(cookieSecret || 'dev-cookie-secret'));
 
 // CORS configuration - strict in production
 app.use(cors({
@@ -188,8 +197,14 @@ app.use(cors({
     const frontendUrl = process.env.FRONTEND_URL || '';
     const allowedOrigins = [frontendUrl, frontendUrl.replace(/\/$/, '')];
 
-    // Always allow requests with no origin (like mobile apps or curl)
+    // SECURITY: Strictly control origins in production
+    // Allow requests with no origin only in development (e.g. for testing with curl or Postman)
+    // Mobile apps should set an appropriate Origin header if they use this API.
     if (!origin) {
+      if (isProduction) {
+        console.warn(`Blocked by CORS: Request with no origin rejected in production.`);
+        return callback(new Error('Not allowed by CORS: Origin required'), false);
+      }
       return callback(null, true);
     }
 
@@ -263,9 +278,15 @@ const authLimiter = rateLimit({
   }),
 });
 
+const csrfSecret = process.env.CSRF_SECRET;
+if (isProduction && !csrfSecret) {
+  console.error('FATAL: CSRF_SECRET environment variable is not set!');
+  process.exit(1);
+}
+
 // CSRF Protection Setup
 const { invalidCsrfTokenError, generateToken, doubleCsrfProtection } = doubleCsrf({
-  getSecret: () => process.env.CSRF_SECRET || 'dev-csrf-secret-change-me',
+  getSecret: () => csrfSecret || 'dev-csrf-secret',
   cookieName: process.env.NODE_ENV === 'production' ? '__Host-psifi.x-csrf-token' : 'x-csrf-token',
   cookieOptions: {
     httpOnly: true,

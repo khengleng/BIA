@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import DashboardLayout from '../../components/layout/DashboardLayout'
 import { useToast } from '../../contexts/ToastContext'
+import { authorizedRequest } from '@/lib/api'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003'
 
@@ -147,24 +148,20 @@ export default function DueDiligencePage() {
 
     const fetchData = async () => {
         try {
-            const token = localStorage.getItem('token')
-            if (!token) {
+            const userData = localStorage.getItem('user')
+            if (!userData) {
                 window.location.href = '/auth/login'
                 return
             }
 
             // Fetch due diligence reports
-            const reportsRes = await fetch(`${API_URL}/api/due-diligence`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            })
+            const reportsRes = await authorizedRequest('/api/due-diligence')
             if (reportsRes.ok) {
                 setReports(await reportsRes.json())
             }
 
             // Fetch stats
-            const statsRes = await fetch(`${API_URL}/api/due-diligence/stats/overview`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            })
+            const statsRes = await authorizedRequest('/api/due-diligence/stats/overview')
             if (statsRes.ok) {
                 setStats(await statsRes.json())
             }

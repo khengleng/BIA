@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { API_URL } from '@/lib/api';
+import { API_URL, authorizedRequest } from '@/lib/api';
 import { useToast } from '@/contexts/ToastContext';
 import { ShieldCheck, DollarSign, ArrowUpRight, ArrowDownLeft, Clock } from 'lucide-react';
 
@@ -39,10 +39,7 @@ export default function DealFunding({ dealId, userRole }: Props) {
 
     const fetchEscrow = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${API_URL}/api/escrow/${dealId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const response = await authorizedRequest(`/api/escrow/${dealId}`);
             if (response.ok) {
                 const data = await response.json();
                 setEscrow(data.escrow);
@@ -63,13 +60,8 @@ export default function DealFunding({ dealId, userRole }: Props) {
         if (!depositAmount || parseFloat(depositAmount) <= 0) return;
 
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${API_URL}/api/escrow/${dealId}/deposit`, {
+            const response = await authorizedRequest(`/api/escrow/${dealId}/deposit`, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
                 body: JSON.stringify({
                     amount: parseFloat(depositAmount),
                     currency: 'USD',
@@ -97,13 +89,8 @@ export default function DealFunding({ dealId, userRole }: Props) {
         if (!confirm('Request release of funds to SME?')) return;
 
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${API_URL}/api/escrow/${dealId}/release`, {
+            const response = await authorizedRequest(`/api/escrow/${dealId}/release`, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
                 body: JSON.stringify({
                     amount: escrow?.balance || 0,
                     currency: 'USD',
@@ -123,12 +110,8 @@ export default function DealFunding({ dealId, userRole }: Props) {
 
     const handleApprove = async (txId: string) => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${API_URL}/api/escrow/approve/${txId}`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+            const response = await authorizedRequest(`/api/escrow/approve/${txId}`, {
+                method: 'POST'
             });
 
             if (response.ok) {

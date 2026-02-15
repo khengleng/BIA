@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 import DashboardLayout from '../../components/layout/DashboardLayout'
 import { useToast } from '../../contexts/ToastContext'
-import { API_URL } from '@/lib/api'
+import { API_URL, authorizedRequest } from '@/lib/api'
 import { useTranslations } from '@/hooks/useTranslations'
 
 interface SME {
@@ -56,12 +56,7 @@ export default function SMEPipelinePage() {
     useEffect(() => {
         const fetchSMEs = async () => {
             try {
-                const token = localStorage.getItem('token')
-                const response = await fetch(`${API_URL}/api/smes`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                })
+                const response = await authorizedRequest('/api/smes')
 
                 if (response.ok) {
                     const data = await response.json()
@@ -93,13 +88,8 @@ export default function SMEPipelinePage() {
         }
 
         try {
-            const token = localStorage.getItem('token')
-            const response = await fetch(`${API_URL}/api/smes/${draggedSME.id}`, {
+            const response = await authorizedRequest(`/api/smes/${draggedSME.id}`, {
                 method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
                 body: JSON.stringify({ status })
             })
 

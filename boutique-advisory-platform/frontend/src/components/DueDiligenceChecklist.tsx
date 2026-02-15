@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { CheckCircle, Circle, AlertCircle, Plus, Trash2, ArrowRight } from 'lucide-react';
-import { API_URL } from '@/lib/api';
+import { API_URL, authorizedRequest } from '@/lib/api';
 import { useToast } from '@/contexts/ToastContext';
 
 interface DueDiligenceItem {
@@ -32,10 +32,7 @@ export default function DueDiligenceChecklist({ dealId, userRole }: Props) {
 
     const fetchItems = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${API_URL}/api/deal-due-diligence/${dealId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const response = await authorizedRequest(`/api/deal-due-diligence/${dealId}`);
             if (response.ok) {
                 const data = await response.json();
                 setItems(data.items);
@@ -56,13 +53,8 @@ export default function DueDiligenceChecklist({ dealId, userRole }: Props) {
         if (!canEdit) return;
 
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${API_URL}/api/deal-due-diligence/${dealId}/items/${itemId}`, {
+            const response = await authorizedRequest(`/api/deal-due-diligence/${dealId}/items/${itemId}`, {
                 method: 'PATCH',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
                 body: JSON.stringify({ status: newStatus })
             });
 
@@ -80,13 +72,8 @@ export default function DueDiligenceChecklist({ dealId, userRole }: Props) {
         if (!newItem.task) return;
 
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${API_URL}/api/deal-due-diligence/${dealId}/items`, {
+            const response = await authorizedRequest(`/api/deal-due-diligence/${dealId}/items`, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
                 body: JSON.stringify({
                     task: newItem.task,
                     description: newItem.description,
@@ -110,10 +97,8 @@ export default function DueDiligenceChecklist({ dealId, userRole }: Props) {
         if (!confirm('Are you sure all due diligence is complete? This will move the deal to NEGOTIATION stage.')) return;
 
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${API_URL}/api/deal-due-diligence/${dealId}/complete`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
+            const response = await authorizedRequest(`/api/deal-due-diligence/${dealId}/complete`, {
+                method: 'POST'
             });
 
             if (response.ok) {
@@ -195,8 +180,8 @@ export default function DueDiligenceChecklist({ dealId, userRole }: Props) {
                                 </h4>
                                 <div className="flex items-center gap-2">
                                     <span className={`px-2 py-0.5 text-xs rounded border ${item.status === 'COMPLETED' ? 'border-green-500/30 bg-green-500/10 text-green-400' :
-                                            item.status === 'IN_PROGRESS' ? 'border-blue-500/30 bg-blue-500/10 text-blue-400' :
-                                                'border-gray-600 bg-gray-700 text-gray-400'
+                                        item.status === 'IN_PROGRESS' ? 'border-blue-500/30 bg-blue-500/10 text-blue-400' :
+                                            'border-gray-600 bg-gray-700 text-gray-400'
                                         }`}>
                                         {item.status.replace('_', ' ')}
                                     </span>

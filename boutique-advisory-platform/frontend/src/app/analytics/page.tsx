@@ -22,7 +22,7 @@ import {
 } from 'lucide-react'
 import DashboardLayout from '../../components/layout/DashboardLayout'
 import { useToast } from '../../contexts/ToastContext'
-import { API_URL } from '@/lib/api'
+import { authorizedRequest } from '@/lib/api'
 
 interface KPIs {
     totalDeals: number
@@ -59,20 +59,14 @@ export default function AnalyticsPage() {
     useEffect(() => {
         const fetchAnalytics = async () => {
             try {
-                const token = localStorage.getItem('token')
                 const userData = localStorage.getItem('user')
 
-                if (!token || !userData) {
+                if (!userData) {
                     window.location.href = '/auth/login'
                     return
                 }
 
-                const response = await fetch(`${API_URL}/api/dashboard/analytics`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                })
+                const response = await authorizedRequest('/api/dashboard/analytics')
 
                 if (response.ok) {
                     const data = await response.json()

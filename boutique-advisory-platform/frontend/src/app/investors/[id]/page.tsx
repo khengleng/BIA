@@ -1,5 +1,5 @@
 'use client'
-import { API_URL } from '@/lib/api'
+import { API_URL, authorizedRequest } from '@/lib/api'
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
@@ -160,10 +160,8 @@ export default function InvestorProfilePage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const token = localStorage.getItem('token')
         const userData = localStorage.getItem('user')
-
-        if (!token || !userData) {
+        if (!userData) {
           router.push('/auth/login')
           return
         }
@@ -172,11 +170,7 @@ export default function InvestorProfilePage() {
         setUser(parsedUser)
 
         // Fetch Investor Data
-        const response = await fetch(`${API_URL}/api/investors/${params.id}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
+        const response = await authorizedRequest(`/api/investors/${params.id}`)
 
         if (!response.ok) {
           throw new Error('Failed to fetch investor')
@@ -285,7 +279,6 @@ export default function InvestorProfilePage() {
   }, [router, params.id])
 
   const handleLogout = () => {
-    localStorage.removeItem('token')
     localStorage.removeItem('user')
     router.push('/')
   }
@@ -321,19 +314,9 @@ export default function InvestorProfilePage() {
 
   const handleSaveEdit = async () => {
     try {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        router.push('/auth/login')
-        return
-      }
-
       // Make API call to update the investor
-      const response = await fetch(`${API_URL}/api/investors/${params.id}`, {
+      const response = await authorizedRequest(`/api/investors/${params.id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
         body: JSON.stringify({
           name: editForm.name,
           type: editForm.investorType,
@@ -462,12 +445,6 @@ export default function InvestorProfilePage() {
 
   const handleUploadDocument = async () => {
     try {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        window.location.href = '/auth/login'
-        return
-      }
-
       // In a real implementation, this would handle file upload
       console.log('Document uploaded successfully!')
       setShowUploadDocumentModal(false)
@@ -478,21 +455,11 @@ export default function InvestorProfilePage() {
 
   const handleViewDocument = async (docName: string) => {
     try {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        window.location.href = '/auth/login'
-        return
-      }
-
-      const response = await fetch(`${API_URL}/api/documents/${encodeURIComponent(docName)}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
+      const response = await authorizedRequest(`/api/documents/${encodeURIComponent(docName)}`)
 
       if (response.ok) {
-        // Open document in new tab with token
-        window.open(`${API_URL}/api/documents/${encodeURIComponent(docName)}?token=${token}`, '_blank')
+        // Open document in new tab - Backend should handle cookie auth for this endpoint too
+        window.open(`${API_URL}/api/documents/${encodeURIComponent(docName)}`, '_blank')
       } else {
         console.error('Document not found')
       }
@@ -503,17 +470,7 @@ export default function InvestorProfilePage() {
 
   const handleDownloadDocument = async (docName: string) => {
     try {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        window.location.href = '/auth/login'
-        return
-      }
-
-      const response = await fetch(`${API_URL}/api/documents/${encodeURIComponent(docName)}/download`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
+      const response = await authorizedRequest(`/api/documents/${encodeURIComponent(docName)}/download`)
 
       if (response.ok) {
         const blob = await response.blob()
@@ -721,10 +678,8 @@ export default function InvestorProfilePage() {
                     onClick={async () => {
                       if (confirm('Verify this investor\'s KYC and accreditation?')) {
                         try {
-                          const token = localStorage.getItem('token')
-                          const response = await fetch(`${API_URL}/api/investors/${params.id}/kyc`, {
-                            method: 'POST',
-                            headers: { 'Authorization': `Bearer ${token}` }
+                          const response = await authorizedRequest(`/api/investors/${params.id}/kyc`, {
+                            method: 'POST'
                           })
                           if (response.ok) {
                             alert('Investor KYC Verified Successfully!')

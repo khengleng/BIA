@@ -26,43 +26,32 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     const socketRef = useRef<Socket | null>(null)
     const [isConnected, setIsConnected] = useState(false)
     const [lastNotification, setLastNotification] = useState<any>(null)
-    const [token, setToken] = useState<string | null>(null)
+    const [user, setUser] = useState<any>(null)
 
     useEffect(() => {
-        // Initial token check
-        const storedToken = localStorage.getItem('token')
-        if (storedToken) {
-            setToken(storedToken)
+        // Initial user check
+        const storedUser = localStorage.getItem('user')
+        if (storedUser) {
+            setUser(JSON.parse(storedUser))
         }
 
         // Listen for storage events (login/logout from other tabs)
         const handleStorageChange = () => {
-            const currentToken = localStorage.getItem('token')
-            setToken(currentToken)
+            const currentUser = localStorage.getItem('user')
+            setUser(currentUser ? JSON.parse(currentUser) : null)
         }
 
-        // Custom event for same-tab login/logout
         window.addEventListener('storage', handleStorageChange)
-        // You might want to dispatch a custom event on login/logout if not already doing so
-
-        // Poll for token change (fallback if no events)
-        const interval = setInterval(() => {
-            const currentToken = localStorage.getItem('token')
-            if (currentToken !== token) {
-                setToken(currentToken)
-            }
-        }, 1000)
 
         return () => {
             window.removeEventListener('storage', handleStorageChange)
-            clearInterval(interval)
         }
-    }, [token])
+    }, [])
 
     useEffect(() => {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
-        if (!token) {
+        if (!user) {
             if (socketRef.current) {
                 socketRef.current.disconnect()
                 socketRef.current = null
@@ -74,7 +63,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         // Initialize socket connection
         if (!socketRef.current) {
             const socket = io(API_URL, {
-                auth: { token },
+                withCredentials: true,
                 transports: ['websocket'],
                 reconnection: true,
                 reconnectionAttempts: 5,
@@ -101,14 +90,6 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
             socket.on('system_alert', (alert) => {
                 console.log('⚠️ System alert:', alert.message)
             })
-        } else {
-            // Update token if it changed? Requires reconnection usually.
-            // Socket.io doesn't support dynamic auth update easily without reconnect.
-            if (socketRef.current.auth && (socketRef.current.auth as any).token !== token) {
-                socketRef.current.disconnect()
-                socketRef.current.auth = { token }
-                socketRef.current.connect()
-            }
         }
 
         return () => {
@@ -116,7 +97,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
             // Since this provider is at root, it unmounts only on app close.
             // But if token changes (logout), we disconnect.
         }
-    }, [token])
+    }, [user])
 
     const sendMessage = (conversationId: string, content: string, type: string = 'TEXT', attachments: any[] = []) => {
         if (socketRef.current) {

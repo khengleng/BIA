@@ -1,5 +1,5 @@
 'use client'
-import { API_URL } from '@/lib/api'
+import { authorizedRequest } from '@/lib/api'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import {
@@ -71,13 +71,8 @@ export default function SettingsPage() {
     }
 
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`${API_URL}/api/auth/change-password`, {
+      const response = await authorizedRequest('/api/auth/change-password', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
         body: JSON.stringify({
           currentPassword,
           newPassword
@@ -102,12 +97,8 @@ export default function SettingsPage() {
 
   const handleEnable2FA = async () => {
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`${API_URL}/api/auth/2fa/setup`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const response = await authorizedRequest('/api/auth/2fa/setup', {
+        method: 'POST'
       })
 
       const data = await response.json()
@@ -125,13 +116,8 @@ export default function SettingsPage() {
 
   const handleVerify2FA = async () => {
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`${API_URL}/api/auth/2fa/activate`, {
+      const response = await authorizedRequest('/api/auth/2fa/activate', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
         body: JSON.stringify({ code: verificationCode, secret })
       })
 
@@ -165,13 +151,8 @@ export default function SettingsPage() {
 
   const handleDisable2FA = async () => {
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`${API_URL}/api/auth/2fa/disable`, {
+      const response = await authorizedRequest('/api/auth/2fa/disable', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
         body: JSON.stringify({ password: disablePassword })
       })
 
@@ -204,12 +185,8 @@ export default function SettingsPage() {
 
     setIsDeleting(true)
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`${API_URL}/api/auth/delete-account`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const response = await authorizedRequest('/api/auth/delete-account', {
+        method: 'POST'
       })
 
       if (response.ok) {
@@ -217,7 +194,6 @@ export default function SettingsPage() {
         alert('Your account has been successfully deleted.')
 
         // Clear local storage
-        localStorage.removeItem('token')
         localStorage.removeItem('user')
 
         // Build URL relative to window location if possible, or just redirect
@@ -238,13 +214,8 @@ export default function SettingsPage() {
 
   const handleSavePreferences = async () => {
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`${API_URL}/api/auth/profile`, {
+      const response = await authorizedRequest('/api/auth/profile', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
         body: JSON.stringify({
           language: preferences.language,
           preferences: {
@@ -272,10 +243,9 @@ export default function SettingsPage() {
     // Get user data from localStorage
     const fetchUser = async () => {
       try {
-        const token = localStorage.getItem('token')
         const userData = localStorage.getItem('user')
 
-        if (!token || !userData) {
+        if (!userData) {
           window.location.href = '/auth/login'
           return
         }
@@ -293,9 +263,7 @@ export default function SettingsPage() {
         }
 
         // Fetch fresh status including 2FA
-        const meResponse = await fetch(`${API_URL}/api/auth/me`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
+        const meResponse = await authorizedRequest('/api/auth/me')
 
         if (meResponse.ok) {
           const meData = await meResponse.json()
@@ -319,7 +287,6 @@ export default function SettingsPage() {
   }, [])
 
   const handleLogout = () => {
-    localStorage.removeItem('token')
     localStorage.removeItem('user')
     window.location.href = '/'
   }

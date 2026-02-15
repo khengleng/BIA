@@ -1,5 +1,5 @@
 'use client'
-import { API_URL } from '@/lib/api'
+import { API_URL, authorizedRequest } from '@/lib/api'
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
@@ -61,10 +61,9 @@ export default function SMEPage() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const token = localStorage.getItem('token')
         const userData = localStorage.getItem('user')
 
-        if (!token || !userData) {
+        if (!userData) {
           router.push('/auth/login')
           return
         }
@@ -73,7 +72,6 @@ export default function SMEPage() {
         setUser(user)
       } catch (error) {
         console.error('Error fetching user:', error)
-        localStorage.removeItem('token')
         localStorage.removeItem('user')
         router.push('/auth/login')
       } finally {
@@ -85,7 +83,6 @@ export default function SMEPage() {
   }, [router])
 
   const handleLogout = () => {
-    localStorage.removeItem('token')
     localStorage.removeItem('user')
     router.push('/')
   }
@@ -102,17 +99,7 @@ export default function SMEPage() {
 
   const handleViewDocument = async (docName: string) => {
     try {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        window.location.href = '/auth/login'
-        return
-      }
-
-      const response = await fetch(`${API_URL}/api/documents/${encodeURIComponent(docName)}`, {
-        headers: {
-          'Authorization': `Bearer ${token} `
-        }
-      })
+      const response = await authorizedRequest(`/api/documents/${encodeURIComponent(docName)}`)
 
       if (response.ok) {
         // Open document in new tab
@@ -127,17 +114,7 @@ export default function SMEPage() {
 
   const handleDownloadDocument = async (docName: string) => {
     try {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        window.location.href = '/auth/login'
-        return
-      }
-
-      const response = await fetch(`${API_URL}/api/documents/${encodeURIComponent(docName)}/download`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
+      const response = await authorizedRequest(`/api/documents/${encodeURIComponent(docName)}/download`)
 
       if (response.ok) {
         const blob = await response.blob()
@@ -171,18 +148,14 @@ export default function SMEPage() {
     if (!uploadFile) return
 
     try {
-      const token = localStorage.getItem('token')
       const formData = new FormData()
       formData.append('file', uploadFile)
       formData.append('name', uploadFile.name)
       formData.append('type', uploadType)
       formData.append('smeId', params.id as string)
 
-      const response = await fetch(`${API_URL}/api/documents/upload`, {
+      const response = await authorizedRequest('/api/documents/upload', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
         body: formData
       })
 
@@ -281,10 +254,7 @@ export default function SMEPage() {
       if (!params.id) return
 
       try {
-        const token = localStorage.getItem('token')
-        const response = await fetch(`${API_URL}/api/smes/${params.id}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
+        const response = await authorizedRequest(`/api/smes/${params.id}`)
 
         if (response.ok) {
           const data = await response.json()
@@ -333,8 +303,6 @@ export default function SMEPage() {
 
   const handleSaveSme = async () => {
     try {
-      const token = localStorage.getItem('token')
-
       // Sanitize inputs
       let sanitizedWebsite = editFormData.website.trim()
       if (sanitizedWebsite && !/^https?:\/\//i.test(sanitizedWebsite)) {
@@ -360,12 +328,8 @@ export default function SMEPage() {
         }
       }
 
-      const response = await fetch(`${API_URL}/api/smes/${params.id}`, {
+      const response = await authorizedRequest(`/api/smes/${params.id}`, {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify(payload)
       })
 
@@ -399,13 +363,8 @@ export default function SMEPage() {
 
   const handleCertifySME = async () => {
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`${API_URL}/api/smes/${params.id}`, {
+      const response = await authorizedRequest(`/api/smes/${params.id}`, {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({ status: 'CERTIFIED' })
       })
 
@@ -425,22 +384,15 @@ export default function SMEPage() {
 
   const handleExpressInterest = async () => {
     try {
-      const token = localStorage.getItem('token')
-      if (!token) return
-
       const recipientId = sme.userId || (sme.user && sme.user.id)
       if (!recipientId) {
-        addToast('error', 'Cannot message this user: Recipient ID not found.')
+        addToast('error', t('advisory.cannotMessageUser'))
         setShowInterestDialog(false)
         return
       }
 
-      const response = await fetch(`${API_URL}/api/messages/start`, {
+      const response = await authorizedRequest('/api/messages/start', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({
           recipientId: recipientId,
           initialMessage: `Hi ${sme.name}, I'm interested in learning more about your business.`,
@@ -1227,17 +1179,8 @@ export default function SMEPage() {
               <button
                 onClick={async () => {
                   try {
-                    const token = localStorage.getItem('token')
-                    if (!token) {
-                      window.location.href = '/auth/login'
-                      return
-                    }
-
-                    const response = await fetch(`${API_URL}/api/smes/${params.id}`, {
-                      method: 'DELETE',
-                      headers: {
-                        'Authorization': `Bearer ${token}`
-                      }
+                    const response = await authorizedRequest(`/api/smes/${params.id}`, {
+                      method: 'DELETE'
                     })
 
                     if (response.ok) {
