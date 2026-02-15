@@ -132,15 +132,27 @@ router.get('/stats', authorize('admin.read'), async (req: AuthenticatedRequest, 
             investorCount,
             advisorCount,
             dealCount,
-            totalDealAmount
+            totalDealAmount,
+            secondaryTradeStats,
+            syndicateTradeStats
         ] = await Promise.all([
             prisma.user.count(),
             prisma.sME.count(),
             prisma.investor.count(),
             prisma.advisor.count(),
             prisma.deal.count(),
-            prisma.deal.aggregate({ _sum: { amount: true } })
+            prisma.deal.aggregate({ _sum: { amount: true } }),
+            prisma.secondaryTrade.aggregate({
+                _sum: { totalAmount: true, fee: true }
+            }),
+            prisma.syndicateTokenTrade.aggregate({
+                _sum: { totalAmount: true, fee: true }
+            })
         ]);
+
+        const dealVolume = totalDealAmount._sum.amount || 0;
+        const secondaryVolume = (secondaryTradeStats._sum.totalAmount || 0) + (syndicateTradeStats._sum.totalAmount || 0);
+        const totalFees = (secondaryTradeStats._sum.fee || 0) + (syndicateTradeStats._sum.fee || 0);
 
         return res.json({
             stats: {
@@ -149,7 +161,8 @@ router.get('/stats', authorize('admin.read'), async (req: AuthenticatedRequest, 
                 investors: investorCount,
                 advisors: advisorCount,
                 deals: dealCount,
-                totalVolume: totalDealAmount._sum.amount || 0
+                totalVolume: dealVolume + secondaryVolume,
+                totalFees
             }
         });
     } catch (error) {

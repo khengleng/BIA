@@ -122,7 +122,7 @@ export default function AdminDashboardPage() {
                             <DollarSign className="w-4 h-4" />
                             Revenue
                         </div>
-                        <p className="text-2xl font-bold text-white">${(stats?.totalVolume || 0).toLocaleString()}</p>
+                        <p className="text-2xl font-bold text-white">${(stats?.totalFees || 0).toLocaleString()}</p>
                     </div>
 
                     <div className="bg-gradient-to-br from-gray-900/40 to-gray-800/20 border border-gray-700/50 rounded-xl p-5">
