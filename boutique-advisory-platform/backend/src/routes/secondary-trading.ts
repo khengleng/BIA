@@ -147,6 +147,31 @@ router.post('/listings', authorize('secondary_trading.create_listing'), async (r
             return;
         }
 
+        // Check active listings to prevent double-listing
+        const activeListings = await prisma.secondaryListing.findMany({
+            where: {
+                dealInvestorId,
+                status: 'ACTIVE'
+            }
+        });
+
+        const sharesLockedInListings = activeListings.reduce((sum, l) => sum + l.sharesAvailable, 0);
+        const availableToSell = dealInvestor.amount - sharesLockedInListings;
+
+        if (availableToSell < sharesAvailable) {
+            console.warn(`❌ Insufficient shares: Has ${dealInvestor.amount}, Locked ${sharesLockedInListings}, Available ${availableToSell}, Requested ${sharesAvailable}`);
+            res.status(400).json({
+                error: `Insufficient shares. You have ${dealInvestor.amount.toFixed(2)} shares, but ${sharesLockedInListings.toFixed(2)} are already listed. Available: ${availableToSell.toFixed(2)}`,
+                debug: {
+                    totalShares: dealInvestor.amount,
+                    lockedInListings: sharesLockedInListings,
+                    available: availableToSell,
+                    requested: sharesAvailable
+                }
+            });
+            return;
+        }
+
         const listing = await prisma.secondaryListing.create({
             data: {
                 tenantId: 'default',
