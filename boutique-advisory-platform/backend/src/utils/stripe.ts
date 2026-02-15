@@ -27,8 +27,9 @@ export const kyc = {
             return {
                 id: 'vs_mock_' + Date.now(),
                 url: 'https://checkout.stripe.com/mock_kyc_session',
-                status: 'requires_input'
-            };
+                status: 'requires_input',
+                client_secret: 'vs_mock_secret_' + Date.now()
+            } as any;
         }
         try {
             const session = await stripe.identity.verificationSessions.create({
@@ -71,7 +72,7 @@ export const payments = {
                 id: 'pi_mock_' + Date.now(),
                 client_secret: 'pi_mock_secret_' + Date.now(),
                 status: 'requires_payment_method'
-            };
+            } as any;
         }
         try {
             const paymentIntent = await stripe.paymentIntents.create({
@@ -93,7 +94,7 @@ export const payments = {
      */
     async capturePayment(paymentIntentId: string) {
         if (!isConfigured && paymentIntentId.startsWith('pi_mock_')) {
-            return { id: paymentIntentId, status: 'succeeded' };
+            return { id: paymentIntentId, status: 'succeeded' } as any;
         }
         return await stripe.paymentIntents.capture(paymentIntentId);
     },
@@ -103,7 +104,7 @@ export const payments = {
      */
     async cancelPayment(paymentIntentId: string) {
         if (!isConfigured && paymentIntentId.startsWith('pi_mock_')) {
-            return { id: paymentIntentId, status: 'canceled' };
+            return { id: paymentIntentId, status: 'canceled' } as any;
         }
         return await stripe.paymentIntents.cancel(paymentIntentId);
     }
@@ -118,7 +119,7 @@ export async function createPaymentIntent(amount: number, currency: string = 'us
             id: 'pi_mock_' + Date.now(),
             client_secret: 'pi_mock_secret_' + Date.now(),
             status: 'requires_payment_method'
-        };
+        } as any;
     }
     return await stripe.paymentIntents.create({
         amount: Math.round(amount * 100),
