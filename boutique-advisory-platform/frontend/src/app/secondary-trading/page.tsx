@@ -267,6 +267,48 @@ export default function SecondaryTradingPage() {
         }
     }
 
+    const handleCancelListing = async (listingId: string) => {
+        if (!confirm('Are you sure you want to cancel this listing?')) return
+
+        try {
+            const response = await authorizedRequest(`/api/secondary-trading/listings/${listingId}`, {
+                method: 'DELETE'
+            })
+
+            if (response.ok) {
+                addToast('success', 'Listing cancelled successfully')
+                fetchData()
+            } else {
+                const error = await response.json()
+                addToast('error', error.error || 'Failed to cancel listing')
+            }
+        } catch (error) {
+            console.error('Error cancelling listing:', error)
+            addToast('error', 'Error cancelling listing')
+        }
+    }
+
+    const handleCancelTokenListing = async (listingId: string) => {
+        if (!confirm('Are you sure you want to cancel this token listing?')) return
+
+        try {
+            const response = await authorizedRequest(`/api/syndicate-tokens/listings/${listingId}`, {
+                method: 'DELETE'
+            })
+
+            if (response.ok) {
+                addToast('success', 'Token listing cancelled successfully')
+                fetchData()
+            } else {
+                const error = await response.json()
+                addToast('error', error.error || 'Failed to cancel listing')
+            }
+        } catch (error) {
+            console.error('Error cancelling token listing:', error)
+            addToast('error', 'Error cancelling listing')
+        }
+    }
+
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'ACTIVE':
@@ -502,7 +544,12 @@ export default function SecondaryTradingPage() {
                                         </button>
                                     )}
                                     {listing.sellerId === user?.id && (
-                                        <span className="text-sm text-blue-400">Your Listing</span>
+                                        <button
+                                            onClick={() => handleCancelListing(listing.id)}
+                                            className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg text-sm font-medium transition-colors border border-red-500/30"
+                                        >
+                                            Cancel Listing
+                                        </button>
                                     )}
                                 </div>
                             </div>
@@ -606,7 +653,12 @@ export default function SecondaryTradingPage() {
                                             </button>
                                         )}
                                         {listing.sellerId === user?.id && (
-                                            <span className="text-sm text-gray-500">Your Listing</span>
+                                            <button
+                                                onClick={() => handleCancelTokenListing(listing.id)}
+                                                className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg text-sm font-medium transition-colors border border-red-500/30"
+                                            >
+                                                Cancel Listing
+                                            </button>
                                         )}
                                     </div>
                                 </div>

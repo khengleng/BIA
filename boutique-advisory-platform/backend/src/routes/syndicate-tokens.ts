@@ -168,6 +168,51 @@ router.post('/listings', authorize('secondary_trading.create_listing'), async (r
     }
 });
 
+// Cancel syndicate token listing
+router.delete('/listings/:id', authorize('secondary_trading.update_listing'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+        if (!shouldUseDatabase()) {
+            res.status(503).json({ error: 'Database not available' });
+            return;
+        }
+
+        const listing = await prisma.syndicateTokenListing.findUnique({
+            where: { id: req.params.id }
+        });
+
+        if (!listing) {
+            res.status(404).json({ error: 'Listing not found' });
+            return;
+        }
+
+        // Check ownership
+        const investor = await prisma.investor.findFirst({
+            where: { userId: req.user?.id }
+        });
+
+        if (!investor || listing.sellerId !== investor.id) {
+            res.status(403).json({ error: 'You can only cancel your own listings' });
+            return;
+        }
+
+        if (listing.status !== 'ACTIVE') {
+            res.status(400).json({ error: 'Only active listings can be cancelled' });
+            return;
+        }
+
+        // Update status to CANCELLED instead of deleting
+        const cancelled = await prisma.syndicateTokenListing.update({
+            where: { id: req.params.id },
+            data: { status: 'CANCELLED' }
+        });
+
+        res.json({ message: 'Listing cancelled successfully', listing: cancelled });
+    } catch (error) {
+        console.error('Error cancelling listing:', error);
+        res.status(500).json({ error: 'Failed to cancel listing' });
+    }
+});
+
 // Buy syndicate tokens
 router.post('/buy', authorize('secondary_trading.buy'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
