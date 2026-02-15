@@ -111,7 +111,7 @@ export default function SellPositionModal({ investmentId, parentId, type, dealNa
                     <div className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-300 mb-2">
-                                {type === 'SYNDICATE' ? 'Number of Tokens' : 'Amount to Sell ($)'}
+                                {type === 'SYNDICATE' ? 'Number of Tokens to Sell' : 'Amount to Sell ($)'}
                             </label>
                             <div className="relative">
                                 {type !== 'SYNDICATE' && <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />}
@@ -125,6 +125,13 @@ export default function SellPositionModal({ investmentId, parentId, type, dealNa
                                     max={currentValue}
                                 />
                             </div>
+                            {type === 'SYNDICATE' && amount && (
+                                <p className={`text-xs mt-2 font-medium ${parseFloat(amount) > currentValue ? 'text-red-400' : 'text-green-400'}`}>
+                                    {parseFloat(amount) > currentValue ? '⚠️ ' : '✓ '}
+                                    {parseFloat(amount).toLocaleString()} tokens out of {currentValue.toLocaleString()} available
+                                    {parseFloat(amount) <= currentValue && ` • ${(currentValue - parseFloat(amount)).toLocaleString()} remaining`}
+                                </p>
+                            )}
                         </div>
 
                         <div>
@@ -151,8 +158,16 @@ export default function SellPositionModal({ investmentId, parentId, type, dealNa
                     {amount && price && (
                         <div className="bg-gray-700/30 rounded-xl p-4 space-y-2">
                             <div className="flex justify-between text-sm">
+                                <span className="text-gray-400">{type === 'SYNDICATE' ? 'Tokens to Sell' : 'Amount to Sell'}</span>
+                                <span className="text-white font-medium">{parseFloat(amount).toLocaleString()} {type === 'SYNDICATE' ? 'tokens' : ''}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-gray-400">Price Per {type === 'SYNDICATE' ? 'Token' : 'Unit'}</span>
+                                <span className="text-white font-medium">${parseFloat(price).toLocaleString()}</span>
+                            </div>
+                            <div className="border-t border-gray-600/50 my-2 pt-2 flex justify-between text-sm">
                                 <span className="text-gray-400">Total Sale Value</span>
-                                <span className="text-white font-medium">${(parseFloat(amount) * parseFloat(price)).toLocaleString()}</span>
+                                <span className="text-white font-bold">${(parseFloat(amount) * parseFloat(price)).toLocaleString()}</span>
                             </div>
                             <div className="flex justify-between text-sm">
                                 <span className="text-gray-400">Estimated Fees (1%)</span>
