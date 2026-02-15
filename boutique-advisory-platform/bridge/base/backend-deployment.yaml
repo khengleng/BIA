@@ -38,15 +38,21 @@ spec:
                     - name: INITIAL_ADMIN_PASSWORD
                       value: "BIA_Local_Admin_123!"
                     - name: JWT_REFRESH_SECRET
-                      value: "local-dev-refresh-secret-change-in-production"
+                      value: "dev-refresh-secret"
                     - name: JWT_SECRET
-                      value: "local-dev-jwt-secret-change-in-production-32chars"
+                      value: "dev-jwt-secret-at-least-32-chars-long"
                     - name: NODE_ENV
                       value: "production"
                     - name: PORT
                       value: "3001"
                     - name: SESSION_SECRET
-                      value: "local-dev-session-secret-change-in-production"
+                      value: "dev-session-secret"
+                    - name: COOKIE_SECRET
+                      value: "dev-cookie-secret"
+                    - name: CSRF_SECRET
+                      value: "dev-csrf-secret"
+                    - name: ENCRYPTION_KEY
+                      value: "dev-encryption-key-32-chars-long"
                   livenessProbe:
                     exec:
                         command: ['wget -qO- http://localhost:3001/health']

@@ -40,12 +40,15 @@ services:
       NODE_ENV: production
       PORT: 3001
       DATABASE_URL: postgresql://bia_user:bia_secret_password@postgres:5432/bia_development?schema=public
-      JWT_SECRET: local-dev-jwt-secret-change-in-production-32chars
-      JWT_REFRESH_SECRET: local-dev-refresh-secret-change-in-production
-      SESSION_SECRET: local-dev-session-secret-change-in-production
-      CORS_ORIGIN: http://localhost:3002
-      FRONTEND_URL: http://localhost:3002
-      INITIAL_ADMIN_PASSWORD: "BIA_Local_Admin_123!"
+      JWT_SECRET: ${JWT_SECRET:-local-dev-secret-at-least-32-chars-long}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-local-dev-refresh-secret}
+      SESSION_SECRET: ${SESSION_SECRET:-local-dev-session-secret}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3002}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3002}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-BIA_Local_Admin_123!}
+      COOKIE_SECRET: ${COOKIE_SECRET:-local-dev-cookie-secret}
+      CSRF_SECRET: ${CSRF_SECRET:-local-dev-csrf-secret}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-local-dev-encryption-key-32-chars}
     ports:
       - "3003:3001"
     networks:

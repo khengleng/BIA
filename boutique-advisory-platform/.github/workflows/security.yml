@@ -39,9 +39,6 @@ jobs:
     - name: Start Backend in Background
       run: |
         cd backend
-        # Use a dummy DATABASE_URL for header checks if needed, but health check might fail
-        # We just need the server to be UP enough to respond with headers
-        # Use in-memory fallback if possible or a mock DB
         export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/postgres"
         export JWT_SECRET="ci-test-secret-at-least-32-characters-long"
         export ENCRYPTION_KEY="ci-test-encryption-key-at-least-32-chars"
@@ -49,12 +46,22 @@ jobs:
         export CSRF_SECRET="ci-test-csrf-secret"
         export NODE_ENV=development
         npm run dev &
-        sleep 10 # Wait for server to start
+        
+        # Wait for server to be healthy
+        echo "Waiting for backend to be healthy..."
+        for i in {1..30}; do
+          if curl -s http://localhost:3001/health | grep -q "ok"; then
+            echo "Backend is up!"
+            break
+          fi
+          echo "Waiting..."
+          sleep 1
+        done
 
     - name: Check Security Headers
       run: |
         cd backend
-        npm run security:check http://localhost:3000
+        npm run security:check http://localhost:3001
 
     - name: Run Unit Tests
       run: |
