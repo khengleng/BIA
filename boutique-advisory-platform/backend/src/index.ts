@@ -217,14 +217,8 @@ app.use((req, res, next) => {
       const allowedOrigins = [frontendUrl, frontendUrl.replace(/\/$/, '')];
 
       if (!origin) {
-        if (isProduction) {
-          // Allow no-origin calls only for health and CSRF token endpoints
-          if (req.path === '/health' || req.path === '/api/csrf-token') {
-            return callback(null, true);
-          }
-          console.warn(`Blocked by CORS: Request with no origin rejected in production.`);
-          return callback(new Error('Not allowed by CORS: Origin required'), false);
-        }
+        // Requests without an Origin header can be legitimate (same-origin navigations,
+        // server-to-server calls, health checks). CORS only needs to gate explicit cross-origin.
         return callback(null, true);
       }
 

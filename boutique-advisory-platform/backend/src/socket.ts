@@ -27,9 +27,10 @@ export function initSocket(server: HttpServer) {
     io = new Server(server, {
         cors: {
             origin: (origin, callback) => {
-                // Allow requests with no origin only in development
+                // Requests without an Origin header can still be valid for non-browser
+                // clients and certain same-origin/proxy scenarios.
                 if (!origin) {
-                    return isProduction ? callback(new Error('Origin required'), false) : callback(null, true);
+                    return callback(null, true);
                 }
 
                 if (allowedOrigins.includes(origin)) {
