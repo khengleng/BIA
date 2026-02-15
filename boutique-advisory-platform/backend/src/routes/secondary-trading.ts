@@ -147,13 +147,23 @@ router.post('/listings', authorize('secondary_trading.create_listing'), async (r
             return;
         }
 
-        // Verify the deal investment exists
+        // Verify the deal investment exists and deal is closed
         const dealInvestor = await prisma.dealInvestor.findUnique({
-            where: { id: dealInvestorId }
+            where: { id: dealInvestorId },
+            include: { deal: true }
         });
 
         if (!dealInvestor || dealInvestor.investorId !== investor.id) {
             res.status(400).json({ error: 'Invalid deal investment' });
+            return;
+        }
+
+        // Enforce: Deal must be CLOSED or FUNDED to trade secondary shares
+        const allowedStatuses = ['CLOSED', 'FUNDED'];
+        if (!allowedStatuses.includes(dealInvestor.deal.status)) {
+            res.status(400).json({
+                error: `Secondary trading is not allowed. Deal status is ${dealInvestor.deal.status}, but must be CLOSED or FUNDED.`
+            });
             return;
         }
 
