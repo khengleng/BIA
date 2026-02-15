@@ -5,7 +5,7 @@ import { useTranslations } from '../../../hooks/useTranslations'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, Mail, Lock, Building2 } from 'lucide-react'
-import { API_URL } from '../../../lib/api'
+import { apiRequest } from '../../../lib/api'
 
 export default function LoginPage() {
   const { t } = useTranslations()
@@ -34,9 +34,8 @@ export default function LoginPage() {
     setResendStatus('')
 
     try {
-      const response = await fetch(`${API_URL}/api/auth/resend-verification`, {
+      const response = await apiRequest('/api/auth/resend-verification', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: formData.email })
       })
 
@@ -90,9 +89,8 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      const response = await fetch(`${API_URL}/api/auth/verify-2fa`, {
+      const response = await apiRequest('/api/auth/verify-2fa', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ tempToken, code: twoFactorCode })
       })
@@ -121,11 +119,8 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      const response = await fetch(`${API_URL}/api/auth/login`, {
+      const response = await apiRequest('/api/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         credentials: 'include',
         body: JSON.stringify({
           email: formData.email,

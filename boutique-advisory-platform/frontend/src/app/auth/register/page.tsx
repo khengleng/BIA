@@ -1,5 +1,5 @@
 'use client'
-import { API_URL } from '@/lib/api'
+import { apiRequest } from '@/lib/api'
 
 import { useState } from 'react'
 import { useTranslations } from '../../../hooks/useTranslations'
@@ -90,11 +90,8 @@ export default function RegisterPage() {
     setIsLoading(true)
 
     try {
-      const response = await fetch(`${API_URL}/api/auth/register`, {
+      const response = await apiRequest('/api/auth/register', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         credentials: 'include',
         body: JSON.stringify({
           firstName: formData.firstName,
