@@ -569,7 +569,7 @@ export default function SecondaryTradingPage() {
                                             {isInvestor ? 'Buy Shares' : 'View Only'}
                                         </button>
                                     )}
-                                    {(listing.isOwner || listing.sellerId === currentInvestorId) && (
+                                    {(listing.isOwner || listing.sellerId === currentInvestorId) && listing.status === 'ACTIVE' && (
                                         <button
                                             onClick={() => handleCancelListing(listing.id)}
                                             className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg text-sm font-medium transition-colors border border-red-500/30"
@@ -678,7 +678,7 @@ export default function SecondaryTradingPage() {
                                                 {isInvestor ? 'Buy Tokens' : 'View Only'}
                                             </button>
                                         )}
-                                        {(listing.isOwner || listing.sellerId === currentInvestorId) && (
+                                        {(listing.isOwner || listing.sellerId === currentInvestorId) && listing.status === 'ACTIVE' && (
                                             <button
                                                 onClick={() => handleCancelTokenListing(listing.id)}
                                                 className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg text-sm font-medium transition-colors border border-red-500/30"
