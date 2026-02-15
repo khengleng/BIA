@@ -67,6 +67,15 @@ interface Trade {
     status: string
     executedAt: string | null
     createdAt: string
+    listing: {
+        dealInvestor: {
+            deal: {
+                id: string
+                title: string
+                sme: { id: string; name: string }
+            }
+        }
+    }
 }
 
 interface MarketStats {
@@ -698,14 +707,36 @@ export default function SecondaryTradingPage() {
                             Purchases
                         </h3>
 
-                        {(myTrades?.purchases?.length || 0) > 0 ? (
+                        {(myTrades?.purchases?.length > 0 || myTokenTrades?.purchases?.length > 0) ? (
                             <div className="space-y-3">
-                                {myTrades.purchases.map((trade) => (
-                                    <div key={trade.id} className="bg-gray-700/50 rounded-lg p-4">
+                                {/* Deal Share Purchases */}
+                                {myTrades?.purchases?.map((trade) => (
+                                    <div key={`share-${trade.id}`} className="bg-gray-700/50 rounded-lg p-4">
                                         <div className="flex justify-between items-start mb-2">
                                             <div>
-                                                <p className="text-white font-medium">{trade.shares} shares</p>
-                                                <p className="text-sm text-gray-400">@ ${(trade.pricePerShare || 0).toFixed(2)}</p>
+                                                <p className="text-white font-medium">{trade.listing.dealInvestor?.deal.sme.name}</p>
+                                                <p className="text-sm text-gray-400">{trade.shares} shares @ ${(trade.pricePerShare || 0).toFixed(2)}</p>
+                                            </div>
+                                            {getStatusBadge(trade.status)}
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-400">Total:</span>
+                                            <span className="text-green-400 font-semibold">${(trade.totalAmount || 0).toFixed(2)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-xs text-gray-500 mt-2">
+                                            <span>From: {trade.seller.name}</span>
+                                            <span>{trade.executedAt ? new Date(trade.executedAt).toLocaleDateString() : 'Pending'}</span>
+                                        </div>
+                                    </div>
+                                ))}
+
+                                {/* Syndicate Token Purchases */}
+                                {myTokenTrades?.purchases?.map((trade) => (
+                                    <div key={`token-${trade.id}`} className="bg-gray-700/50 rounded-lg p-4 border-l-2 border-cyan-500">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div>
+                                                <p className="text-white font-medium">{trade.listing.syndicate.name}</p>
+                                                <p className="text-sm text-gray-400">{trade.tokens.toLocaleString()} {trade.listing.syndicate.tokenSymbol} @ ${(trade.pricePerToken || 0).toFixed(2)}</p>
                                             </div>
                                             {getStatusBadge(trade.status)}
                                         </div>
@@ -734,20 +765,42 @@ export default function SecondaryTradingPage() {
                             Sales
                         </h3>
 
-                        {(myTrades?.sales?.length || 0) > 0 ? (
+                        {(myTrades?.sales?.length > 0 || myTokenTrades?.sales?.length > 0) ? (
                             <div className="space-y-3">
-                                {myTrades.sales.map((trade) => (
-                                    <div key={trade.id} className="bg-gray-700/50 rounded-lg p-4">
+                                {/* Deal Share Sales */}
+                                {myTrades?.sales?.map((trade) => (
+                                    <div key={`share-${trade.id}`} className="bg-gray-700/50 rounded-lg p-4">
                                         <div className="flex justify-between items-start mb-2">
                                             <div>
-                                                <p className="text-white font-medium">{trade.shares} shares</p>
-                                                <p className="text-sm text-gray-400">@ ${(trade.pricePerShare || 0).toFixed(2)}</p>
+                                                <p className="text-white font-medium">{trade.listing.dealInvestor?.deal.sme.name}</p>
+                                                <p className="text-sm text-gray-400">{trade.shares} shares @ ${(trade.pricePerShare || 0).toFixed(2)}</p>
                                             </div>
                                             {getStatusBadge(trade.status)}
                                         </div>
                                         <div className="flex justify-between text-sm">
                                             <span className="text-gray-400">Net:</span>
                                             <span className="text-blue-400 font-semibold">${(trade.netAmount || 0).toFixed(2)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-xs text-gray-500 mt-2">
+                                            <span>To: {trade.buyer.name}</span>
+                                            <span>{trade.executedAt ? new Date(trade.executedAt).toLocaleDateString() : 'Pending'}</span>
+                                        </div>
+                                    </div>
+                                ))}
+
+                                {/* Syndicate Token Sales */}
+                                {myTokenTrades?.sales?.map((trade) => (
+                                    <div key={`token-${trade.id}`} className="bg-gray-700/50 rounded-lg p-4 border-l-2 border-cyan-500">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div>
+                                                <p className="text-white font-medium">{trade.listing.syndicate.name}</p>
+                                                <p className="text-sm text-gray-400">{trade.tokens.toLocaleString()} {trade.listing.syndicate.tokenSymbol} @ ${(trade.pricePerToken || 0).toFixed(2)}</p>
+                                            </div>
+                                            {getStatusBadge(trade.status)}
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-400">Total:</span>
+                                            <span className="text-blue-400 font-semibold">${(trade.totalAmount || 0).toFixed(2)}</span>
                                         </div>
                                         <div className="flex justify-between text-xs text-gray-500 mt-2">
                                             <span>To: {trade.buyer.name}</span>
