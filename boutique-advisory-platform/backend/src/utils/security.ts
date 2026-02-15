@@ -309,13 +309,9 @@ export function getSecurityHeaders(): Record<string, string> {
 // DATA ENCRYPTION
 // ============================================
 
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'dev-fallback-key-must-be-very-long-and-secure';
-
-if (!process.env.ENCRYPTION_KEY) {
-    if (process.env.NODE_ENV === 'production') {
-        throw new Error('CRITICAL: ENCRYPTION_KEY environment variable is NOT SET in production!');
-    }
-    console.warn('WARNING: ENCRYPTION_KEY is not set. Using unsafe development fallback.');
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
+if (!ENCRYPTION_KEY) {
+    throw new Error('CRITICAL: ENCRYPTION_KEY environment variable is NOT SET!');
 }
 
 /**
