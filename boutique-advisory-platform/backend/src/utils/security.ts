@@ -212,33 +212,39 @@ export function sanitizeEmail(email: string): string | null {
 // RATE LIMITING HELPERS
 // ============================================
 
-const failedAttempts = new Map<string, { count: number; lockedUntil?: Date }>();
+import redis from '../redis';
 
 /**
- * Check if an identifier (IP, email) is locked out
+ * Check if an identifier (IP, email) is locked out (shared via Redis)
  */
-export function isLockedOut(identifier: string): boolean {
-    const record = failedAttempts.get(identifier);
-    if (!record) return false;
+export async function isLockedOut(identifier: string): Promise<boolean> {
+    const key = `bia:lockout:${identifier}`;
+    const recordStr = await redis.get(key);
+    if (!recordStr) return false;
 
-    if (record.lockedUntil && record.lockedUntil > new Date()) {
+    const record = JSON.parse(recordStr);
+
+    if (record.lockedUntil && new Date(record.lockedUntil) > new Date()) {
         return true;
     }
 
-    if (record.lockedUntil && record.lockedUntil <= new Date()) {
-        failedAttempts.delete(identifier);
+    if (record.lockedUntil && new Date(record.lockedUntil) <= new Date()) {
+        await redis.del(key);
     }
 
     return false;
 }
 
 /**
- * Record a failed authentication attempt
+ * Record a failed authentication attempt (shared via Redis)
  */
-export function recordFailedAttempt(identifier: string): void {
-    if (process.env.NODE_ENV === 'development') return; // Disable lockout in dev
+export async function recordFailedAttempt(identifier: string): Promise<void> {
+    if (process.env.NODE_ENV === 'development') return;
 
-    const record = failedAttempts.get(identifier) || { count: 0 };
+    const key = `bia:lockout:${identifier}`;
+    const recordStr = await redis.get(key);
+    const record = recordStr ? JSON.parse(recordStr) : { count: 0 };
+
     record.count++;
 
     // Lock out after 5 failed attempts
@@ -246,14 +252,16 @@ export function recordFailedAttempt(identifier: string): void {
         record.lockedUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 minute lockout
     }
 
-    failedAttempts.set(identifier, record);
+    // Store with 30m TTL to cleanup automatically
+    await redis.set(key, JSON.stringify(record), 'EX', 1800);
 }
 
 /**
  * Clear failed attempts after successful login
  */
-export function clearFailedAttempts(identifier: string): void {
-    failedAttempts.delete(identifier);
+export async function clearFailedAttempts(identifier: string): Promise<void> {
+    const key = `bia:lockout:${identifier}`;
+    await redis.del(key);
 }
 
 // ============================================
@@ -274,4 +282,55 @@ export function getSecurityHeaders(): Record<string, string> {
         'Pragma': 'no-cache',
         'Expires': '0'
     };
+}
+
+// ============================================
+// DATA ENCRYPTION
+// ============================================
+
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'default-fallback-key-must-be-very-long-and-secure';
+
+/**
+ * Encrypt sensitive data using AES-256-GCM
+ */
+export function encryptData(text: string): string {
+    const iv = crypto.randomBytes(16);
+    const salt = 'bia-platform-salt';
+    const key = crypto.scryptSync(ENCRYPTION_KEY, salt, 32);
+    const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+
+    let encrypted = cipher.update(text, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+    const authTag = cipher.getAuthTag().toString('hex');
+
+    return `${iv.toString('hex')}:${authTag}:${encrypted}`;
+}
+
+/**
+ * Decrypt sensitive data
+ */
+export function decryptData(encryptedText: string): string {
+    try {
+        const parts = encryptedText.split(':');
+        // Handle unencrypted legacy secrets gracefully? No, assume migration or fail safe.
+        if (parts.length !== 3) throw new Error('Invalid encryption format');
+
+        const [ivHex, authTagHex, encrypted] = parts;
+
+        const iv = Buffer.from(ivHex, 'hex');
+        const authTag = Buffer.from(authTagHex, 'hex');
+        const salt = 'bia-platform-salt';
+        const key = crypto.scryptSync(ENCRYPTION_KEY, salt, 32);
+
+        const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+        decipher.setAuthTag(authTag);
+
+        let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+        decrypted += decipher.final('utf8');
+
+        return decrypted;
+    } catch (error) {
+        console.error('Decryption failed:', error);
+        throw new Error('Decryption failed');
+    }
 }

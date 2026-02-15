@@ -1,13 +1,7 @@
-import { Router, Request, Response, CookieOptions } from 'express';
+import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 
-const COOKIE_OPTIONS: CookieOptions = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax', // Lax for local dev ease if needed, strict for prod
-  path: '/',
-  maxAge: 24 * 60 * 60 * 1000 // 24 hours
-};
+import { COOKIE_OPTIONS, issueTokensAndSetCookies } from '../utils/auth-utils';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../database';
 import {
@@ -18,7 +12,9 @@ import {
   isLockedOut,
   recordFailedAttempt,
   clearFailedAttempts,
-  sanitizeEmail
+  sanitizeEmail,
+  encryptData,
+  decryptData
 } from '../utils/security';
 import { sendWelcomeEmail, sendPasswordResetEmail, sendVerificationEmail } from '../utils/email';
 import { generateMfaSecret, generateQrCode, verifyMfaToken, generateBackupCodes } from '../utils/mfa';
@@ -260,7 +256,7 @@ router.post('/resend-verification', async (req: Request, res: Response) => {
     }
 
     // Rate limiting
-    if (isLockedOut(`resend_${sanitizedEmail}`)) {
+    if (await isLockedOut(`resend_${sanitizedEmail}`)) {
       return res.status(429).json({ error: 'Too many requests. Please try again later.' });
     }
 
@@ -295,7 +291,7 @@ router.post('/resend-verification', async (req: Request, res: Response) => {
       .catch(error => console.error('Failed to send verification email:', error));
 
     // Record attempt for rate limiting
-    recordFailedAttempt(`resend_${sanitizedEmail}`);
+    await recordFailedAttempt(`resend_${sanitizedEmail}`);
 
     return res.json({ message: 'Verification email sent successfully.' });
 
@@ -326,7 +322,9 @@ router.post('/login', async (req: Request, res: Response) => {
     }
 
     // SECURITY: Check for account lockout (brute force protection)
-    if (isLockedOut(sanitizedEmail) || isLockedOut(clientIp)) {
+    const emailLocked = await isLockedOut(sanitizedEmail);
+    const ipLocked = await isLockedOut(clientIp);
+    if (emailLocked || ipLocked) {
       await logAuditEvent({
         userId: 'unknown',
         action: 'LOGIN_BLOCKED',
@@ -348,8 +346,8 @@ router.post('/login', async (req: Request, res: Response) => {
 
     if (!user) {
       // SECURITY: Record failed attempt but don't reveal if user exists
-      recordFailedAttempt(sanitizedEmail);
-      recordFailedAttempt(clientIp);
+      await recordFailedAttempt(sanitizedEmail);
+      await recordFailedAttempt(clientIp);
       await logAuditEvent({
         userId: 'unknown',
         action: 'LOGIN_FAILED',
@@ -368,8 +366,8 @@ router.post('/login', async (req: Request, res: Response) => {
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
       // SECURITY: Record failed attempt
-      recordFailedAttempt(sanitizedEmail);
-      recordFailedAttempt(clientIp);
+      await recordFailedAttempt(sanitizedEmail);
+      await recordFailedAttempt(clientIp);
       await logAuditEvent({
         userId: user.id,
         action: 'LOGIN_FAILED',
@@ -419,8 +417,8 @@ router.post('/login', async (req: Request, res: Response) => {
     }
 
     // SECURITY: Clear failed attempts on successful login
-    clearFailedAttempts(sanitizedEmail);
-    clearFailedAttempts(clientIp);
+    await clearFailedAttempts(sanitizedEmail);
+    await clearFailedAttempts(clientIp);
 
     // Generate JWT token
     if (!process.env.JWT_SECRET) {
@@ -449,16 +447,8 @@ router.post('/login', async (req: Request, res: Response) => {
       });
     }
 
-    const token = jwt.sign(
-      {
-        userId: user.id,
-        email: user.email,
-        role: user.role,
-        tenantId: user.tenantId
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
-    );
+    // Issue Access & Refresh tokens
+    await issueTokensAndSetCookies(res, user, req);
 
     // SECURITY: Log successful login
     await logAuditEvent({
@@ -469,9 +459,6 @@ router.post('/login', async (req: Request, res: Response) => {
       ipAddress: clientIp,
       success: true
     });
-
-    // Set secure cookie
-    res.cookie('token', token, COOKIE_OPTIONS);
 
     return res.status(200).json({
       message: 'Login successful',
@@ -498,9 +485,83 @@ router.post('/login', async (req: Request, res: Response) => {
   }
 });
 
+// Refresh Token Endpoint
+router.post('/refresh', async (req: Request, res: Response) => {
+  try {
+    const refreshToken = req.cookies['refreshToken'];
+    if (!refreshToken) {
+      return res.status(401).json({ error: 'No refresh token provided' });
+    }
+
+    const tokenHash = hashToken(refreshToken);
+
+    const storedToken = await prisma.refreshToken.findUnique({
+      where: { token: tokenHash },
+      include: { user: true }
+    });
+
+    if (!storedToken) {
+      // Token might have been rotated and deleted?
+      return res.status(401).json({ error: 'Invalid refresh token' });
+    }
+
+    if (storedToken.revoked || (storedToken.replacedByToken)) {
+      // Reuse detection: Potentially revoke all tokens for this user
+      // For now, just deny.
+      await logAuditEvent({
+        userId: storedToken.userId,
+        action: 'TOKEN_REUSE_ATTEMPT',
+        resource: 'auth',
+        ipAddress: req.ip || req.socket.remoteAddress,
+        success: false
+      });
+      return res.status(401).json({ error: 'Invalid refresh token (reused)' });
+    }
+
+    if (new Date() > storedToken.expiresAt) {
+      // Cleanup expired
+      await prisma.refreshToken.delete({ where: { id: storedToken.id } });
+      return res.status(401).json({ error: 'Refresh token expired' });
+    }
+
+    // Valid token -> Rotate
+    // Revoke old token (or delete) using db transaction if strict
+    // We will just delete it to keep table small, or mark as replaced if keeping history
+    // "Rotation" usually means new token replaces old.
+
+    // Deleting old token prevents reuse (simple rotation)
+    await prisma.refreshToken.delete({ where: { id: storedToken.id } });
+
+    // Issue new tokens
+    await issueTokensAndSetCookies(res, storedToken.user, req);
+
+    return res.json({ message: 'Token refreshed' });
+
+  } catch (error) {
+    console.error('Refresh token error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Logout endpoint
-router.post('/logout', (req: Request, res: Response) => {
+router.post('/logout', async (req: Request, res: Response) => {
+  const refreshToken = req.cookies['refreshToken'];
+  if (refreshToken) {
+    try {
+      const tokenHash = hashToken(refreshToken);
+      // Delete from DB to revoke
+      await prisma.refreshToken.deleteMany({ // deleteMany ignores lookup error
+        where: { token: tokenHash }
+      });
+    } catch (e) {
+      console.error('Error revoking token on logout:', e);
+    }
+  }
+
   res.clearCookie('token', { ...COOKIE_OPTIONS, maxAge: 0 });
+  res.clearCookie('accessToken', { ...COOKIE_OPTIONS, maxAge: 0 });
+  res.clearCookie('refreshToken', { ...COOKIE_OPTIONS, path: '/api', maxAge: 0 });
+
   res.status(200).json({ message: 'Logged out successfully' });
 });
 
@@ -590,7 +651,7 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
     }
 
     // SECURITY: Rate limit password reset requests
-    if (isLockedOut(`reset_${sanitizedEmail}`)) {
+    if (await isLockedOut(`reset_${sanitizedEmail}`)) {
       return res.status(429).json({
         error: 'Too many password reset requests. Please try again later.'
       });
@@ -734,6 +795,11 @@ router.post('/reset-password', async (req: Request, res: Response) => {
       }
     });
 
+    // SECURITY: Revoke all refresh tokens on password reset
+    await prisma.refreshToken.deleteMany({
+      where: { userId: user.id }
+    });
+
     await logAuditEvent({
       userId: user.id,
       action: 'PASSWORD_RESET_SUCCESS',
@@ -744,7 +810,7 @@ router.post('/reset-password', async (req: Request, res: Response) => {
     });
 
     // Clear any failed login attempts for this user
-    clearFailedAttempts(user.email);
+    await clearFailedAttempts(user.email);
 
     return res.json({
       message: 'Password has been reset successfully.',
@@ -778,36 +844,12 @@ router.post('/reset-password', async (req: Request, res: Response) => {
 });
 
 // Change password endpoint (for authenticated users)
-router.post('/change-password', async (req: Request, res: Response) => {
+router.post('/change-password', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
   const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
 
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
-
-    const token = authHeader.substring(7);
-    if (!process.env.JWT_SECRET) {
-      return res.status(500).json({ error: 'Server configuration error' });
-    }
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET) as any;
     const { currentPassword, newPassword } = req.body;
-
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ error: 'Current password and new password are required' });
-    }
-
-    // SECURITY: Validate new password strength
-    const passwordError = validatePasswordStrength(newPassword);
-    if (passwordError) {
-      return res.status(400).json({ error: passwordError });
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId }
-    });
+    const user = req.user;
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -832,6 +874,11 @@ router.post('/change-password', async (req: Request, res: Response) => {
     await prisma.user.update({
       where: { id: user.id },
       data: { password: hashedPassword }
+    });
+
+    // SECURITY: Revoke all refresh tokens on password change
+    await prisma.refreshToken.deleteMany({
+      where: { userId: user.id }
     });
 
     await logAuditEvent({
@@ -881,8 +928,17 @@ router.post('/verify-2fa', async (req: Request, res: Response) => {
       return res.status(400).json({ error: '2FA not enabled or configured' });
     }
 
-    // Verify TOTP or Backup Code
-    let verified = verifyMfaToken(user.twoFactorSecret, code);
+    let secret = user.twoFactorSecret;
+    try {
+      if (user.twoFactorSecret.includes(':')) {
+        secret = decryptData(user.twoFactorSecret);
+      }
+    } catch (e) {
+      // Fallback for legacy plaintext secrets or if decryption fails
+      console.warn('Using fallback plaintext 2FA secret for user', user.id);
+    }
+
+    let verified = verifyMfaToken(secret, code);
     let usedBackupCode = false;
 
     if (!verified && user.twoFactorBackupCodes && user.twoFactorBackupCodes.length > 0) {
@@ -926,16 +982,8 @@ router.post('/verify-2fa', async (req: Request, res: Response) => {
     }
 
     // Generate real access token
-    const token = jwt.sign(
-      {
-        userId: user.id,
-        email: user.email,
-        role: user.role,
-        tenantId: user.tenantId
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
-    );
+    // Issue Access & Refresh tokens
+    await issueTokensAndSetCookies(res, user, req);
 
     await logAuditEvent({
       userId: user.id,
@@ -945,9 +993,6 @@ router.post('/verify-2fa', async (req: Request, res: Response) => {
       ipAddress: clientIp,
       success: true
     });
-
-    // Set secure cookie
-    res.cookie('token', token, COOKIE_OPTIONS);
 
     return res.json({
       message: 'Login successful',
@@ -1018,7 +1063,7 @@ router.post('/2fa/activate', authenticateToken, async (req: AuthenticatedRequest
       where: { id: user.id },
       data: {
         twoFactorEnabled: true,
-        twoFactorSecret: secret, // Encrypting secret is recommended for production
+        twoFactorSecret: encryptData(secret),
         twoFactorBackupCodes: hashedBackupCodes
       }
     });
@@ -1279,20 +1324,8 @@ router.post('/switch-role', async (req: Request, res: Response) => {
       data: { role: targetRole as any }
     });
 
-    // Generate new token
-    const newToken = jwt.sign(
-      {
-        userId: user.id,
-        email: user.email,
-        role: targetRole,
-        tenantId: user.tenantId
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-
-    // Set secure cookie
-    res.cookie('token', newToken, COOKIE_OPTIONS);
+    // Issue Access & Refresh tokens
+    await issueTokensAndSetCookies(res, updatedUser, req);
 
     return res.json({
       message: `Successfully switched to ${targetRole}`,

@@ -9,12 +9,10 @@ const getAuthToken = (): string | null => {
     return localStorage.getItem('token');
 };
 
-// Helper function to get auth headers
+// Helper function to get auth headers (now just for content-type)
 const getAuthHeaders = (): HeadersInit => {
-    const token = getAuthToken();
     return {
         'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
 };
 
@@ -26,6 +24,7 @@ async function apiRequest<T>(
     const url = `${API_URL}${endpoint}`;
     const config: RequestInit = {
         ...options,
+        credentials: 'include', // SECURITY: Send HttpOnly cookies
         headers: {
             ...getAuthHeaders(),
             ...options.headers,
@@ -130,11 +129,12 @@ export const authAPI = {
         }>('/api/auth/me');
     },
 
-    logout() {
+    async logout() {
         if (typeof window !== 'undefined') {
-            localStorage.removeItem('token');
             localStorage.removeItem('user');
         }
+        // Call backend logout to revoke refresh token and clear cookies
+        await apiRequest('/api/auth/logout', { method: 'POST' }).catch(() => { });
     },
 };
 
@@ -242,12 +242,9 @@ export const documentAPI = {
         formData.append('file', file);
         if (dealId) formData.append('dealId', dealId);
 
-        const token = getAuthToken();
         const response = await fetch(`${API_URL}/api/documents/upload`, {
             method: 'POST',
-            headers: {
-                ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
+            credentials: 'include',
             body: formData,
         });
 

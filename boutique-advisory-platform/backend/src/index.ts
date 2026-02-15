@@ -11,6 +11,8 @@ import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import path from 'path';
 import rateLimit from 'express-rate-limit';
+import RedisStore from 'rate-limit-redis';
+import redis from './redis';
 import cookieParser from 'cookie-parser';
 import { CookieOptions } from 'express';
 import { createServer } from 'http';
@@ -177,7 +179,7 @@ app.use(express.json({
   }
 }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use(cookieParser());
+app.use(cookieParser(process.env.COOKIE_SECRET || 'dev-cookie-secret-change-me'));
 
 // CORS configuration - strict in production
 app.use(cors({
@@ -232,35 +234,62 @@ app.use(xssMiddleware);
 // ============================================
 
 
-// Rate limiting - stricter in production
+// Rate limiting - shared via Redis for multi-instance support
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: isProduction ? 1000 : 1000, // Increased for production stability
+  max: isProduction ? 1000 : 1000,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests, please try again later.' },
-  skip: (req) => req.path === '/health', // Don't rate limit health checks
+  skip: (req) => req.path === '/health',
+  store: new RedisStore({
+    sendCommand: ((...args: string[]) => redis.call(args[0], ...args.slice(1))) as any,
+    prefix: 'bia:rl:main:',
+  }),
 });
 app.use('/api/', limiter);
 
 // Stricter rate limiting for authentication endpoints (prevent brute force)
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: isProduction ? 100 : 2000, // Increased to prevent lockout during testing
+  windowMs: 15 * 60 * 1000,
+  max: isProduction ? 100 : 2000,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many login attempts, please try again later.' },
-  skipSuccessfulRequests: true, // Don't count successful logins
+  skipSuccessfulRequests: true,
+  store: new RedisStore({
+    sendCommand: ((...args: string[]) => redis.call(args[0], ...args.slice(1))) as any,
+    prefix: 'bia:rl:auth:',
+  }),
 });
 
-// CSRF Token endpoint (Fix #4)
-app.get('/api/csrf-token', (req, res) => {
-  // Generate a simple CSRF token using crypto
-  const crypto = require('crypto');
-  const csrfToken = crypto.randomBytes(32).toString('hex');
-  // In production, you'd want to store this in session/redis
-  // For now, we return a token that frontend can use
+// CSRF Protection Setup
+const { invalidCsrfTokenError, generateToken, doubleCsrfProtection } = doubleCsrf({
+  getSecret: () => process.env.CSRF_SECRET || 'dev-csrf-secret-change-me',
+  cookieName: process.env.NODE_ENV === 'production' ? '__Host-psifi.x-csrf-token' : 'x-csrf-token',
+  cookieOptions: {
+    httpOnly: true,
+    sameSite: 'strict',
+    secure: process.env.NODE_ENV === 'production'
+    // signed: true // Removed to fix type error, handled by cookieParser if secret provided?
+  },
+  size: 64,
+  ignoredMethods: ['GET', 'HEAD', 'OPTIONS'],
+  getCsrfTokenFromRequest: (req: express.Request) => req.headers['x-csrf-token'] as string
+} as any) as any;
+
+// CSRF Token Endpoint
+app.get('/api/csrf-token', (req: express.Request, res: express.Response) => {
+  const csrfToken = generateToken(res, req);
   res.json({ csrfToken });
+});
+
+// Apply CSRF protection to API routes (excluding webhooks and token endpoint)
+app.use('/api', (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (req.path === '/csrf-token' || req.path.startsWith('/webhooks')) {
+    return next();
+  }
+  doubleCsrfProtection(req, res, next);
 });
 
 // Health check with database status

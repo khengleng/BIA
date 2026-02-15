@@ -59,28 +59,10 @@ export async function apiRequest(
     });
 }
 
-// Auth helper
-export function getAuthToken(): string | null {
-    if (typeof window !== 'undefined') {
-        return localStorage.getItem('token');
-    }
-    return null;
-}
-
-// Authorized API request
+// Authorized API request (Legacy wrapper, now just calls apiRequest as cookies are sent automatically)
 export async function authorizedRequest(
     endpoint: string,
     options: RequestInit = {}
 ): Promise<Response> {
-    const token = getAuthToken();
-    const headers = new Headers(options.headers);
-
-    if (token) {
-        headers.set('Authorization', `Bearer ${token}`);
-    }
-
-    return apiRequest(endpoint, {
-        ...options,
-        headers,
-    });
+    return apiRequest(endpoint, options);
 }
