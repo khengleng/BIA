@@ -145,6 +145,24 @@ app.set('trust proxy', 1);
 app.disable('x-powered-by');
 
 // Security Headers with Helmet (stricter in production)
+app.get('/health', async (req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return res.json({
+      status: 'ok',
+      timestamp: new Date(),
+      environment: process.env.NODE_ENV,
+      database: 'connected'
+    });
+  } catch (error) {
+    return res.status(503).json({
+      status: 'degraded',
+      timestamp: new Date(),
+      error: 'Database connection failed'
+    });
+  }
+});
+
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
   crossOriginOpenerPolicy: { policy: "same-origin" },
@@ -197,9 +215,6 @@ app.use(cors({
     const frontendUrl = process.env.FRONTEND_URL || '';
     const allowedOrigins = [frontendUrl, frontendUrl.replace(/\/$/, '')];
 
-    // SECURITY: Strictly control origins in production
-    // Allow requests with no origin only in development (e.g. for testing with curl or Postman)
-    // Mobile apps should set an appropriate Origin header if they use this API.
     if (!origin) {
       if (isProduction) {
         console.warn(`Blocked by CORS: Request with no origin rejected in production.`);
@@ -313,26 +328,8 @@ app.use('/api', (req: express.Request, res: express.Response, next: express.Next
   doubleCsrfProtection(req, res, next);
 });
 
-// Health check with database status
-app.get('/health', async (req, res) => {
-  try {
-    // Quick database connectivity check
-    await prisma.$queryRaw`SELECT 1`;
-    res.json({
-      status: 'ok',
-      timestamp: new Date(),
-      environment: process.env.NODE_ENV,
-      database: 'connected'
-    });
-  } catch (error) {
-    res.status(503).json({
-      status: 'degraded',
-      timestamp: new Date(),
-      environment: process.env.NODE_ENV,
-      database: 'disconnected'
-    });
-  }
-});
+// Health check moved to the top of middleware stack
+
 
 // Authentication endpoints (public but rate limited)
 app.use('/api/auth', authLimiter, authRoutes);
