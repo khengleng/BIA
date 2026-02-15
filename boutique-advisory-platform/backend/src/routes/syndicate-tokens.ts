@@ -132,18 +132,32 @@ router.post('/listings', authorize('secondary_trading.create_listing'), async (r
             console.log('Auto-calculated tokens:', currentTokens);
         }
 
-        console.log('Final currentTokens:', currentTokens);
-        console.log('Comparison:', currentTokens, '<', tokensAvailable, '=', currentTokens < tokensAvailable);
+        // Check existing active listings to prevent double-spending
+        const activeListings = await prisma.syndicateTokenListing.findMany({
+            where: {
+                sellerId: investor.id,
+                syndicateId,
+                status: 'ACTIVE'
+            }
+        });
 
-        if (currentTokens < tokensAvailable) {
-            console.warn(`❌ Insufficient tokens for ${investor.id}: Has ${currentTokens}, tried to list ${tokensAvailable}`);
+        const tokensLockedInListings = activeListings.reduce((sum, l) => sum + l.tokensAvailable, 0);
+
+        console.log('Tokens locked in active listings:', tokensLockedInListings);
+        console.log('Final currentTokens:', currentTokens);
+
+        const availableToSell = currentTokens - tokensLockedInListings;
+
+        if (availableToSell < tokensAvailable) {
+            console.warn(`❌ Insufficient tokens for ${investor.id}: Has ${currentTokens}, Locked ${tokensLockedInListings}, Available ${availableToSell}, tried to list ${tokensAvailable}`);
             res.status(400).json({
-                error: 'Insufficient tokens to list',
+                error: `Insufficient tokens. You have ${currentTokens.toFixed(2)} tokens, but ${tokensLockedInListings.toFixed(2)} are already listed. Available: ${availableToSell.toFixed(2)}`,
                 debug: {
-                    available: currentTokens,
+                    totalTokens: currentTokens,
+                    lockedInListings: tokensLockedInListings,
+                    available: availableToSell,
                     requested: tokensAvailable,
-                    membershipAmount: membership.amount,
-                    pricePerToken: membership.syndicate.pricePerToken
+                    activeListingsCount: activeListings.length
                 }
             });
             return;
