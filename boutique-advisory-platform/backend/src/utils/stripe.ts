@@ -2,12 +2,15 @@ import Stripe from 'stripe';
 
 const stripeSecret = process.env.STRIPE_SECRET_KEY;
 if (!stripeSecret) {
-    throw new Error('STRIPE_SECRET_KEY is required and must be set via environment variables.');
+    console.warn('⚠️  STRIPE_SECRET_KEY is not set. Stripe functionality will be disabled or fallback to mock mode.');
 }
 
-export const stripe = new Stripe(stripeSecret, {
+// Initialize with dummy key if missing to prevent crash during module load
+export const stripe = new Stripe(stripeSecret || 'sk_test_missing_key', {
     apiVersion: '2023-10-16' as any,
 });
+
+const isConfigured = !!process.env.STRIPE_SECRET_KEY && process.env.STRIPE_SECRET_KEY !== 'sk_test_missing_key';
 
 /**
  * KYC & Identity Utilities
@@ -19,6 +22,14 @@ export const kyc = {
      * This creates a link for the user to upload their ID and take a selfie
      */
     async createVerificationSession(userId: string) {
+        if (!isConfigured) {
+            console.log('⚠️  Mock Verification Session created for user:', userId);
+            return {
+                id: 'vs_mock_' + Date.now(),
+                url: 'https://checkout.stripe.com/mock_kyc_session',
+                status: 'requires_input'
+            };
+        }
         try {
             const session = await stripe.identity.verificationSessions.create({
                 type: 'document',
@@ -38,6 +49,9 @@ export const kyc = {
     },
 
     async getVerificationSession(sessionId: string) {
+        if (!isConfigured && sessionId.startsWith('vs_mock_')) {
+            return { id: sessionId, status: 'verified' };
+        }
         return await stripe.identity.verificationSessions.retrieve(sessionId);
     }
 };
@@ -48,16 +62,23 @@ export const kyc = {
 
 export const payments = {
     /**
-     * Create a PaymentIntent for an investment
-     * This "authorizes" the payment, effectively holding it in escrow
+     * Create a Sample/Escrow PaymentIntent
      */
     async createEscrowIntent(amount: number, currency: string = 'usd', metadata: any) {
+        if (!isConfigured) {
+            console.log('⚠️  Mock Escrow Intent created:', { amount, currency, metadata });
+            return {
+                id: 'pi_mock_' + Date.now(),
+                client_secret: 'pi_mock_secret_' + Date.now(),
+                status: 'requires_payment_method'
+            };
+        }
         try {
             const paymentIntent = await stripe.paymentIntents.create({
                 amount: Math.round(amount * 100), // Stripe uses cents
                 currency,
                 payment_method_types: ['card'],
-                capture_method: 'manual', // MANUAL capture = Escrow (auth first, charge later)
+                capture_method: 'manual', // MANUAL capture = Escrow
                 metadata,
             });
             return paymentIntent;
@@ -68,16 +89,22 @@ export const payments = {
     },
 
     /**
-     * Capture the held funds (Release Escrow to SME)
+     * Capture the held funds
      */
     async capturePayment(paymentIntentId: string) {
+        if (!isConfigured && paymentIntentId.startsWith('pi_mock_')) {
+            return { id: paymentIntentId, status: 'succeeded' };
+        }
         return await stripe.paymentIntents.capture(paymentIntentId);
     },
 
     /**
-     * Refund/Release the held funds back to Investor
+     * Refund/Release the held funds
      */
     async cancelPayment(paymentIntentId: string) {
+        if (!isConfigured && paymentIntentId.startsWith('pi_mock_')) {
+            return { id: paymentIntentId, status: 'canceled' };
+        }
         return await stripe.paymentIntents.cancel(paymentIntentId);
     }
 };
@@ -86,9 +113,17 @@ export const payments = {
  * Standard Payment Intent (for services/fees)
  */
 export async function createPaymentIntent(amount: number, currency: string = 'usd') {
+    if (!isConfigured) {
+        return {
+            id: 'pi_mock_' + Date.now(),
+            client_secret: 'pi_mock_secret_' + Date.now(),
+            status: 'requires_payment_method'
+        };
+    }
     return await stripe.paymentIntents.create({
         amount: Math.round(amount * 100),
         currency,
         payment_method_types: ['card'],
     });
 }
+
