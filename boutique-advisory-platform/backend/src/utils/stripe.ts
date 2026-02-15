@@ -1,10 +1,11 @@
 import Stripe from 'stripe';
 
-if (!process.env.STRIPE_SECRET_KEY) {
-    console.warn('STRIPE_SECRET_KEY is not defined in environment variables');
+const stripeSecret = process.env.STRIPE_SECRET_KEY;
+if (!stripeSecret) {
+    throw new Error('STRIPE_SECRET_KEY is required and must be set via environment variables.');
 }
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_dummy', {
+export const stripe = new Stripe(stripeSecret, {
     apiVersion: '2023-10-16' as any,
 });
 
@@ -91,4 +92,3 @@ export async function createPaymentIntent(amount: number, currency: string = 'us
         payment_method_types: ['card'],
     });
 }
-

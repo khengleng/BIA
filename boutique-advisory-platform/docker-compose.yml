@@ -40,15 +40,15 @@ services:
       NODE_ENV: production
       PORT: 3001
       DATABASE_URL: postgresql://bia_user:bia_secret_password@postgres:5432/bia_development?schema=public
-      JWT_SECRET: ${JWT_SECRET:-local-dev-secret-at-least-32-chars-long}
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-local-dev-refresh-secret}
-      SESSION_SECRET: ${SESSION_SECRET:-local-dev-session-secret}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      SESSION_SECRET: ${SESSION_SECRET}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3002}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3002}
-      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-BIA_Local_Admin_123!}
-      COOKIE_SECRET: ${COOKIE_SECRET:-local-dev-cookie-secret}
-      CSRF_SECRET: ${CSRF_SECRET:-local-dev-csrf-secret}
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-local-dev-encryption-key-32-chars}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD}
+      COOKIE_SECRET: ${COOKIE_SECRET}
+      CSRF_SECRET: ${CSRF_SECRET}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
     ports:
       - "3003:3001"
     networks:
@@ -76,7 +76,7 @@ services:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: http://localhost:3003
       NEXTAUTH_URL: http://localhost:3002
-      NEXTAUTH_SECRET: local-dev-nextauth-secret-change-in-production
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
     ports:
       - "3002:3000"
     networks:
