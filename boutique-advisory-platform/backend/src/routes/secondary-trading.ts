@@ -121,6 +121,16 @@ router.post('/listings', authorize('secondary_trading.create_listing'), async (r
             expiresAt
         } = req.body;
 
+        if (!sharesAvailable || sharesAvailable <= 0) {
+            res.status(400).json({ error: 'Shares available must be greater than 0' });
+            return;
+        }
+
+        if (pricePerShare === undefined || pricePerShare < 0) {
+            res.status(400).json({ error: 'Price per share must be non-negative' });
+            return;
+        }
+
         // Only INVESTOR role can create listings
         if (req.user?.role !== 'INVESTOR') {
             res.status(403).json({ error: 'Only investors can create listings' });
