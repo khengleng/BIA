@@ -309,8 +309,8 @@ if (isProduction && !csrfSecret) {
 const { invalidCsrfTokenError, generateCsrfToken, doubleCsrfProtection } = doubleCsrf({
   getSecret: () => csrfSecret || 'dev-csrf-secret',
   getSessionIdentifier: (req: express.Request) => {
-    const ua = req.headers['user-agent'] || 'unknown';
-    return `${req.ip}:${ua}`;
+    // Use user-agent only to avoid instability from proxy/load balancer IP changes
+    return String(req.headers['user-agent'] || 'unknown');
   },
   cookieName: process.env.NODE_ENV === 'production' ? '__Host-psifi.x-csrf-token' : 'x-csrf-token',
   cookieOptions: {
