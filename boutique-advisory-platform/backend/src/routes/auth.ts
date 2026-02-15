@@ -434,14 +434,15 @@ router.post('/login', async (req: Request, res: Response) => {
       return res.status(500).json({ error: 'Server configuration error' });
     }
 
-    // 2FA Check (Enforce for Admin roles)
+    // 2FA Check (optionally enforce for Admin roles)
     const isAdmin = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
-    if (user.twoFactorEnabled || isAdmin) {
-      if (!user.twoFactorEnabled && isAdmin) {
+    const enforceAdmin2fa = process.env.ENFORCE_ADMIN_2FA === 'true';
+    if (user.twoFactorEnabled || (isAdmin && enforceAdmin2fa)) {
+      if (!user.twoFactorEnabled && isAdmin && enforceAdmin2fa) {
         console.warn(`[SECURITY] Admin ${user.email} login attempt without MFA enabled. MFA is ENFORCED for admins.`);
-        // In a real flow, we would redirect to MFA setup. 
-        // For this patch, we'll allow the short-lived 2FA temp token to represent they MUST complete a challenge.
-        // If they don't have a secret, they can't verify anyway, blocking them effectively.
+        return res.status(403).json({
+          error: '2FA is required for admin accounts. Please enable 2FA in settings or contact support.'
+        });
       }
       const tempToken = jwt.sign(
         {
@@ -1505,4 +1506,3 @@ router.delete('/sessions/:id', authenticateToken, async (req: AuthenticatedReque
 });
 
 export default router;
-
