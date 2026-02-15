@@ -50,7 +50,21 @@ router.get('/listings', authorize('secondary_trading.list'), async (req: Authent
             orderBy: { listedAt: 'desc' }
         });
 
-        res.json(listings);
+        // Current user's investor ID
+        let currentInvestorId: string | undefined;
+        if (req.user) {
+            const investor = await prismaReplica.investor.findFirst({
+                where: { userId: req.user.id }
+            });
+            currentInvestorId = investor?.id;
+        }
+
+        const results = listings.map(l => ({
+            ...l,
+            isOwner: currentInvestorId ? l.sellerId === currentInvestorId : false
+        }));
+
+        res.json(results);
     } catch (error) {
         console.error('Error fetching syndicate token listings:', error);
         res.status(500).json({ error: 'Failed to fetch listings' });

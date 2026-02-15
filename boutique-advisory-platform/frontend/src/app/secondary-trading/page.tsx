@@ -50,7 +50,9 @@ interface Listing {
     status: string
     listedAt: string
     expiresAt: string
+    isOwner?: boolean
 }
+
 
 interface Trade {
     id: string
@@ -112,6 +114,7 @@ interface SyndicateTokenListing {
     status: string
     listedAt: string
     expiresAt: string | null
+    isOwner?: boolean
 }
 
 interface SyndicateTokenTrade {
@@ -556,7 +559,7 @@ export default function SecondaryTradingPage() {
                                     <div className="text-sm text-gray-400">
                                         Original: ${(listing.originalPricePerShare || 0).toFixed(2)}/share
                                     </div>
-                                    {listing.status === 'ACTIVE' && listing.sellerId !== currentInvestorId && (
+                                    {listing.status === 'ACTIVE' && !listing.isOwner && listing.sellerId !== currentInvestorId && (
                                         <button
                                             onClick={() => handleBuyClick(listing)}
                                             disabled={!isInvestor}
@@ -566,7 +569,7 @@ export default function SecondaryTradingPage() {
                                             {isInvestor ? 'Buy Shares' : 'View Only'}
                                         </button>
                                     )}
-                                    {listing.sellerId === currentInvestorId && (
+                                    {(listing.isOwner || listing.sellerId === currentInvestorId) && (
                                         <button
                                             onClick={() => handleCancelListing(listing.id)}
                                             className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg text-sm font-medium transition-colors border border-red-500/30"
@@ -665,7 +668,7 @@ export default function SecondaryTradingPage() {
                                         <div className="text-sm text-gray-400">
                                             Listed {new Date(listing.listedAt).toLocaleDateString()}
                                         </div>
-                                        {listing.status === 'ACTIVE' && listing.sellerId !== currentInvestorId && (
+                                        {listing.status === 'ACTIVE' && !listing.isOwner && listing.sellerId !== currentInvestorId && (
                                             <button
                                                 onClick={() => handleBuyTokenClick(listing)}
                                                 disabled={!isInvestor}
@@ -675,7 +678,7 @@ export default function SecondaryTradingPage() {
                                                 {isInvestor ? 'Buy Tokens' : 'View Only'}
                                             </button>
                                         )}
-                                        {listing.sellerId === currentInvestorId && (
+                                        {(listing.isOwner || listing.sellerId === currentInvestorId) && (
                                             <button
                                                 onClick={() => handleCancelTokenListing(listing.id)}
                                                 className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg text-sm font-medium transition-colors border border-red-500/30"

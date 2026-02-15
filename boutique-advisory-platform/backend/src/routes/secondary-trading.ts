@@ -51,12 +51,22 @@ router.get('/listings', authorize('secondary_trading.list'), async (req: Authent
             orderBy: { listedAt: 'desc' }
         });
 
+        // Current user's investor ID
+        let currentInvestorId: string | undefined;
+        if (req.user) {
+            const investor = await prismaReplica.investor.findFirst({
+                where: { userId: req.user.id }
+            });
+            currentInvestorId = investor?.id;
+        }
+
         // Map to format that frontend expects
         const formattedListings = listings.map(l => ({
             ...l,
             deal: l.dealInvestor?.deal || { title: 'Unknown Deal', sme: { name: 'N/A' } },
             returnPercentage: 0,
-            originalPricePerShare: 0
+            originalPricePerShare: 0,
+            isOwner: currentInvestorId ? l.sellerId === currentInvestorId : false
         }));
 
         res.json(formattedListings);
