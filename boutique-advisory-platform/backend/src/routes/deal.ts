@@ -35,7 +35,22 @@ router.get('/', authorize('deal.list'), async (req: AuthenticatedRequest, res: R
         return res.json([]);
       }
     } else if (userRole === 'INVESTOR') {
-      query.where.status = 'PUBLISHED';
+      // Check if this investor also owns an SME
+      const mySme = await prisma.sME.findUnique({ where: { userId: userId } });
+
+      if (mySme) {
+        // Investor sees PUBLISHED deals + their own DRAFT/etc deals
+        query.where = {
+          ...query.where,
+          OR: [
+            { status: 'PUBLISHED' },
+            { smeId: mySme.id }
+          ]
+        };
+      } else {
+        // Standard investor only sees PUBLISHED
+        query.where.status = 'PUBLISHED';
+      }
     }
 
     const deals = await prisma.deal.findMany(query);
