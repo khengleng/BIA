@@ -306,7 +306,7 @@ if (isProduction && !csrfSecret) {
 }
 
 // CSRF Protection Setup
-const { invalidCsrfTokenError, generateToken, doubleCsrfProtection } = doubleCsrf({
+const { invalidCsrfTokenError, generateCsrfToken, doubleCsrfProtection } = doubleCsrf({
   getSecret: () => csrfSecret || 'dev-csrf-secret',
   cookieName: process.env.NODE_ENV === 'production' ? '__Host-psifi.x-csrf-token' : 'x-csrf-token',
   cookieOptions: {
@@ -322,7 +322,7 @@ const { invalidCsrfTokenError, generateToken, doubleCsrfProtection } = doubleCsr
 
 // CSRF Token Endpoint
 app.get('/api/csrf-token', (req: express.Request, res: express.Response) => {
-  const csrfToken = generateToken(res, req);
+  const csrfToken = generateCsrfToken(req, res);
   res.json({ csrfToken });
 });
 
