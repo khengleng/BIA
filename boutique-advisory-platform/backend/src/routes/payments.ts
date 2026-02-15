@@ -81,8 +81,11 @@ router.post('/aba/create-transaction', authorize('payment.create'), async (req: 
             abaRequest
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('ABA Create Transaction Error:', error);
+        if (error?.message?.includes('ABA PayWay is not configured')) {
+            return res.status(400).json({ error: error.message });
+        }
         return res.status(500).json({ error: 'Internal server error' });
     }
 });
@@ -188,6 +191,9 @@ router.post('/aba/generate-qr', authorize('payment.create'), async (req: Authent
 
     } catch (error: any) {
         console.error('ABA Generate QR Route Error:', error.message);
+        if (error?.message?.includes('ABA PayWay is not configured')) {
+            return res.status(400).json({ error: error.message });
+        }
         return res.status(500).json({
             error: 'Server Error',
             message: error.message,

@@ -5,6 +5,16 @@ const ABA_PAYWAY_API_URL = process.env.ABA_PAYWAY_API_URL || 'https://checkout-s
 const ABA_PAYWAY_API_KEY = process.env.ABA_PAYWAY_API_KEY || '';
 const ABA_PAYWAY_MERCHANT_ID = process.env.ABA_PAYWAY_MERCHANT_ID || '';
 
+function isAbaConfigured(): boolean {
+    return !!ABA_PAYWAY_API_KEY && !!ABA_PAYWAY_MERCHANT_ID;
+}
+
+function assertAbaConfigured(context: string): void {
+    if (!isAbaConfigured()) {
+        throw new Error(`ABA PayWay is not configured (${context}). Set ABA_PAYWAY_API_KEY and ABA_PAYWAY_MERCHANT_ID.`);
+    }
+}
+
 export interface ABAPayWayRequest {
     req_time: string;
     merchant_id: string;
@@ -75,6 +85,7 @@ export const createAbaTransaction = (
     payment_option: string = 'abapay_khqr',
     return_url: string
 ): ABAPayWayRequest => {
+    assertAbaConfigured('create-transaction');
     const req_time = Math.floor(Date.now() / 1000).toString(); // distinct from some APIs using YYYYMMDDHHmmss
     // ABA Payway Sandbox usually expects YYYYMMDDHHmmss, verify? 
     // Actually, PayWay typically expects a timestamp, often formatted. Let's assume generic string for now or '20230101120000'.
@@ -179,6 +190,7 @@ export const generateAbaQr = async (
     items: any[] = []
 ): Promise<{ qrString: string; qrImage: string; raw: any } | null> => {
     try {
+        assertAbaConfigured('generate-qr');
         const req_time = new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14);
         const amountStr = amount.toFixed(2);
 
@@ -301,7 +313,6 @@ export const generateAbaQr = async (
 export const verifyAbaCallback = (reqBody: any): boolean => {
     // SECURITY: ABA sends back a hash to verify integrity and prevent spoofing.
     // The hash is typically HMAC-SHA512 of concatenated fields.
-    // Standard response hash: tran_id + status
     const { tran_id, status, hash } = reqBody;
 
     if (!hash || !tran_id || status === undefined) {
@@ -309,19 +320,40 @@ export const verifyAbaCallback = (reqBody: any): boolean => {
         return false;
     }
 
-    const dataToSign = tran_id + status;
-    const calculatedHash = crypto
-        .createHmac('sha512', ABA_PAYWAY_API_KEY)
-        .update(dataToSign)
-        .digest('base64');
-
-    const isValid = hash === calculatedHash;
-
-    if (!isValid) {
-        console.error('❌ ABA Callback Hash Mismatch!');
-        console.error('Expected:', calculatedHash);
-        console.error('Received:', hash);
+    if (!isAbaConfigured()) {
+        console.error('❌ ABA Callback verification failed: ABA_PAYWAY_API_KEY or ABA_PAYWAY_MERCHANT_ID not set.');
+        return false;
     }
 
-    return isValid;
+    // Allow strict override via env for exact field order
+    const strictFields = process.env.ABA_CALLBACK_HASH_FIELDS;
+    const candidateFieldSets: string[][] = [];
+
+    if (strictFields && strictFields.trim()) {
+        candidateFieldSets.push(strictFields.split(',').map(s => s.trim()).filter(Boolean));
+    } else {
+        // Fallback to common ABA patterns (order matters)
+        candidateFieldSets.push(['tran_id', 'status']);
+        candidateFieldSets.push(['tran_id', 'status', 'amount']);
+        candidateFieldSets.push(['tran_id', 'status', 'amount', 'apv']);
+        candidateFieldSets.push(['req_time', 'merchant_id', 'tran_id', 'amount', 'status', 'payment_option']);
+    }
+
+    const calculate = (fields: string[]): string | null => {
+        for (const f of fields) {
+            if (reqBody[f] === undefined || reqBody[f] === null) return null;
+        }
+        const dataToSign = fields.map(f => String(reqBody[f])).join('');
+        const hmac = crypto.createHmac('sha512', ABA_PAYWAY_API_KEY);
+        return hmac.update(dataToSign).digest('base64');
+    };
+
+    for (const fields of candidateFieldSets) {
+        const calculatedHash = calculate(fields);
+        if (!calculatedHash) continue;
+        if (hash === calculatedHash) return true;
+    }
+
+    console.error('❌ ABA Callback Hash Mismatch!');
+    return false;
 };
