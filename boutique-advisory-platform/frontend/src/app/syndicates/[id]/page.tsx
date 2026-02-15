@@ -370,8 +370,8 @@ export default function SyndicateDetailsPage() {
                             </div>
                         )}
 
-                        {/* Management Actions (Lead/Admin Only) */}
-                        {(isLead || isAdmin) && (
+                        {/* Management Actions (Lead/Admin Only) - Only show if NOT already tokenized */}
+                        {(isLead || isAdmin) && !syndicate.isTokenized && (
                             <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
                                 <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                                     <ShieldCheck className="w-5 h-5 text-purple-400" />
