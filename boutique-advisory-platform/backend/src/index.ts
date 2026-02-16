@@ -92,20 +92,22 @@ async function ensureAdminAccount() {
   }
 
   try {
-    const user = await prisma.user.findFirst({ where: { email: adminEmail } });
-    const hashedPassword = await bcrypt.hash(adminPassword, 12); // Use higher cost factor
+    const user = await prisma.user.findFirst({ where: { email: adminEmail, tenantId: 'default' } });
 
     if (user) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          password: hashedPassword,
-          status: 'ACTIVE',
-          role: 'SUPER_ADMIN' // Force role update
-        }
-      });
-      console.log(`✅ Admin account synced with password from environment`);
+      // SECURITY: Don't automatically rewrite password/role on every boot in production
+      // Only ensure account is ACTIVE. Admin password changes should happen via UI/Recovery.
+      if (user.status !== 'ACTIVE') {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { status: 'ACTIVE' }
+        });
+        console.log(`✅ Admin account status restored to ACTIVE`);
+      } else {
+        console.log(`✅ Admin account verified (active)`);
+      }
     } else {
+      const hashedPassword = await bcrypt.hash(adminPassword, 12);
       await prisma.user.create({
         data: {
           email: adminEmail,
@@ -238,8 +240,8 @@ app.use((req, res, next) => {
 
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
-      } else if (!isProduction || origin.includes('localhost') || origin.includes('127.0.0.1')) {
-        // In development or for localhost, be more permissive
+      } else if (!isProduction && (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:'))) {
+        // In development, allow localhost/127.0.0.1 with exact match to prevent attacker.com spoofing
         callback(null, true);
       } else {
         console.warn(`Blocked by CORS: origin ${origin} not in ${allowedOrigins}`);

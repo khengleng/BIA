@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 
-import { COOKIE_OPTIONS, issueTokensAndSetCookies } from '../utils/auth-utils';
+import { COOKIE_OPTIONS, issueTokensAndSetCookies, getTenantId } from '../utils/auth-utils';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../database';
 import { Prisma } from '@prisma/client';
@@ -30,8 +30,9 @@ const router = Router();
 // Register endpoint
 router.post('/register', async (req: Request, res: Response) => {
   try {
-    const { email, password, role, firstName, lastName, tenantId = 'default' } = req.body;
+    const { email, password, role, firstName, lastName } = req.body;
     const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+    const tenantId = getTenantId(req); // Derive tenantId server-side
 
     // Validate required fields
     if (!email || !password || !role || !firstName || !lastName) {
@@ -187,12 +188,9 @@ router.post('/register', async (req: Request, res: Response) => {
       { expiresIn: '24h' }
     );
 
-    // Send Verification Email
-    // Use the implemented email utility
+    // Send Verification Email (don't block registration if email fails)
     sendVerificationEmail(user.email, verificationToken)
       .catch(error => console.error('Failed to send verification email:', error));
-
-    console.log(`[DEV] Verification Token for ${email}: ${verificationToken}`);
 
     // Set secure cookie
     res.cookie('token', token, COOKIE_OPTIONS);
@@ -272,8 +270,9 @@ router.post('/resend-verification', async (req: Request, res: Response) => {
       return res.status(429).json({ error: 'Too many requests. Please try again later.' });
     }
 
+    const tenantId = getTenantId(req);
     const user = await prisma.user.findFirst({
-      where: { email: sanitizedEmail }
+      where: { email: sanitizedEmail, tenantId }
     });
 
     if (!user) {
@@ -351,9 +350,10 @@ router.post('/login', async (req: Request, res: Response) => {
       });
     }
 
+    const tenantId = getTenantId(req);
     // Find user
     const user = await prisma.user.findFirst({
-      where: { email: sanitizedEmail }
+      where: { email: sanitizedEmail, tenantId }
     });
 
     if (!user) {
@@ -711,8 +711,9 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
       });
     }
 
+    const tenantId = getTenantId(req);
     const user = await prisma.user.findFirst({
-      where: { email: sanitizedEmail }
+      where: { email: sanitizedEmail, tenantId }
     });
 
     // SECURITY: Always return success message to prevent email enumeration

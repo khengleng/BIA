@@ -65,3 +65,31 @@ export async function issueTokensAndSetCookies(res: Response, user: any, req: Re
         maxAge: 15 * 60 * 1000
     });
 }
+
+/**
+ * Resolves the tenant ID from the request (headers or domain)
+ */
+export function getTenantId(req: Request): string {
+    // 1. Check for custom header (e.g., from a mobile app or specific client)
+    const headerTenantId = req.headers['x-tenant-id'];
+    if (headerTenantId && typeof headerTenantId === 'string') {
+        return headerTenantId;
+    }
+
+    // 2. Check hostname (multi-tenant subdomain pattern)
+    const host = req.headers.host || '';
+    // Example: tenant1.ambobia.com -> tenant1
+    if (host.includes('.') &&
+        !host.includes('localhost') &&
+        !host.includes('127.0.0.1') &&
+        !host.includes('railway.app') && // Ignore railway default domains
+        !host.includes('cambobia.com')) { // Ignore main domain
+        const parts = host.split('.');
+        if (parts.length >= 3) {
+            return parts[0];
+        }
+    }
+
+    // 3. Fallback to default
+    return 'default';
+}

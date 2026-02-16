@@ -2,7 +2,12 @@ import { Server as HttpServer } from 'http';
 import { Server, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+    console.error('FATAL: JWT_SECRET environment variable is not set for WebSockets');
+    // We don't exit here to allow the rest of the server to potentially function or log errors, 
+    // but socket initialization will effectively fail verification for all clients.
+}
 
 export let io: Server;
 
@@ -59,6 +64,10 @@ export function initSocket(server: HttpServer) {
 
         if (!token) {
             return next(new Error('Authentication error: No token provided'));
+        }
+
+        if (!JWT_SECRET) {
+            return next(new Error('Authentication error: Server configuration error'));
         }
 
         jwt.verify(token, JWT_SECRET, (err: any, decoded: any) => {

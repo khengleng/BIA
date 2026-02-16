@@ -10,10 +10,10 @@ const withSerwist = withSerwistInit({
 const nextConfig: NextConfig = {
   output: 'standalone',
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   experimental: {
     serverActions: {
