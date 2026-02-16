@@ -18,7 +18,8 @@ router.get('/', authorize('investor.list'), async (req: AuthenticatedRequest, re
 
     let query: any = {
       where: {
-        tenantId: tenantId
+        tenantId: tenantId,
+        status: { not: 'DELETED' }
       },
       include: {
         user: true,
@@ -471,7 +472,12 @@ router.delete('/:id', authorize('investor.delete'), async (req: AuthenticatedReq
 
     await prisma.investor.update({
       where: { id },
-      data: { status: 'DELETED' } as any
+      data: {
+        status: 'DELETED' as any,
+        user: {
+          update: { status: 'INACTIVE' }
+        }
+      }
     });
 
     return res.status(200).json({ message: 'Investor soft deleted successfully' });

@@ -64,21 +64,26 @@ const ROLE_RATE_LIMIT_PREFIX = 'bia:security:rate_limit:';
  * Block malicious IPs (Async version with Redis)
  */
 export const ipSecurityMiddleware = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const clientIp = getClientIp(req);
+    try {
+        const clientIp = getClientIp(req);
 
-    // Check if IP is blocked in Redis
-    const isBlocked = await redis.sismember(BLOCKED_IPS_KEY, clientIp);
-    if (isBlocked) {
-        logAuditEvent({
-            userId: 'system',
-            action: 'BLOCKED_IP_ACCESS',
-            resource: req.path,
-            ipAddress: clientIp,
-            success: false,
-            errorMessage: 'IP is blocked'
-        });
-        res.status(403).json({ error: 'Access denied' });
-        return;
+        // Check if IP is blocked in Redis
+        const isBlocked = await redis.sismember(BLOCKED_IPS_KEY, clientIp);
+        if (isBlocked) {
+            logAuditEvent({
+                userId: 'system',
+                action: 'BLOCKED_IP_ACCESS',
+                resource: req.path,
+                ipAddress: clientIp,
+                success: false,
+                errorMessage: 'IP is blocked'
+            });
+            res.status(403).json({ error: 'Access denied' });
+            return;
+        }
+    } catch (error) {
+        console.error('IP Security Middleware Error:', error);
+        // Fail-open for availability
     }
 
     next();
@@ -321,45 +326,50 @@ const roleRequestCounts = new Map<string, { count: number; resetTime: Date }>();
  * Role-based rate limiting middleware (Redis-backed)
  */
 export const roleBasedRateLimiting = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const user = (req as any).user;
-    const role = user?.role || 'anonymous';
-    const userId = user?.id || getClientIp(req);
-    const key = `${ROLE_RATE_LIMIT_PREFIX}${role}:${userId}`;
+    try {
+        const user = (req as any).user;
+        const role = user?.role || 'anonymous';
+        const userId = user?.id || getClientIp(req);
+        const key = `${ROLE_RATE_LIMIT_PREFIX}${role}:${userId}`;
 
-    const config = roleRateLimits[role] || roleRateLimits['anonymous'];
-    const now = Date.now();
+        const config = roleRateLimits[role] || roleRateLimits['anonymous'];
+        const now = Date.now();
 
-    // Use Redis for atomic increment and TTL
-    const currentCount = await redis.incr(key);
+        // Use Redis for atomic increment and TTL
+        const currentCount = await redis.incr(key);
 
-    // If it's a new key, set expiry
-    if (currentCount === 1) {
-        await redis.pexpire(key, config.windowMs);
-    }
+        // If it's a new key, set expiry
+        if (currentCount === 1) {
+            await redis.pexpire(key, config.windowMs);
+        }
 
-    const ttl = await redis.pttl(key);
-    const resetTime = new Date(now + Math.max(0, ttl));
+        const ttl = await redis.pttl(key);
+        const resetTime = new Date(now + Math.max(0, ttl));
 
-    // Set rate limit headers
-    res.setHeader('X-RateLimit-Limit', config.maxRequests);
-    res.setHeader('X-RateLimit-Remaining', Math.max(0, config.maxRequests - currentCount));
-    res.setHeader('X-RateLimit-Reset', resetTime.toISOString());
+        // Set rate limit headers
+        res.setHeader('X-RateLimit-Limit', config.maxRequests);
+        res.setHeader('X-RateLimit-Remaining', Math.max(0, config.maxRequests - currentCount));
+        res.setHeader('X-RateLimit-Reset', resetTime.toISOString());
 
-    if (currentCount > config.maxRequests) {
-        logAuditEvent({
-            userId: userId,
-            action: 'RATE_LIMIT_EXCEEDED',
-            resource: req.path,
-            details: { role, count: currentCount, limit: config.maxRequests },
-            ipAddress: getClientIp(req),
-            success: false
-        });
+        if (currentCount > config.maxRequests) {
+            logAuditEvent({
+                userId: userId,
+                action: 'RATE_LIMIT_EXCEEDED',
+                resource: req.path,
+                details: { role, count: currentCount, limit: config.maxRequests },
+                ipAddress: getClientIp(req),
+                success: false
+            });
 
-        res.status(429).json({
-            error: 'Rate limit exceeded',
-            retryAfter: Math.ceil(ttl / 1000)
-        });
-        return;
+            res.status(429).json({
+                error: 'Rate limit exceeded',
+                retryAfter: Math.ceil(ttl / 1000)
+            });
+            return;
+        }
+    } catch (error) {
+        console.error('Role Rate Limiting Middleware Error:', error);
+        // Fail-open if Redis is down
     }
 
     next();

@@ -12,7 +12,9 @@ router.get('/users', authorize('admin.user_manage'), async (req: AuthenticatedRe
     try {
         const status = req.query.status as string;
 
-        const where: any = {};
+        const where: any = {
+            status: { not: 'DELETED' }
+        };
         if (status) {
             where.status = status;
         }
@@ -136,11 +138,11 @@ router.get('/stats', authorize('admin.read'), async (req: AuthenticatedRequest, 
             secondaryTradeStats,
             syndicateTradeStats
         ] = await Promise.all([
-            prisma.user.count(),
-            prisma.sME.count(),
-            prisma.investor.count(),
-            prisma.advisor.count(),
-            prisma.deal.count(),
+            prisma.user.count({ where: { status: { not: 'DELETED' } } }),
+            prisma.sME.count({ where: { status: { not: 'DELETED' } } }),
+            prisma.investor.count({ where: { status: { not: 'DELETED' } } }),
+            prisma.advisor.count({ where: { status: { not: 'DELETED' } } }),
+            prisma.deal.count({ where: { status: { not: 'CLOSED' } } }),
             prisma.deal.aggregate({ _sum: { amount: true } }),
             prisma.secondaryTrade.aggregate({
                 _sum: { totalAmount: true, fee: true }

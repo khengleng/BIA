@@ -239,18 +239,22 @@ import redis from '../redis';
  * Check if an identifier (IP, email) is locked out (shared via Redis)
  */
 export async function isLockedOut(identifier: string): Promise<boolean> {
-    const key = `bia:lockout:${identifier}`;
-    const recordStr = await redis.get(key);
-    if (!recordStr) return false;
+    try {
+        const key = `bia:lockout:${identifier}`;
+        const recordStr = await redis.get(key);
+        if (!recordStr) return false;
 
-    const record = JSON.parse(recordStr);
+        const record = JSON.parse(recordStr);
 
-    if (record.lockedUntil && new Date(record.lockedUntil) > new Date()) {
-        return true;
-    }
+        if (record.lockedUntil && new Date(record.lockedUntil) > new Date()) {
+            return true;
+        }
 
-    if (record.lockedUntil && new Date(record.lockedUntil) <= new Date()) {
-        await redis.del(key);
+        if (record.lockedUntil && new Date(record.lockedUntil) <= new Date()) {
+            await redis.del(key);
+        }
+    } catch (error) {
+        console.error('Lockout Check Error:', error);
     }
 
     return false;
@@ -262,19 +266,23 @@ export async function isLockedOut(identifier: string): Promise<boolean> {
 export async function recordFailedAttempt(identifier: string): Promise<void> {
     if (process.env.NODE_ENV === 'development') return;
 
-    const key = `bia:lockout:${identifier}`;
-    const recordStr = await redis.get(key);
-    const record = recordStr ? JSON.parse(recordStr) : { count: 0 };
+    try {
+        const key = `bia:lockout:${identifier}`;
+        const recordStr = await redis.get(key);
+        const record = recordStr ? JSON.parse(recordStr) : { count: 0 };
 
-    record.count++;
+        record.count++;
 
-    // Lock out after 5 failed attempts
-    if (record.count >= 5) {
-        record.lockedUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 minute lockout
+        // Lock out after 5 failed attempts
+        if (record.count >= 5) {
+            record.lockedUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 minute lockout
+        }
+
+        // Store with 30m TTL to cleanup automatically
+        await redis.set(key, JSON.stringify(record), 'EX', 1800);
+    } catch (error) {
+        console.error('Record Failed Attempt Error:', error);
     }
-
-    // Store with 30m TTL to cleanup automatically
-    await redis.set(key, JSON.stringify(record), 'EX', 1800);
 }
 
 /**

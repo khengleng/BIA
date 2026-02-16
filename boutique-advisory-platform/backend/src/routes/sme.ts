@@ -14,7 +14,8 @@ router.get('/', authorize('sme.list'), async (req: AuthenticatedRequest, res: Re
 
     let query: any = {
       where: {
-        tenantId: tenantId
+        tenantId: tenantId,
+        status: { not: 'DELETED' }
       },
       include: {
         user: true,
@@ -114,7 +115,13 @@ router.delete('/:id', authorize('sme.delete'), async (req: AuthenticatedRequest,
 
     await prisma.sME.update({
       where: { id },
-      data: { status: 'DELETED' as any }
+      data: {
+        status: 'DELETED' as any,
+        // Mark the associated user as inactive too if this is their primary profile
+        user: {
+          update: { status: 'INACTIVE' }
+        }
+      }
     });
 
     return res.status(200).json({ message: 'SME soft deleted successfully' });

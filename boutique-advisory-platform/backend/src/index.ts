@@ -147,18 +147,32 @@ app.disable('x-powered-by');
 // Security Headers with Helmet (stricter in production)
 app.get('/health', async (req, res) => {
   try {
+    // 1. Check Database
     await prisma.$queryRaw`SELECT 1`;
+
+    // 2. Check Redis
+    let redisStatus = 'connected';
+    try {
+      if (redis.status !== 'ready') {
+        redisStatus = redis.status;
+      }
+    } catch (e) {
+      redisStatus = 'error';
+    }
+
     return res.json({
       status: 'ok',
       timestamp: new Date(),
       environment: process.env.NODE_ENV,
-      database: 'connected'
+      database: 'connected',
+      redis: redisStatus
     });
   } catch (error) {
     return res.status(503).json({
       status: 'degraded',
       timestamp: new Date(),
-      error: 'Database connection failed'
+      error: 'Core dependency failure',
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
