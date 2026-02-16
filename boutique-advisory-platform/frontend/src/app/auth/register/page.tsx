@@ -103,12 +103,8 @@ export default function RegisterPage() {
       })
 
       if (response.ok) {
-        const data = await response.json()
-        // Store user data
-        // localStorage.setItem('token', data.token) // Token is now in HttpOnly cookie
-        localStorage.setItem('user', JSON.stringify(data.user))
-        // Redirect to dashboard
-        router.push('/dashboard')
+        // Registration should not authenticate users before email verification.
+        router.push(`/auth/login?verify=1&email=${encodeURIComponent(formData.email)}`)
       } else {
         const errorData = await response.json()
         setErrors({ general: errorData.error || 'Registration failed' })

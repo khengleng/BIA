@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslations } from '../../../hooks/useTranslations'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -24,6 +24,22 @@ export default function LoginPage() {
     rememberMe: false
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const params = new URLSearchParams(window.location.search)
+    const verify = params.get('verify')
+    const email = params.get('email')
+
+    if (email) {
+      setFormData(prev => ({ ...prev, email }))
+    }
+
+    if (verify === '1') {
+      setResendStatus('Registration successful. Please verify your email before logging in.')
+    }
+  }, [])
 
   const handleResendVerification = async () => {
     if (!formData.email) {

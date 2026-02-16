@@ -193,32 +193,19 @@ router.post('/register', async (req: Request, res: Response) => {
       });
     }
 
-    // Generate JWT token
-    if (!process.env.JWT_SECRET) {
-      console.error('FATAL: JWT_SECRET environment variable is not set');
-      return res.status(500).json({ error: 'Server configuration error' });
-    }
-
-    const token = jwt.sign(
-      {
-        userId: user.id,
-        email: user.email,
-        role: user.role,
-        tenantId: user.tenantId
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-
     // Send Verification Email (don't block registration if email fails)
     sendVerificationEmail(user.email, verificationToken)
       .catch(error => console.error('Failed to send verification email:', error));
 
-    // Set secure cookie
-    res.cookie('token', token, COOKIE_OPTIONS);
+    // Do NOT create an authenticated session before email verification.
+    // Also clear any stale cookies in case user had a previous session.
+    res.clearCookie('token', { ...COOKIE_OPTIONS, maxAge: 0 });
+    res.clearCookie('accessToken', { ...COOKIE_OPTIONS, maxAge: 0 });
+    res.clearCookie('refreshToken', { ...COOKIE_OPTIONS, path: '/api', maxAge: 0 });
 
     return res.status(201).json({
-      message: 'User registered successfully. Please accept the verification email sent to your inbox.',
+      message: 'User registered successfully. Please verify your email before logging in.',
+      requiresEmailVerification: true,
       user: {
         id: user.id,
         email: user.email,
