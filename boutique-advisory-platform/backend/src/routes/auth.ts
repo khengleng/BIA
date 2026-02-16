@@ -367,10 +367,10 @@ router.post('/login', async (req: Request, res: Response) => {
         details: { email: sanitizedEmail },
         ipAddress: clientIp,
         success: false,
-        errorMessage: 'Account not found'
+        errorMessage: 'Invalid credentials'
       });
       return res.status(401).json({
-        error: 'Account not found'
+        error: 'Invalid credentials'
       });
     }
 
@@ -877,20 +877,8 @@ router.post('/reset-password', async (req: Request, res: Response) => {
       message: 'Password has been reset successfully.',
       success: true
     });
-
-    // If we get here, token validation would have failed in production
-    await logAuditEvent({
-      userId: 'unknown',
-      action: 'PASSWORD_RESET_FAILED',
-      resource: 'auth',
-      ipAddress: clientIp,
-      success: false,
-      errorMessage: 'Token validation failed'
-    });
-
-    return res.status(400).json({ error: 'Invalid or expired reset token' });
-
   } catch (error) {
+    const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
     console.error('Reset password error:', error);
     await logAuditEvent({
       userId: 'unknown',

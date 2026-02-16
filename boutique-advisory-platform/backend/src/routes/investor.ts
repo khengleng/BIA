@@ -280,8 +280,10 @@ router.get('/:id', authorize('investor.read'), async (req: AuthenticatedRequest,
     const userId = req.user?.id;
     const userRole = req.user?.role;
 
-    const investor = await prisma.investor.findUnique({
-      where: { id },
+    const tenantId = req.user?.tenantId || 'default';
+
+    const investor = await prisma.investor.findFirst({
+      where: { id, tenantId },
       include: {
         user: true,
         dealInvestments: true

@@ -56,8 +56,9 @@ router.post('/upload', authorize('document.create'), upload.single('file'), asyn
 router.get('/:id', authorize('document.read'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const document = await prisma.document.findUnique({
-            where: { id },
+        const tenantId = req.user?.tenantId || 'default';
+        const document = await prisma.document.findFirst({
+            where: { id, tenantId },
             include: {
                 sme: { select: { userId: true } },
                 deal: { select: { sme: { select: { userId: true } } } }
@@ -127,8 +128,9 @@ router.get('/:id', authorize('document.read'), async (req: AuthenticatedRequest,
 router.get('/:id/download', authorize('document.download'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const document = await prisma.document.findUnique({
-            where: { id },
+        const tenantId = req.user?.tenantId || 'default';
+        const document = await prisma.document.findFirst({
+            where: { id, tenantId },
             include: {
                 sme: { select: { userId: true } },
                 deal: { select: { sme: { select: { userId: true } } } }

@@ -71,8 +71,10 @@ router.get('/:id', authorize('deal.read'), async (req: AuthenticatedRequest, res
     const userId = req.user?.id;
     const userRole = req.user?.role;
 
-    const deal = await prisma.deal.findUnique({
-      where: { id },
+    const tenantId = req.user?.tenantId || 'default';
+
+    const deal = await prisma.deal.findFirst({
+      where: { id, tenantId },
       include: {
         sme: {
           include: { user: true }
@@ -88,6 +90,11 @@ router.get('/:id', authorize('deal.read'), async (req: AuthenticatedRequest, res
 
     if (!deal) {
       return res.status(404).json({ error: 'Deal not found' });
+    }
+
+    // P1: Tenant Isolation - Ensure deal belongs to the user's tenant
+    if (deal.tenantId !== tenantId) {
+      return res.status(403).json({ error: 'Access denied: Deal does not belong to your tenant' });
     }
 
     // Ownership check for SME role
@@ -108,11 +115,17 @@ router.post('/', authorize('deal.create'), validateBody(createDealSchema), async
     const { smeId, title, description, amount, equity, successFee, terms, isDocumentLocked } = req.body;
     const userId = req.user?.id;
     const userRole = req.user?.role;
+    const tenantId = req.user?.tenantId; // P2: Tenant ID for deal creation
 
     // Verify SME exists
     const sme = await prisma.sME.findUnique({ where: { id: smeId } });
     if (!sme) {
       return res.status(404).json({ error: 'SME not found' });
+    }
+
+    // P2: Tenant Isolation - Ensure SME belongs to the user's tenant
+    if (sme.tenantId !== tenantId) {
+      return res.status(403).json({ error: 'Access denied: SME does not belong to your tenant' });
     }
 
     // Ownership check for SME role
@@ -131,7 +144,7 @@ router.post('/', authorize('deal.create'), validateBody(createDealSchema), async
         terms,
         isDocumentLocked: isDocumentLocked || false,
         status: 'DRAFT',
-        tenantId: sme.tenantId
+        tenantId: sme.tenantId // P2: Ensure deal is created with the correct tenantId from the SME
       },
       include: {
         sme: {
