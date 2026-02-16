@@ -25,7 +25,11 @@ router.get('/listings', authorize('secondary_trading.list'), async (req: Authent
 
         const { status, dealId, sellerId, minPrice, maxPrice } = req.query;
 
-        const where: any = {};
+        const where: any = {
+            seller: {
+                status: { not: 'DELETED' }
+            }
+        };
         if (status) where.status = status;
         if (sellerId) where.sellerId = sellerId;
         if (minPrice) where.pricePerShare = { ...where.pricePerShare, gte: parseFloat(minPrice as string) };

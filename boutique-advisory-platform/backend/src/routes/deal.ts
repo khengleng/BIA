@@ -15,7 +15,10 @@ router.get('/', authorize('deal.list'), async (req: AuthenticatedRequest, res: R
 
     let query: any = {
       where: {
-        tenantId: tenantId
+        tenantId: tenantId,
+        sme: {
+          status: { not: 'DELETED' }
+        }
       },
       include: {
         sme: true,
