@@ -489,17 +489,26 @@ router.delete('/:id', authorize('investor.delete'), async (req: AuthenticatedReq
 
     const tenantId = req.user?.tenantId || 'default';
 
-    const existingInvestor = await prisma.investor.findFirst({ where: { id, tenantId } });
+    const existingInvestor = await prisma.investor.findFirst({
+      where: { id, tenantId },
+      include: { user: true }
+    });
     if (!existingInvestor) {
       return res.status(404).json({ error: 'Investor not found' });
     }
+
+    const timestamp = Date.now();
+    const deletedEmail = `deleted_${timestamp}_${existingInvestor.user.email}`;
 
     await prisma.investor.update({
       where: { id, tenantId },
       data: {
         status: 'DELETED' as any,
         user: {
-          update: { status: 'INACTIVE' }
+          update: {
+            status: 'DELETED' as any,
+            email: deletedEmail
+          }
         }
       }
     });

@@ -136,19 +136,26 @@ router.delete('/:id', authorize('sme.delete'), async (req: AuthenticatedRequest,
       where: {
         id,
         tenantId: req.user?.tenantId || 'default'
-      }
+      },
+      include: { user: true }
     });
     if (!existingSme) {
       return res.status(404).json({ error: 'SME not found' });
     }
 
+    const timestamp = Date.now();
+    const deletedEmail = `deleted_${timestamp}_${existingSme.user.email}`;
+
     await prisma.sME.update({
       where: { id },
       data: {
         status: 'DELETED' as any,
-        // Mark the associated user as inactive too if this is their primary profile
+        // Mark the associated user as deleted too and free up the email
         user: {
-          update: { status: 'INACTIVE' }
+          update: {
+            status: 'DELETED' as any,
+            email: deletedEmail
+          }
         }
       }
     });
