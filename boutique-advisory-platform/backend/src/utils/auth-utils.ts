@@ -67,27 +67,51 @@ export async function issueTokensAndSetCookies(res: Response, user: any, req: Re
 }
 
 /**
- * Resolves the tenant ID from the request (headers or domain)
+ * Resolves the tenant ID from the request (headers or domain).
+ * SECURITY: In production, we prioritize trusted domain resolution to prevent spoofing.
  */
 export function getTenantId(req: Request): string {
-    // 1. Check for custom header (e.g., from a mobile app or specific client)
-    const headerTenantId = req.headers['x-tenant-id'];
-    if (headerTenantId && typeof headerTenantId === 'string') {
-        return headerTenantId;
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    // 1. Check hostname (multi-tenant subdomain pattern) - STRONGEST SOURCE
+    const forwardedHost = req.headers['x-forwarded-host'];
+    const rawHost = (typeof forwardedHost === 'string' ? forwardedHost.split(',')[0] : req.headers.host || '').trim().toLowerCase();
+    const host = rawHost.split(':')[0]; // Strip port
+
+    const isLocalHost = host.includes('localhost') || host.includes('127.0.0.1');
+    const isRailwayHost = host.endsWith('railway.app');
+
+    if (host.includes('.') && !isLocalHost && !isRailwayHost) {
+        const parts = host.split('.').filter(Boolean);
+
+        // Canonical domain handling: tenant.cambobia.com
+        if (host.endsWith('.cambobia.com') && parts.length >= 3) {
+            const subdomain = parts[0];
+            if (subdomain && subdomain !== 'www') {
+                return subdomain;
+            }
+        }
+
+        // Generic multi-subdomain fallback: tenant.example.com
+        if (parts.length >= 3) {
+            const subdomain = parts[0];
+            if (subdomain && subdomain !== 'www') {
+                return subdomain;
+            }
+        }
     }
 
-    // 2. Check hostname (multi-tenant subdomain pattern)
-    const host = req.headers.host || '';
-    // Example: tenant1.ambobia.com -> tenant1
-    if (host.includes('.') &&
-        !host.includes('localhost') &&
-        !host.includes('127.0.0.1') &&
-        !host.includes('railway.app') && // Ignore railway default domains
-        !host.includes('cambobia.com')) { // Ignore main domain
-        const parts = host.split('.');
-        if (parts.length >= 3) {
-            return parts[0];
+    // 2. Check for custom header
+    // SECURITY: Only trust the header if not in production or if supplied by a trusted proxy
+    const headerTenantId = req.headers['x-tenant-id'];
+    if (headerTenantId && typeof headerTenantId === 'string') {
+        if (!isProduction) {
+            return headerTenantId;
         }
+        // In production, we could potentially whitelist specific header values or trust it 
+        // if we are behind a gateway that sets it. For now, we only allow it for 'default' 
+        // unless resolved via domain.
+        if (headerTenantId === 'default') return 'default';
     }
 
     // 3. Fallback to default

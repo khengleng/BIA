@@ -7,14 +7,21 @@ const router = Router();
 
 // ==================== User Management ====================
 
-// List all users (System-wide)
+// List users
 router.get('/users', authorize('admin.user_manage'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const status = req.query.status as string;
+        const tenantId = req.user?.tenantId || 'default';
+        const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
 
         const where: any = {
             status: { not: 'DELETED' }
         };
+
+        if (!isSuperAdmin) {
+            where.tenantId = tenantId;
+        }
+
         if (status) {
             where.status = status;
         }
@@ -41,6 +48,17 @@ router.put('/users/:userId/status', authorize('admin.user_manage'), async (req: 
     try {
         const { userId } = req.params;
         const { status } = req.body; // ACTIVE, INACTIVE, SUSPENDED
+        const tenantId = req.user?.tenantId || 'default';
+        const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
+
+        const targetUser = await prisma.user.findUnique({ where: { id: userId } });
+        if (!targetUser) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        if (!isSuperAdmin && targetUser.tenantId !== tenantId) {
+            return res.status(403).json({ error: 'Cannot modify user from another tenant' });
+        }
 
         const user = await prisma.user.update({
             where: { id: userId },
@@ -59,6 +77,17 @@ router.put('/users/:userId/role', authorize('admin.user_manage'), async (req: Au
     try {
         const { userId } = req.params;
         const { role } = req.body;
+        const tenantId = req.user?.tenantId || 'default';
+        const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
+
+        const targetUser = await prisma.user.findUnique({ where: { id: userId } });
+        if (!targetUser) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        if (!isSuperAdmin && targetUser.tenantId !== tenantId) {
+            return res.status(403).json({ error: 'Cannot modify user from another tenant' });
+        }
 
         const user = await prisma.user.update({
             where: { id: userId },
@@ -128,6 +157,28 @@ router.post('/users', authorize('admin.user_manage'), async (req: AuthenticatedR
 
 router.get('/stats', authorize('admin.read'), async (req: AuthenticatedRequest, res: Response) => {
     try {
+        const tenantId = req.user?.tenantId || 'default';
+        const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
+
+        const userWhere = isSuperAdmin
+            ? { status: { not: 'DELETED' as any } }
+            : { tenantId, status: { not: 'DELETED' as any } };
+        const smeWhere = isSuperAdmin
+            ? { status: { not: 'DELETED' as any } }
+            : { tenantId, status: { not: 'DELETED' as any } };
+        const investorWhere = isSuperAdmin
+            ? { status: { not: 'DELETED' as any } }
+            : { tenantId, status: { not: 'DELETED' as any } };
+        const advisorWhere = isSuperAdmin
+            ? { status: { not: 'DELETED' as any } }
+            : { tenantId, status: { not: 'DELETED' as any } };
+        const dealWhere = isSuperAdmin
+            ? { status: { not: 'CLOSED' as any } }
+            : { tenantId, status: { not: 'CLOSED' as any } };
+        const dealAggregateWhere = isSuperAdmin ? {} : { tenantId };
+        const secondaryTradeWhere = isSuperAdmin ? {} : { listing: { tenantId } };
+        const syndicateTradeWhere = isSuperAdmin ? {} : { listing: { seller: { tenantId } } };
+
         const [
             userCount,
             smeCount,
@@ -138,16 +189,18 @@ router.get('/stats', authorize('admin.read'), async (req: AuthenticatedRequest, 
             secondaryTradeStats,
             syndicateTradeStats
         ] = await Promise.all([
-            prisma.user.count({ where: { status: { not: 'DELETED' } } }),
-            prisma.sME.count({ where: { status: { not: 'DELETED' } } }),
-            prisma.investor.count({ where: { status: { not: 'DELETED' } } }),
-            prisma.advisor.count({ where: { status: { not: 'DELETED' } } }),
-            prisma.deal.count({ where: { status: { not: 'CLOSED' } } }),
-            prisma.deal.aggregate({ _sum: { amount: true } }),
+            prisma.user.count({ where: userWhere }),
+            prisma.sME.count({ where: smeWhere }),
+            prisma.investor.count({ where: investorWhere }),
+            prisma.advisor.count({ where: advisorWhere }),
+            prisma.deal.count({ where: dealWhere }),
+            prisma.deal.aggregate({ where: dealAggregateWhere, _sum: { amount: true } }),
             prisma.secondaryTrade.aggregate({
+                where: secondaryTradeWhere,
                 _sum: { totalAmount: true, fee: true }
             }),
             prisma.syndicateTokenTrade.aggregate({
+                where: syndicateTradeWhere,
                 _sum: { totalAmount: true, fee: true }
             })
         ]);
