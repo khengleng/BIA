@@ -66,6 +66,12 @@ router.put('/users/:userId/status', authorize('admin.user_manage'), async (req: 
             return res.status(403).json({ error: 'Cannot modify user from another tenant' });
         }
 
+        if (targetUser.status === 'DELETED' && status === 'ACTIVE') {
+            return res.status(400).json({
+                error: 'Cannot reactivate a deleted user. Create a new account or use a dedicated restore workflow.'
+            });
+        }
+
         if (requesterId && requesterId === userId && status === 'DELETED') {
             return res.status(400).json({ error: 'You cannot delete your own account from this endpoint' });
         }

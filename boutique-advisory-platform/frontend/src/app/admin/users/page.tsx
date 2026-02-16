@@ -254,7 +254,7 @@ export default function UserManagementPage() {
                                                         >
                                                             <UserX className="w-5 h-5" />
                                                         </button>
-                                                    ) : (
+                                                    ) : user.status === 'SUSPENDED' || user.status === 'INACTIVE' ? (
                                                         <button
                                                             onClick={() => updateStatus(user.id, 'ACTIVE')}
                                                             className="p-2 text-gray-400 hover:text-green-400 hover:bg-green-400/10 rounded-lg transition-all"
@@ -262,6 +262,10 @@ export default function UserManagementPage() {
                                                         >
                                                             <UserCheck className="w-5 h-5" />
                                                         </button>
+                                                    ) : (
+                                                        <span className="px-2 py-1 text-xs text-gray-500 border border-gray-700 rounded-md">
+                                                            Deleted
+                                                        </span>
                                                     )}
                                                     <button className="p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg transition-all">
                                                         <MoreHorizontal className="w-5 h-5" />
