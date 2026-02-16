@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { COOKIE_OPTIONS, issueTokensAndSetCookies } from '../utils/auth-utils';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../database';
+import { Prisma } from '@prisma/client';
 import {
   validatePasswordStrength,
   generateSecureToken,
@@ -208,6 +209,9 @@ router.post('/register', async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      return res.status(409).json({ error: 'User already exists with this email address' });
+    }
     console.error('Registration error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -1056,14 +1060,14 @@ router.post('/verify-2fa', async (req: Request, res: Response) => {
     }
 
     // SECURITY: Revoke all other refresh tokens for this user upon 2FA successful login
-    // This ensures only the new session is active if that's the desired security posture, 
+    // This ensures only the new session is active if that's the desired security posture,
     // or at least ensures that tokens issued during the pre-auth phase are gone.
-    // Actually, issueTokensAndSetCookies already issues new ones. 
+    // Actually, issueTokensAndSetCookies already issues new ones.
     // Usually we want to revoke OLD tokens when a new 2FA login happens.
     await prisma.refreshToken.deleteMany({
       where: {
         userId: user.id,
-        // We might want to keep the one we JUST issued, but issueTokensAndSetCookies 
+        // We might want to keep the one we JUST issued, but issueTokensAndSetCookies
         // adds it to the DB. So we should probably do this BEFORE issueTokensAndSetCookies
         // or exclude the current one.
       }
@@ -1191,7 +1195,7 @@ router.post('/2fa/disable', authenticateToken, async (req: AuthenticatedRequest,
   }
 
   try {
-    // Verify password again for security
+    // Verify user exists and check password
     const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
     if (!dbUser) return res.status(404).json({ error: 'User not found' });
 
@@ -1261,7 +1265,6 @@ router.post('/delete-account', authenticateToken, async (req: AuthenticatedReque
           did: null, // Remove DID link
           resetToken: null,
           resetTokenExpiry: null
-          // Keep tenantId for data segregation if needed, or move to a 'deleted' tenant
         }
       });
 
@@ -1275,12 +1278,11 @@ router.post('/delete-account', authenticateToken, async (req: AuthenticatedReque
         where: { userId: user.id }
       });
 
-      // 2. Anonymize Linked Profiles based on Role using raw queries or updates
-      // We check for existence first or just attempt updates which is safer in transaction
+      // 2. Anonymize Linked Profiles based on Role
 
       // Anonymize SME Profile if exists
       if (user.role === 'SME') {
-        const sme = await tx.sME.findUnique({ where: { userId: user.id } });
+        const sme = await tx.sME.findFirst({ where: { userId: user.id, tenantId: user.tenantId } });
         if (sme) {
           await tx.sME.update({
             where: { id: sme.id },
@@ -1289,7 +1291,7 @@ router.post('/delete-account', authenticateToken, async (req: AuthenticatedReque
               description: 'This account has been deleted.',
               website: null,
               location: null,
-              status: 'REJECTED' // or a specific DELETED status if available
+              status: 'REJECTED'
             }
           });
         }
@@ -1297,13 +1299,14 @@ router.post('/delete-account', authenticateToken, async (req: AuthenticatedReque
 
       // Anonymize Investor Profile if exists
       if (user.role === 'INVESTOR') {
-        const investor = await tx.investor.findUnique({ where: { userId: user.id } });
+        const investor = await tx.investor.findFirst({ where: { userId: user.id, tenantId: user.tenantId } });
         if (investor) {
           await tx.investor.update({
             where: { id: investor.id },
             data: {
-              type: 'ANGEL', // minimal default
-              preferences: {}, // Clear preferences
+              name: `Deleted Investor ${timestamp}`,
+              type: 'ANGEL',
+              preferences: {},
               kycStatus: 'REJECTED'
             }
           });
@@ -1312,13 +1315,12 @@ router.post('/delete-account', authenticateToken, async (req: AuthenticatedReque
 
       // Anonymize Advisor Profile if exists
       if (user.role === 'ADVISOR') {
-        const advisor = await tx.advisor.findUnique({ where: { userId: user.id } });
+        const advisor = await tx.advisor.findFirst({ where: { userId: user.id, tenantId: user.tenantId } });
         if (advisor) {
           await tx.advisor.update({
             where: { id: advisor.id },
             data: {
               name: `Deleted Advisor ${timestamp}`,
-              // bio field might not exist, checking schema would be better but removing for now to fix lint
               status: 'SUSPENDED'
             }
           });

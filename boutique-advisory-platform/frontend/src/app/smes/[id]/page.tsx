@@ -97,40 +97,41 @@ export default function SMEPage() {
     router.push('/deals/create')
   }
 
-  const handleViewDocument = async (docName: string) => {
+  const handleViewDocument = async (docId: string) => {
     try {
-      const response = await authorizedRequest(`/api/documents/${encodeURIComponent(docName)}`)
+      const response = await authorizedRequest(`/api/documents/${docId}`)
 
       if (response.ok) {
-        // Open document in new tab
-        window.open(`${API_URL}/api/documents/${encodeURIComponent(docName)}`, '_blank')
+        const data = await response.json()
+        if (data.url) {
+          window.open(data.url, '_blank')
+        }
       } else {
         console.error('Document not found')
+        addToast('error', 'Document not found or access denied')
       }
     } catch (error) {
       console.error('Error viewing document:', error)
+      addToast('error', 'Error opening document')
     }
   }
 
-  const handleDownloadDocument = async (docName: string) => {
+  const handleDownloadDocument = async (docId: string) => {
     try {
-      const response = await authorizedRequest(`/api/documents/${encodeURIComponent(docName)}/download`)
+      const response = await authorizedRequest(`/api/documents/${docId}/download`)
 
       if (response.ok) {
-        const blob = await response.blob()
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = docName
-        document.body.appendChild(a)
-        a.click()
-        window.URL.revokeObjectURL(url)
-        document.body.removeChild(a)
+        const data = await response.json()
+        if (data.url) {
+          window.open(data.url, '_blank')
+        }
       } else {
         console.error('Document download failed')
+        addToast('error', 'Failed to generate download link')
       }
     } catch (error) {
       console.error('Error downloading document:', error)
+      addToast('error', 'Error downloading document')
     }
   }
 
@@ -918,13 +919,13 @@ export default function SMEPage() {
                         </div>
                         <div className="flex space-x-2">
                           <button
-                            onClick={() => handleViewDocument(doc.name)}
+                            onClick={() => handleViewDocument(doc.id)}
                             className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm"
                           >
                             <Eye className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => handleDownloadDocument(doc.name)}
+                            onClick={() => handleDownloadDocument(doc.id)}
                             className="bg-gray-600 hover:bg-gray-500 text-white px-3 py-2 rounded-lg text-sm"
                           >
                             <Download className="w-4 h-4" />

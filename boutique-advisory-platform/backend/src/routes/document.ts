@@ -225,7 +225,6 @@ router.delete('/:id', authorize('document.delete'), async (req: AuthenticatedReq
 });
 
 // List documents with filters
-// List documents with filters
 router.get('/', authorize('document.list'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const { smeId, dealId, type } = req.query;
@@ -269,6 +268,37 @@ router.get('/', authorize('document.list'), async (req: AuthenticatedRequest, re
     } catch (error) {
         console.error('List documents error:', error);
         return res.status(500).json({ error: 'Failed to list documents' });
+    }
+});
+
+// Get documents by deal ID (to match frontend api.ts expectation)
+router.get('/deal/:dealId', authorize('document.list'), async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const { dealId } = req.params;
+        const tenantId = req.user?.tenantId || 'default';
+
+        const documents = await prisma.document.findMany({
+            where: {
+                dealId,
+                tenantId
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        const formatted = await Promise.all(documents.map(async (doc: any) => {
+            try {
+                const key = extractKeyFromUrl(doc.url);
+                const signedUrl = await getPresignedUrl(key, 3600);
+                return { ...doc, url: signedUrl };
+            } catch (e) {
+                return doc;
+            }
+        }));
+
+        return res.json({ documents: formatted });
+    } catch (error) {
+        console.error('Get documents by deal error:', error);
+        return res.status(500).json({ error: 'Failed to fetch documents' });
     }
 });
 

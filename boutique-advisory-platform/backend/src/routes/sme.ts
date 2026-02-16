@@ -45,8 +45,11 @@ router.get('/:id', authorize('sme.read'), async (req: AuthenticatedRequest, res:
     const userId = req.user?.id;
     const userRole = req.user?.role;
 
-    const sme = await prisma.sME.findUnique({
-      where: { id },
+    const sme = await prisma.sME.findFirst({
+      where: {
+        id,
+        tenantId: req.user?.tenantId || 'default'
+      },
       include: {
         user: true,
         deals: true,
@@ -79,7 +82,12 @@ router.put('/:id', authorize('sme.update'), validateBody(updateSMESchema), async
     const updateData = req.body;
 
     // Check if SME exists and ownership
-    const existingSme = await prisma.sME.findUnique({ where: { id } });
+    const existingSme = await prisma.sME.findFirst({
+      where: {
+        id,
+        tenantId: req.user?.tenantId || 'default'
+      }
+    });
     if (!existingSme) {
       return res.status(404).json({ error: 'SME not found' });
     }
@@ -108,7 +116,12 @@ router.delete('/:id', authorize('sme.delete'), async (req: AuthenticatedRequest,
   try {
     const { id } = req.params;
 
-    const existingSme = await prisma.sME.findUnique({ where: { id } });
+    const existingSme = await prisma.sME.findFirst({
+      where: {
+        id,
+        tenantId: req.user?.tenantId || 'default'
+      }
+    });
     if (!existingSme) {
       return res.status(404).json({ error: 'SME not found' });
     }

@@ -301,21 +301,36 @@ export default function DealDetailPage() {
     })
   }
 
-  const handleViewDocument = (docName: string) => {
-    // Here you would typically open the document in a new tab or modal
-    // For now, we'll simulate opening a PDF viewer
-    window.open(`/api/documents/${docName}`, '_blank')
+  const handleViewDocument = async (docId: string) => {
+    try {
+      const response = await authorizedRequest(`/api/documents/${docId}`)
+      if (response.ok) {
+        const data = await response.json()
+        if (data.url) {
+          window.open(data.url, '_blank')
+        }
+      } else {
+        console.error('Document not found')
+      }
+    } catch (error) {
+      console.error('Error viewing document:', error)
+    }
   }
 
-  const handleDownloadDocument = (docName: string) => {
-    // Here you would typically trigger a download
-    // For now, we'll simulate downloading
-    const link = document.createElement('a')
-    link.href = `/api/documents/${docName}/download`
-    link.download = docName
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+  const handleDownloadDocument = async (docId: string) => {
+    try {
+      const response = await authorizedRequest(`/api/documents/${docId}/download`)
+      if (response.ok) {
+        const data = await response.json()
+        if (data.url) {
+          window.open(data.url, '_blank')
+        }
+      } else {
+        console.error('Document download failed')
+      }
+    } catch (error) {
+      console.error('Error downloading document:', error)
+    }
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -882,13 +897,13 @@ export default function DealDetailPage() {
                             {doc.status}
                           </span>
                           <button
-                            onClick={() => handleViewDocument(doc.name)}
+                            onClick={() => handleViewDocument((doc as any).id || (doc as any).name)}
                             className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm"
                           >
                             <Eye className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => handleDownloadDocument(doc.name)}
+                            onClick={() => handleDownloadDocument((doc as any).id || (doc as any).name)}
                             className="bg-gray-600 hover:bg-gray-500 text-white px-3 py-2 rounded-lg text-sm"
                           >
                             <Download className="w-4 h-4" />

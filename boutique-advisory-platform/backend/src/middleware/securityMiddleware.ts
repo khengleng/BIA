@@ -184,9 +184,9 @@ export const contentTypeValidation = (req: Request, res: Response, next: NextFun
 // ============================================
 
 const sqlInjectionPatterns = [
-    /(\-\-)|(\%23)|(#)/i,
-    /((\%3D)|(=))[^\n]*((\%27)|(\')|(\-\-)|(\%3B)|(;))/i,
-    /\w*((\%27)|(\'))((\%6F)|o|(\%4F))((\%72)|r|(\%52))/i,
+    /(\-\-)|(\%23)/i, // Removed # as it can be part of normal text
+    /((\%3D)|(=))[^\n]*((\%23)|(\-\-)|(\%3B)|(;))/i, // Require specific comment/terminator after assignment
+    /\bOR\b\s+((\%27)|(\'))?\d+((\%3D)|(=))\d+/i, // Better OR bypass pattern
     /((\%27)|(\'))union/i,
     /exec(\s|\+)+(s|x)p\w+/i,
     /UNION(\s+)ALL(\s+)SELECT/i,
@@ -248,14 +248,14 @@ export const sqlInjectionMiddleware = (req: Request, res: Response, next: NextFu
 // ============================================
 
 const xssPatterns = [
-    /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-    /javascript:/gi,
-    /on\w+\s*=/gi,
-    /<iframe/gi,
-    /<object/gi,
-    /<embed/gi,
-    /<link/gi,
-    /<meta/gi,
+    /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/i,
+    /javascript:/i,
+    /on\w+\s*=/i,
+    /<iframe/i,
+    /<object/i,
+    /<embed/i,
+    /<link/i,
+    /<meta/i,
 ];
 
 /**

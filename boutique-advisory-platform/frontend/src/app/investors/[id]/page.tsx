@@ -76,7 +76,7 @@ interface Investor {
   completedInvestments: number
   activeInvestments: number
   totalReturns: string
-  documents: Array<{ name: string; type: string; size: string; uploaded: string }>
+  documents: Array<{ id: string; name: string; type: string; size: string; uploaded: string }>
   investments: Array<{ id: number; company: string; amount: string; status: string; returns: string; date: string }>
   metrics: {
     totalInvested: string
@@ -210,7 +210,7 @@ export default function InvestorProfilePage() {
           completedInvestments: data.preferences?.completedInvestments || 0,
           activeInvestments: data.preferences?.activeInvestments || 0,
           totalReturns: data.preferences?.totalReturns || '',
-          documents: data.preferences?.documents || [],
+          documents: data.preferences?.documents?.map((d: any) => ({ ...d, id: d.id || d.name })) || [],
           investments: data.dealInvestments?.map((inv: any) => ({
             id: inv.id,
             company: inv.deal?.sme?.name || 'Unknown',
@@ -453,35 +453,33 @@ export default function InvestorProfilePage() {
     }
   }
 
-  const handleViewDocument = async (docName: string) => {
+  const handleViewDocument = async (docId: string) => {
     try {
-      const response = await authorizedRequest(`/api/documents/${encodeURIComponent(docName)}`)
+      const response = await authorizedRequest(`/api/documents/${docId}`)
 
       if (response.ok) {
-        // Open document in new tab - Backend should handle cookie auth for this endpoint too
-        window.open(`${API_URL}/api/documents/${encodeURIComponent(docName)}`, '_blank')
+        const data = await response.json()
+        if (data.url) {
+          window.open(data.url, '_blank')
+        }
       } else {
         console.error('Document not found')
+        // Using alert if toast is not available in the same way, but let's assume it is or just use console
       }
     } catch (error) {
       console.error('Error viewing document:', error)
     }
   }
 
-  const handleDownloadDocument = async (docName: string) => {
+  const handleDownloadDocument = async (docId: string) => {
     try {
-      const response = await authorizedRequest(`/api/documents/${encodeURIComponent(docName)}/download`)
+      const response = await authorizedRequest(`/api/documents/${docId}/download`)
 
       if (response.ok) {
-        const blob = await response.blob()
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = docName
-        document.body.appendChild(a)
-        a.click()
-        window.URL.revokeObjectURL(url)
-        document.body.removeChild(a)
+        const data = await response.json()
+        if (data.url) {
+          window.open(data.url, '_blank')
+        }
       } else {
         console.error('Document download failed')
       }
@@ -1130,13 +1128,13 @@ export default function InvestorProfilePage() {
                         </div>
                         <div className="flex space-x-2">
                           <button
-                            onClick={() => handleViewDocument(doc.name)}
+                            onClick={() => handleViewDocument((doc as any).id || (doc as any).name)}
                             className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm"
                           >
                             <Eye className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => handleDownloadDocument(doc.name)}
+                            onClick={() => handleDownloadDocument((doc as any).id || (doc as any).name)}
                             className="bg-gray-600 hover:bg-gray-500 text-white px-3 py-2 rounded-lg text-sm"
                           >
                             <Download className="w-4 h-4" />
