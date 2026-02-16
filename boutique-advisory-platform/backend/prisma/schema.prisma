@@ -1173,7 +1173,7 @@ enum PaymentStatus {
 model ActivityLog {
   id        String   @id @default(cuid())
   tenantId  String
-  userId    String
+  userId    String?
   action    String   // VIEWED, DOWNLOADED, UPLOADED, etc.
   entityId  String   // Document ID or Deal ID
   entityType String  // DOCUMENT, DEAL, etc.
@@ -1181,7 +1181,7 @@ model ActivityLog {
   timestamp DateTime @default(now())
 
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("activity_logs")
 }

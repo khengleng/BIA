@@ -162,7 +162,7 @@ export async function logAuditEvent(entry: AuditLogEntry): Promise<void> {
         await prisma.activityLog.create({
             data: {
                 tenantId,
-                userId: entry.userId === 'unknown' ? 'cl6u8u8u80000uxuxuxuxuxux' : entry.userId, // Fallback to a system user ID if needed
+                userId: (entry.userId === 'unknown' || entry.userId === 'anonymous' || entry.userId === 'system' || !entry.userId) ? undefined : entry.userId,
                 action: entry.action,
                 entityId: entry.resourceId || 'system',
                 entityType: entry.resource,
