@@ -50,6 +50,12 @@ router.put('/users/:userId/status', authorize('admin.user_manage'), async (req: 
         const { status } = req.body; // ACTIVE, INACTIVE, SUSPENDED
         const tenantId = req.user?.tenantId || 'default';
         const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
+        const requesterId = req.user?.id;
+        const allowedStatuses = new Set(['ACTIVE', 'INACTIVE', 'SUSPENDED', 'DELETED']);
+
+        if (!status || !allowedStatuses.has(status)) {
+            return res.status(400).json({ error: 'Invalid status value' });
+        }
 
         const targetUser = await prisma.user.findUnique({ where: { id: userId } });
         if (!targetUser) {
@@ -60,10 +66,46 @@ router.put('/users/:userId/status', authorize('admin.user_manage'), async (req: 
             return res.status(403).json({ error: 'Cannot modify user from another tenant' });
         }
 
-        const user = await prisma.user.update({
-            where: { id: userId },
-            data: { status }
-        });
+        if (requesterId && requesterId === userId && status === 'DELETED') {
+            return res.status(400).json({ error: 'You cannot delete your own account from this endpoint' });
+        }
+
+        let user;
+        if (status === 'DELETED') {
+            const archivedEmail = targetUser.email.toLowerCase().includes('deleted_')
+                ? targetUser.email
+                : `deleted_${Date.now()}_${targetUser.id}_${targetUser.email}`;
+
+            user = await prisma.$transaction(async (tx) => {
+                const updatedUser = await tx.user.update({
+                    where: { id: userId },
+                    data: {
+                        status: 'DELETED' as any,
+                        email: archivedEmail
+                    }
+                });
+
+                await tx.sME.updateMany({
+                    where: { userId },
+                    data: { status: 'DELETED' as any }
+                });
+                await tx.investor.updateMany({
+                    where: { userId },
+                    data: { status: 'DELETED' as any }
+                });
+                await tx.advisor.updateMany({
+                    where: { userId },
+                    data: { status: 'DELETED' as any }
+                });
+
+                return updatedUser;
+            });
+        } else {
+            user = await prisma.user.update({
+                where: { id: userId },
+                data: { status }
+            });
+        }
 
         return res.json({ message: `User status updated to ${status}`, user });
     } catch (error) {

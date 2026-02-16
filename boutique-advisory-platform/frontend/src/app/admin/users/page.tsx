@@ -14,7 +14,8 @@ import {
     XCircle,
     UserCheck,
     UserX,
-    MoreHorizontal
+    MoreHorizontal,
+    Trash2
 } from 'lucide-react'
 import DashboardLayout from '../../../components/layout/DashboardLayout'
 import { authorizedRequest } from '../../../lib/api'
@@ -60,6 +61,11 @@ export default function UserManagementPage() {
     }
 
     const updateStatus = async (userId: string, status: string) => {
+        if (status === 'DELETED') {
+            const confirmed = window.confirm('Delete this user account? This is a soft delete and can affect linked profiles.')
+            if (!confirmed) return
+        }
+
         try {
             const response = await authorizedRequest(`/api/admin/users/${userId}/status`, {
                 method: 'PUT',
@@ -260,6 +266,15 @@ export default function UserManagementPage() {
                                                     <button className="p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg transition-all">
                                                         <MoreHorizontal className="w-5 h-5" />
                                                     </button>
+                                                    {user.status !== 'DELETED' && (
+                                                        <button
+                                                            onClick={() => updateStatus(user.id, 'DELETED')}
+                                                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                                                            title="Delete User"
+                                                        >
+                                                            <Trash2 className="w-5 h-5" />
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>
