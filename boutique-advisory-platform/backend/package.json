@@ -16,6 +16,8 @@
     "test": "node -r ts-node/register --test src/**/*.test.ts",
     "test:security": "npm test && npm run security:check",
     "security:check": "node scripts/security-check.js"
+    ,
+    "security:prod-secrets": "node scripts/validate-prod-secrets.js"
   },
   "prisma": {
     "seed": "npx ts-node prisma/seed.ts"

@@ -7,7 +7,30 @@ on:
     branches: [ main, master, develop ]
 
 jobs:
+  dependency-audit:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Use Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20'
+
+    - name: Audit Backend Dependencies (High/Critical)
+      run: |
+        cd backend
+        npm ci
+        npm audit --audit-level=high --omit=dev
+
+    - name: Audit Frontend Dependencies (High/Critical)
+      run: |
+        cd frontend
+        npm ci
+        npm audit --audit-level=high --omit=dev
+
   security-check:
+    needs: dependency-audit
     runs-on: ubuntu-latest
 
     services:
@@ -67,3 +90,17 @@ jobs:
       run: |
         cd backend
         npm test
+
+    - name: Validate Production Secret Policy (Structure)
+      run: |
+        cd backend
+        NODE_ENV=production \
+        JWT_SECRET="ci-test-jwt-secret-with-32-plus-characters-long" \
+        ENCRYPTION_KEY="ci-test-encryption-key-with-32-plus-characters-long" \
+        COOKIE_SECRET="ci-test-cookie-secret-with-32-plus-characters" \
+        FRONTEND_URL="https://app.example.com" \
+        DATABASE_URL="postgresql://user:pass@host:5432/db?sslmode=require" \
+        JWT_SECRET_ROTATED_AT="2026-01-01" \
+        ENCRYPTION_KEY_ROTATED_AT="2026-01-01" \
+        COOKIE_SECRET_ROTATED_AT="2026-01-01" \
+        npm run security:prod-secrets

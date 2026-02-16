@@ -24,7 +24,7 @@ Status legend: `Not Started` | `In Progress` | `Blocked` | `Done`
 
 | Task | Owner | Due Date | Status | Evidence |
 |---|---|---|---|---|
-| Add automated tests for cross-tenant admin access denial | TBD | TBD | Not Started | Test file + CI link |
+| Add automated tests for cross-tenant admin access denial | TBD | TBD | Done | `backend/src/tests/tenant-isolation.test.ts` |
 | Add maker-checker workflow for privileged actions (role change, user deletion, tenant config) | TBD | TBD | Not Started | PR link |
 | Complete quarterly access review process for admins/service accounts | TBD | TBD | Not Started | Access review doc |
 | Enforce MFA for all ADMIN/SUPER_ADMIN accounts | TBD | TBD | Not Started | Policy + config evidence |
@@ -56,8 +56,8 @@ Status legend: `Not Started` | `In Progress` | `Blocked` | `Done`
 | Task | Owner | Due Date | Status | Evidence |
 |---|---|---|---|---|
 | Reconcile CORS policy docs with runtime behavior and update docs/code | TBD | TBD | Not Started | PR + docs update |
-| Add dependency vulnerability scanning gate (fail on critical) | TBD | TBD | Not Started | CI config + run |
-| Add static analysis (SAST) in CI for backend/frontend | TBD | TBD | Not Started | CI config + run |
+| Add dependency vulnerability scanning gate (fail on critical) | TBD | TBD | Done | `.github/workflows/security.yml` |
+| Add static analysis (SAST) in CI for backend/frontend | TBD | TBD | Done | `.github/workflows/codeql.yml` |
 | Review and minimize CSP allowlist for production | TBD | TBD | Not Started | Security review notes |
 
 ## 5) Data Protection & Privacy
@@ -66,7 +66,7 @@ Status legend: `Not Started` | `In Progress` | `Blocked` | `Done`
 
 | Task | Owner | Due Date | Status | Evidence |
 |---|---|---|---|---|
-| Confirm ENCRYPTION_KEY managed via KMS/Secrets Manager in production | TBD | TBD | Not Started | Secret manager proof |
+| Confirm ENCRYPTION_KEY managed via KMS/Secrets Manager in production | TBD | TBD | In Progress | `PROD_SECRETS_EVIDENCE.md` |
 | Validate encrypted backups and restore process | TBD | TBD | Not Started | Backup/restore drill report |
 | Define PII retention/deletion schedule and enforce it | TBD | TBD | Not Started | Policy doc + job config |
 | Verify least-privilege access to decrypted KYC data | TBD | TBD | Not Started | Access policy + test |
@@ -87,7 +87,7 @@ Status legend: `Not Started` | `In Progress` | `Blocked` | `Done`
 
 | Task | Owner | Due Date | Status | Evidence |
 |---|---|---|---|---|
-| Centralize immutable audit logs for admin/security events | TBD | TBD | Not Started | Logging architecture doc |
+| Centralize immutable audit logs for admin/security events | TBD | TBD | In Progress | `backend/src/middleware/authorize.ts`, `backend/src/routes/audit.ts` |
 | Define release evidence package (tests, scans, approvals, migrations) | TBD | TBD | Not Started | Checklist artifact |
 | Define incident severity matrix and mandatory timeline logging | TBD | TBD | Not Started | Incident policy |
 

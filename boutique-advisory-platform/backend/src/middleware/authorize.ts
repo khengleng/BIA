@@ -93,6 +93,13 @@ export function getAuditLogs(filters?: {
 }
 
 /**
+ * Clear in-memory audit logs (used by tests)
+ */
+export function clearAuditLogs(): void {
+    auditLog.length = 0;
+}
+
+/**
  * Enhanced authorize middleware using centralized permissions
  * 
  * @param permission - Permission string (e.g., 'sme.create', 'deal.update')

@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { AuthenticatedRequest, authorize } from '../middleware/authorize';
 import { prisma } from '../database';
+import { canModifyAcrossTenant, isAllowedStatusTransition } from '../utils/admin-guards';
 
 const router = Router();
 
@@ -49,7 +50,6 @@ router.put('/users/:userId/status', authorize('admin.user_manage'), async (req: 
         const { userId } = req.params;
         const { status } = req.body; // ACTIVE, INACTIVE, SUSPENDED
         const tenantId = req.user?.tenantId || 'default';
-        const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
         const requesterId = req.user?.id;
         const allowedStatuses = new Set(['ACTIVE', 'INACTIVE', 'SUSPENDED', 'DELETED']);
 
@@ -62,11 +62,11 @@ router.put('/users/:userId/status', authorize('admin.user_manage'), async (req: 
             return res.status(404).json({ error: 'User not found' });
         }
 
-        if (!isSuperAdmin && targetUser.tenantId !== tenantId) {
+        if (!canModifyAcrossTenant(req.user?.role, tenantId, targetUser.tenantId)) {
             return res.status(403).json({ error: 'Cannot modify user from another tenant' });
         }
 
-        if (targetUser.status === 'DELETED' && status === 'ACTIVE') {
+        if (!isAllowedStatusTransition(targetUser.status as any, status)) {
             return res.status(400).json({
                 error: 'Cannot reactivate a deleted user. Create a new account or use a dedicated restore workflow.'
             });
@@ -126,14 +126,13 @@ router.put('/users/:userId/role', authorize('admin.user_manage'), async (req: Au
         const { userId } = req.params;
         const { role } = req.body;
         const tenantId = req.user?.tenantId || 'default';
-        const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
 
         const targetUser = await prisma.user.findUnique({ where: { id: userId } });
         if (!targetUser) {
             return res.status(404).json({ error: 'User not found' });
         }
 
-        if (!isSuperAdmin && targetUser.tenantId !== tenantId) {
+        if (!canModifyAcrossTenant(req.user?.role, tenantId, targetUser.tenantId)) {
             return res.status(403).json({ error: 'Cannot modify user from another tenant' });
         }
 
