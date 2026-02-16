@@ -274,7 +274,15 @@ router.get('/portfolio/stats', authorize('investor.read', { getOwnerId: (req) =>
 });
 
 // Get investor by ID
-router.get('/:id', authorize('investor.read'), async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:id', authorize('investor.read', {
+  getOwnerId: async (req) => {
+    const investor = await prisma.investor.findUnique({
+      where: { id: req.params.id },
+      select: { userId: true }
+    });
+    return investor?.userId;
+  }
+}), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
     const userId = req.user?.id;
@@ -320,7 +328,15 @@ router.get('/:id', authorize('investor.read'), async (req: AuthenticatedRequest,
 });
 
 // Update investor - with input validation
-router.put('/:id', authorize('investor.update'), validateBody(updateInvestorSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.put('/:id', authorize('investor.update', {
+  getOwnerId: async (req) => {
+    const investor = await prisma.investor.findUnique({
+      where: { id: req.params.id },
+      select: { userId: true }
+    });
+    return investor?.userId;
+  }
+}), validateBody(updateInvestorSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
     const userId = req.user?.id;

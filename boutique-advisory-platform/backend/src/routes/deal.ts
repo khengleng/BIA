@@ -65,7 +65,15 @@ router.get('/', authorize('deal.list'), async (req: AuthenticatedRequest, res: R
 });
 
 // Get deal by ID
-router.get('/:id', authorize('deal.read'), async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:id', authorize('deal.read', {
+  getOwnerId: async (req) => {
+    const deal = await prisma.deal.findUnique({
+      where: { id: req.params.id },
+      include: { sme: { select: { userId: true } } }
+    });
+    return deal?.sme?.userId;
+  }
+}), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
     const userId = req.user?.id;
@@ -163,7 +171,15 @@ router.post('/', authorize('deal.create'), validateBody(createDealSchema), async
 });
 
 // Update deal - with input validation
-router.put('/:id', authorize('deal.update'), validateBody(updateDealSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.put('/:id', authorize('deal.update', {
+  getOwnerId: async (req) => {
+    const deal = await prisma.deal.findUnique({
+      where: { id: req.params.id },
+      include: { sme: { select: { userId: true } } }
+    });
+    return deal?.sme?.userId;
+  }
+}), validateBody(updateDealSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
     const userId = req.user?.id;

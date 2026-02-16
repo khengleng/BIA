@@ -39,7 +39,15 @@ router.get('/', authorize('sme.list'), async (req: AuthenticatedRequest, res: Re
 });
 
 // Get SME by ID
-router.get('/:id', authorize('sme.read'), async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:id', authorize('sme.read', {
+  getOwnerId: async (req) => {
+    const sme = await prisma.sME.findUnique({
+      where: { id: req.params.id },
+      select: { userId: true }
+    });
+    return sme?.userId;
+  }
+}), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
     const userId = req.user?.id;
@@ -74,7 +82,15 @@ router.get('/:id', authorize('sme.read'), async (req: AuthenticatedRequest, res:
 });
 
 // Update SME - with input validation
-router.put('/:id', authorize('sme.update'), validateBody(updateSMESchema), async (req: AuthenticatedRequest, res: Response) => {
+router.put('/:id', authorize('sme.update', {
+  getOwnerId: async (req) => {
+    const sme = await prisma.sME.findUnique({
+      where: { id: req.params.id },
+      select: { userId: true }
+    });
+    return sme?.userId;
+  }
+}), validateBody(updateSMESchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
     const userId = req.user?.id;

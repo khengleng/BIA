@@ -105,8 +105,8 @@ export function authorize(
         ownerIdParam?: string;
         /** Extract resource owner ID from request body */
         ownerIdBody?: string;
-        /** Custom function to get owner ID */
-        getOwnerId?: (req: AuthenticatedRequest) => string | undefined;
+        /** Custom function to get owner ID (can be async) */
+        getOwnerId?: (req: AuthenticatedRequest) => string | undefined | Promise<string | undefined>;
         /** Log all permission checks (not just denials) */
         logAllChecks?: boolean;
     } = {}
@@ -126,7 +126,7 @@ export function authorize(
         let resourceOwnerId: string | undefined;
 
         if (options.getOwnerId) {
-            resourceOwnerId = options.getOwnerId(req);
+            resourceOwnerId = await options.getOwnerId(req);
         } else if (options.ownerIdParam && req.params[options.ownerIdParam]) {
             resourceOwnerId = req.params[options.ownerIdParam];
         } else if (options.ownerIdBody && req.body?.[options.ownerIdBody]) {
