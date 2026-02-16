@@ -33,7 +33,7 @@ export default function AdminDashboardPage() {
             try {
                 setIsLoading(true);
                 const [generalRes, actionRes] = await Promise.all([
-                    authorizedRequest('/api/admin/stats'),
+                    authorizedRequest('/api/dashboard/stats'),
                     authorizedRequest('/api/admin/action-center/stats')
                 ]);
 
@@ -54,6 +54,15 @@ export default function AdminDashboardPage() {
         }
         fetchStats()
     }, [])
+
+    const normalizedStats = {
+        users: stats?.users ?? stats?.totalUsers ?? 0,
+        smes: stats?.smes ?? stats?.totalSMEs ?? 0,
+        deals: stats?.deals ?? stats?.activeDeals ?? 0,
+        revenue: stats?.totalVolume ?? stats?.platformRevenue ?? stats?.totalFees ?? 0,
+        deletedUsers: stats?.deletedUsers ?? 0,
+        activeDisputes: actionStats?.dealDisputes ?? stats?.activeDisputes ?? 0
+    }
 
     if (isLoading) {
         return (
@@ -90,7 +99,7 @@ export default function AdminDashboardPage() {
                             <Users className="w-4 h-4" />
                             Total Users
                         </div>
-                        <p className="text-3xl font-bold text-white">{stats?.users || 0}</p>
+                        <p className="text-3xl font-bold text-white">{normalizedStats.users}</p>
                     </div>
 
                     <div className="bg-gradient-to-br from-green-900/40 to-green-800/20 border border-green-700/50 rounded-xl p-5">
@@ -98,7 +107,7 @@ export default function AdminDashboardPage() {
                             <Building2 className="w-4 h-4" />
                             SMEs
                         </div>
-                        <p className="text-3xl font-bold text-white">{stats?.smes || 0}</p>
+                        <p className="text-3xl font-bold text-white">{normalizedStats.smes}</p>
                     </div>
 
                     <div className="bg-gradient-to-br from-purple-900/40 to-purple-800/20 border border-purple-700/50 rounded-xl p-5">
@@ -106,7 +115,7 @@ export default function AdminDashboardPage() {
                             <Handshake className="w-4 h-4" />
                             Active Deals
                         </div>
-                        <p className="text-3xl font-bold text-white">{stats?.deals || 0}</p>
+                        <p className="text-3xl font-bold text-white">{normalizedStats.deals}</p>
                     </div>
 
                     <div className="bg-gradient-to-br from-red-900/40 to-red-800/20 border border-red-700/50 rounded-xl p-5">
@@ -114,7 +123,7 @@ export default function AdminDashboardPage() {
                             <AlertTriangle className="w-4 h-4" />
                             Active Disputes
                         </div>
-                        <p className="text-3xl font-bold text-white">{actionStats?.dealDisputes || 0}</p>
+                        <p className="text-3xl font-bold text-white">{normalizedStats.activeDisputes}</p>
                     </div>
 
                     <div className="bg-gradient-to-br from-emerald-900/40 to-emerald-800/20 border border-emerald-700/50 rounded-xl p-5">
@@ -122,7 +131,7 @@ export default function AdminDashboardPage() {
                             <DollarSign className="w-4 h-4" />
                             Revenue
                         </div>
-                        <p className="text-2xl font-bold text-white">${(stats?.totalFees || 0).toLocaleString()}</p>
+                        <p className="text-2xl font-bold text-white">${normalizedStats.revenue.toLocaleString()}</p>
                     </div>
 
                     <div className="bg-gradient-to-br from-gray-900/40 to-gray-800/20 border border-gray-700/50 rounded-xl p-5">
@@ -130,7 +139,7 @@ export default function AdminDashboardPage() {
                             <UserX className="w-4 h-4" />
                             Deleted Users
                         </div>
-                        <p className="text-3xl font-bold text-white">{stats?.deletedUsers || 0}</p>
+                        <p className="text-3xl font-bold text-white">{normalizedStats.deletedUsers}</p>
                     </div>
                 </div>
 

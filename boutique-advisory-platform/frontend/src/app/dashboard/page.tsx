@@ -341,13 +341,22 @@ function AdvisorDashboard({ t, stats }: { t: any; stats: any }) {
 
 // Admin Dashboard Component
 function AdminDashboard({ t, stats }: { t: any; stats: any }) {
+  const adminStats = {
+    users: stats?.users ?? stats?.totalUsers ?? 0,
+    smes: stats?.smes ?? stats?.totalSMEs ?? 0,
+    deals: stats?.deals ?? stats?.activeDeals ?? 0,
+    activeDisputes: stats?.activeDisputes ?? 0,
+    revenue: stats?.totalVolume ?? stats?.platformRevenue ?? stats?.totalFees ?? 0,
+    deletedUsers: stats?.deletedUsers ?? 0
+  }
+
   const dashboardStats = [
-    { label: 'Total Users', value: stats?.totalUsers || '0', icon: Users, color: 'text-blue-500' },
-    { label: 'SMEs', value: stats?.totalSMEs || '0', icon: Building2, color: 'text-green-500' },
-    { label: 'Active Deals', value: stats?.activeDeals || '0', icon: Handshake, color: 'text-purple-500' },
-    { label: 'Active Disputes', value: stats?.activeDisputes || '0', icon: AlertCircle, color: 'text-red-500' },
-    { label: 'Revenue', value: stats?.platformRevenue ? `$${stats.platformRevenue}` : '$0', icon: CheckCircle, color: 'text-green-500' },
-    { label: 'Deleted Users', value: stats?.deletedUsers || '0', icon: UserX, color: 'text-red-500' }
+    { label: 'Total Users', value: adminStats.users, icon: Users, color: 'text-blue-500' },
+    { label: 'SMEs', value: adminStats.smes, icon: Building2, color: 'text-green-500' },
+    { label: 'Active Deals', value: adminStats.deals, icon: Handshake, color: 'text-purple-500' },
+    { label: 'Active Disputes', value: adminStats.activeDisputes, icon: AlertCircle, color: 'text-red-500' },
+    { label: 'Revenue', value: `$${adminStats.revenue.toLocaleString()}`, icon: CheckCircle, color: 'text-green-500' },
+    { label: 'Deleted Users', value: adminStats.deletedUsers, icon: UserX, color: 'text-red-500' }
   ]
 
   return (

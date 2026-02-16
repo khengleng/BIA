@@ -60,36 +60,58 @@ router.post('/register', async (req: Request, res: Response) => {
       });
     }
 
-    // Check for existing user (including deleted ones to purge them)
-    const existingUser = await prisma.user.findFirst({
+    // Check for active conflict (exact email match in this tenant)
+    const activeUser = await prisma.user.findFirst({
       where: {
-        OR: [
-          { email: sanitizedEmail },
-          { email: { startsWith: 'deleted_' }, AND: [{ email: { endsWith: sanitizedEmail } }] }
-        ],
-        tenantId
+        email: { equals: sanitizedEmail, mode: 'insensitive' },
+        tenantId,
+        status: { not: 'DELETED' }
       }
     });
 
-    if (existingUser) {
-      if (existingUser.status === 'DELETED') {
-        console.log(`[AUTH] Purging old deleted user ${existingUser.id} to allow fresh registration for ${sanitizedEmail}`);
-        // Hard delete the old record so the email and relationships are truly fresh
-        await prisma.user.delete({ where: { id: existingUser.id } });
-      } else {
-        // SECURITY: Log attempt to register with existing email
-        await logAuditEvent({
-          userId: 'anonymous',
-          action: 'REGISTER_ATTEMPT',
-          resource: 'user',
-          details: { email: sanitizedEmail, reason: 'email_exists' },
-          ipAddress: clientIp,
-          success: false,
-          errorMessage: 'Email already registered'
-        });
-        return res.status(409).json({
-          error: 'User already exists with this email'
-        });
+    if (activeUser) {
+      // SECURITY: Log attempt to register with existing email
+      await logAuditEvent({
+        userId: 'anonymous',
+        action: 'REGISTER_ATTEMPT',
+        resource: 'user',
+        details: { email: sanitizedEmail, reason: 'email_exists' },
+        ipAddress: clientIp,
+        success: false,
+        errorMessage: 'Email already registered'
+      });
+      return res.status(409).json({
+        error: 'User already exists with this email'
+      });
+    }
+
+    // Archive any existing soft-deleted or legacy record to avoid unique index collision.
+    // NOTE: Do not hard-delete users here because relational records can block deletion.
+    const usersToPurge = await prisma.user.findMany({
+      where: {
+        tenantId,
+        OR: [
+          { email: { equals: sanitizedEmail, mode: 'insensitive' } },
+          { email: { contains: sanitizedEmail, mode: 'insensitive' } }
+        ]
+      }
+    });
+
+    for (const u of usersToPurge) {
+      if (u.status === 'DELETED' || u.status === 'INACTIVE' || u.email.toLowerCase().includes('deleted_')) {
+        console.log(`[AUTH] Archiving record ${u.id} (${u.status}) to allow re-registration for ${sanitizedEmail}`);
+        try {
+          const archivedEmail = `deleted_${Date.now()}_${u.id}_${u.email}`;
+          await prisma.user.update({
+            where: { id: u.id },
+            data: {
+              status: 'DELETED' as any,
+              email: archivedEmail
+            }
+          });
+        } catch (e) {
+          console.error(`[AUTH] Error archiving ${u.id}:`, e);
+        }
       }
     }
 
@@ -121,7 +143,7 @@ router.post('/register', async (req: Request, res: Response) => {
 
     const user = await prisma.user.create({
       data: {
-        email,
+        email: sanitizedEmail,
         password: hashedPassword,
         role: role as any,
         firstName,
