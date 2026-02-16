@@ -190,8 +190,9 @@ router.get('/:id/download', authorize('document.download'), async (req: Authenti
 router.delete('/:id', authorize('document.delete'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const document = await prisma.document.findUnique({
-            where: { id }
+        const tenantId = req.user?.tenantId || 'default';
+        const document = await prisma.document.findFirst({
+            where: { id, tenantId }
         });
 
         if (!document) {
@@ -216,7 +217,7 @@ router.delete('/:id', authorize('document.delete'), async (req: AuthenticatedReq
 
         // Delete from database
         await prisma.document.delete({
-            where: { id }
+            where: { id, tenantId }
         });
 
         return res.json({ message: 'Document deleted successfully' });

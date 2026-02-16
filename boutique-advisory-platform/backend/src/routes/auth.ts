@@ -784,7 +784,7 @@ router.post('/reset-password', async (req: Request, res: Response) => {
   const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
 
   try {
-    const { token, password, email } = req.body;
+    const { token, password } = req.body;
 
     if (!token || !password) {
       return res.status(400).json({ error: 'Token and new password are required' });

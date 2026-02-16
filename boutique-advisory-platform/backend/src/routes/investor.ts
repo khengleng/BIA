@@ -327,8 +327,10 @@ router.put('/:id', authorize('investor.update'), validateBody(updateInvestorSche
     const userRole = req.user?.role;
     const updateData = req.body;
 
+    const tenantId = req.user?.tenantId || 'default';
+
     // Check if investor exists
-    const existingInvestor = await prisma.investor.findUnique({ where: { id } });
+    const existingInvestor = await prisma.investor.findFirst({ where: { id, tenantId } });
     if (!existingInvestor) {
       return res.status(404).json({ error: 'Investor not found' });
     }
@@ -346,7 +348,7 @@ router.put('/:id', authorize('investor.update'), validateBody(updateInvestorSche
     }
 
     const investor = await prisma.investor.update({
-      where: { id },
+      where: { id, tenantId },
       data: updateData,
       include: {
         user: true
@@ -371,15 +373,17 @@ router.post('/:id/kyc', authorize('investor.verify'), async (req: AuthenticatedR
   try {
     const { id } = req.params;
 
+    const tenantId = req.user?.tenantId || 'default';
+
     // Check if investor exists
-    const existingInvestor = await prisma.investor.findUnique({ where: { id } });
+    const existingInvestor = await prisma.investor.findFirst({ where: { id, tenantId } });
     if (!existingInvestor) {
       return res.status(404).json({ error: 'Investor not found' });
     }
 
     // Update status
     const updatedInvestor = await prisma.investor.update({
-      where: { id },
+      where: { id, tenantId },
       data: {
         kycStatus: 'VERIFIED',
         status: 'ACTIVE'
@@ -467,13 +471,15 @@ router.delete('/:id', authorize('investor.delete'), async (req: AuthenticatedReq
   try {
     const { id } = req.params;
 
-    const existingInvestor = await prisma.investor.findUnique({ where: { id } });
+    const tenantId = req.user?.tenantId || 'default';
+
+    const existingInvestor = await prisma.investor.findFirst({ where: { id, tenantId } });
     if (!existingInvestor) {
       return res.status(404).json({ error: 'Investor not found' });
     }
 
     await prisma.investor.update({
-      where: { id },
+      where: { id, tenantId },
       data: {
         status: 'DELETED' as any,
         user: {

@@ -168,11 +168,13 @@ router.put('/:id', authorize('deal.update'), validateBody(updateDealSchema), asy
     const { id } = req.params;
     const userId = req.user?.id;
     const userRole = req.user?.role;
-    const updateData = req.body;
+    const updateData = req.body; // Use updateData for the body
 
-    // Check if deal exists
-    const existingDeal = await prisma.deal.findUnique({
-      where: { id },
+    const tenantId = req.user?.tenantId || 'default';
+
+    // Check if deal exists - with tenant scoping
+    const existingDeal = await prisma.deal.findFirst({
+      where: { id, tenantId },
       include: { sme: true }
     });
     if (!existingDeal) {
@@ -185,7 +187,7 @@ router.put('/:id', authorize('deal.update'), validateBody(updateDealSchema), asy
     }
 
     const deal = await prisma.deal.update({
-      where: { id },
+      where: { id, tenantId }, // Explicitly include tenantId in where clause
       data: updateData,
       include: {
         sme: true
@@ -210,7 +212,7 @@ router.put('/:id', authorize('deal.update'), validateBody(updateDealSchema), asy
         // 2. Notify ALL Investors (Broadcast)
         // In a real app, filter by sector/preferences
         const investors = await prisma.user.findMany({
-          where: { role: 'INVESTOR', status: 'ACTIVE' },
+          where: { role: 'INVESTOR', status: 'ACTIVE', tenantId: tenantId }, // Scoped by tenantId
           select: { id: true }
         });
 
