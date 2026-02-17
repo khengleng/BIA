@@ -1,18 +1,28 @@
 import { Router, Response } from 'express';
-import { AuthenticatedRequest } from '../middleware/jwt-auth';
+import { AuthenticatedRequest, authorize } from '../middleware/authorize';
 import { prisma } from '../database';
 
 const router = Router();
+
+function requireTenantId(req: AuthenticatedRequest, res: Response): string | undefined {
+    const tenantId = req.user?.tenantId;
+    if (!tenantId) {
+        res.status(403).json({ error: 'Tenant context required' });
+        return undefined;
+    }
+    return tenantId;
+}
 
 /**
  * Get role-based dashboard statistics
  * GET /api/dashboard/stats
  */
-router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
+router.get('/stats', authorize('dashboard.read'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const userId = req.user?.id;
         const role = req.user?.role;
-        const tenantId = req.user?.tenantId || 'default';
+        const tenantId = requireTenantId(req, res);
+        if (!tenantId) return;
 
         if (!userId) {
             return res.status(401).json({ error: 'Unauthorized' });
@@ -25,12 +35,12 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
                 const sme = await prisma.sME.findUnique({ where: { userId } });
                 if (sme) {
                     const [dealsCount, activeBookings, documentCount] = await Promise.all([
-                        prisma.deal.count({ where: { smeId: sme.id } }),
-                        prisma.booking.count({ where: { userId, status: 'CONFIRMED' } }),
-                        prisma.document.count({ where: { smeId: sme.id } })
+                        prisma.deal.count({ where: { smeId: sme.id, tenantId } }),
+                        prisma.booking.count({ where: { userId, status: 'CONFIRMED', tenantId } }),
+                        prisma.document.count({ where: { smeId: sme.id, tenantId } })
                     ]);
 
-                    const deals = await prisma.deal.findMany({ where: { smeId: sme.id } });
+                    const deals = await prisma.deal.findMany({ where: { smeId: sme.id, tenantId } });
                     const totalFunding = deals.reduce((acc, deal) => acc + deal.amount, 0);
 
                     // Calculate Profile Completeness
@@ -48,7 +58,7 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
                     // Real Match Interest (Investors interested in this SME)
                     const interestCount = await prisma.matchInterest.count({
                         where: {
-                            match: { smeId: sme.id },
+                            match: { smeId: sme.id, tenantId },
                             interest: true,
                             // Ensure the interest comes from an investor, not the SME itself
                             user: { role: 'INVESTOR' }
@@ -61,7 +71,7 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
                         documents: documentCount,
                         fundingGoal: totalFunding,
                         profileCompleteness,
-                        matchCount: await prisma.match.count({ where: { smeId: sme.id } }),
+                        matchCount: await prisma.match.count({ where: { smeId: sme.id, tenantId } }),
                         interestExpressed: interestCount,
                         activeDisputes: await (prisma as any).dispute.count({
                             where: {
@@ -75,13 +85,13 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
             }
 
             case 'INVESTOR': {
-                const investor = await prisma.investor.findUnique({ where: { userId } });
+                const investor = await prisma.investor.findFirst({ where: { userId, tenantId } });
                 if (investor) {
                     const [matchCount, dealInvestmentCount, activeOffers, syndicateMembershipCount] = await Promise.all([
-                        prisma.match.count({ where: { investorId: investor.id } }),
-                        prisma.dealInvestor.count({ where: { investorId: investor.id, status: { in: ['COMPLETED', 'APPROVED'] } } }),
-                        prisma.dealInvestor.count({ where: { investorId: investor.id, status: 'PENDING' } }),
-                        prisma.syndicateMember.count({ where: { investorId: investor.id, status: 'APPROVED' } })
+                        prisma.match.count({ where: { investorId: investor.id, tenantId } }),
+                        prisma.dealInvestor.count({ where: { investorId: investor.id, status: { in: ['COMPLETED', 'APPROVED'] }, deal: { tenantId } } }),
+                        prisma.dealInvestor.count({ where: { investorId: investor.id, status: 'PENDING', deal: { tenantId } } }),
+                        prisma.syndicateMember.count({ where: { investorId: investor.id, status: 'APPROVED', syndicate: { tenantId } } })
                     ]);
 
                     // Calculate Portfolio Value from both deals and syndicates
@@ -89,14 +99,16 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
                         prisma.dealInvestor.findMany({
                             where: {
                                 investorId: investor.id,
-                                status: { in: ['COMPLETED', 'APPROVED'] }
+                                status: { in: ['COMPLETED', 'APPROVED'] },
+                                deal: { tenantId }
                             },
                             select: { amount: true, createdAt: true }
                         }),
                         prisma.syndicateMember.findMany({
                             where: {
                                 investorId: investor.id,
-                                status: 'APPROVED'
+                                status: 'APPROVED',
+                                syndicate: { tenantId }
                             },
                             select: { amount: true, joinedAt: true }
                         })
@@ -112,19 +124,19 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
                     // Fetch recent activity for the dashboard
                     const [recentDealInvestments, recentSyndicateInvestments, openDeals] = await Promise.all([
                         prisma.dealInvestor.findMany({
-                            where: { investorId: investor.id },
+                            where: { investorId: investor.id, deal: { tenantId } },
                             include: { deal: { include: { sme: true } } },
                             orderBy: { createdAt: 'desc' },
                             take: 3
                         }),
                         prisma.syndicateMember.findMany({
-                            where: { investorId: investor.id },
+                            where: { investorId: investor.id, syndicate: { tenantId } },
                             include: { syndicate: true },
                             orderBy: { joinedAt: 'desc' },
                             take: 3
                         }),
                         prisma.deal.findMany({
-                            where: { status: 'PUBLISHED' },
+                            where: { status: 'PUBLISHED', tenantId },
                             include: { sme: true },
                             take: 2,
                             orderBy: { createdAt: 'desc' }
@@ -172,19 +184,19 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
             }
 
             case 'ADVISOR': {
-                const advisor = await prisma.advisor.findUnique({ where: { userId } });
+                const advisor = await prisma.advisor.findFirst({ where: { userId, tenantId } });
                 if (advisor) {
                     const [totalBookings, activeClients, pendingCerts] = await Promise.all([
-                        prisma.booking.count({ where: { advisorId: advisor.id } }),
+                        prisma.booking.count({ where: { advisorId: advisor.id, tenantId } }),
                         prisma.booking.groupBy({
                             by: ['userId'],
-                            where: { advisorId: advisor.id }
+                            where: { advisorId: advisor.id, tenantId }
                         }).then(groups => groups.length),
-                        prisma.certification.count({ where: { advisorId: advisor.id, status: 'PENDING' } })
+                        prisma.certification.count({ where: { advisorId: advisor.id, status: 'PENDING', sme: { tenantId } } })
                     ]);
 
                     const completedPaidBookings = await prisma.booking.findMany({
-                        where: { advisorId: advisor.id, status: 'COMPLETED', amount: { not: null } }
+                        where: { advisorId: advisor.id, status: 'COMPLETED', amount: { not: null }, tenantId }
                     });
                     const totalEarnings = completedPaidBookings.reduce((acc, b) => acc + (b.amount || 0), 0);
 
@@ -207,7 +219,7 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
                     prisma.investor.count({ where: { tenantId } }),
                     prisma.deal.count({ where: { tenantId } }),
                     prisma.booking.aggregate({
-                        where: { status: 'CONFIRMED' },
+                        where: { status: 'CONFIRMED', tenantId },
                         _sum: { amount: true }
                     }),
                     prisma.user.count({ where: { status: 'DELETED' as any, tenantId } }),
@@ -221,12 +233,12 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
                     }),
                     // Secondary trading fees (1% of trade volume)
                     prisma.secondaryTrade.aggregate({
-                        where: { status: 'COMPLETED' },
+                        where: { status: 'COMPLETED', listing: { tenantId } },
                         _sum: { fee: true }
                     }),
                     // Deal investments
                     prisma.dealInvestor.aggregate({
-                        where: { status: 'COMPLETED' },
+                        where: { status: 'COMPLETED', deal: { tenantId } },
                         _sum: { amount: true }
                     })
                 ]);
@@ -263,9 +275,10 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
  * Get platform analytics data
  * GET /api/dashboard/analytics
  */
-router.get('/analytics', async (req: AuthenticatedRequest, res: Response) => {
+router.get('/analytics', authorize('dashboard.read'), async (req: AuthenticatedRequest, res: Response) => {
     try {
-        const tenantId = req.user?.tenantId || 'default';
+        const tenantId = requireTenantId(req, res);
+        if (!tenantId) return;
 
         // 1. Fetch KPIs
         const [
@@ -287,7 +300,7 @@ router.get('/analytics', async (req: AuthenticatedRequest, res: Response) => {
             }),
             // Deal investments
             prisma.dealInvestor.aggregate({
-                where: { status: 'COMPLETED' },
+                where: { status: 'COMPLETED', deal: { tenantId } },
                 _sum: { amount: true }
             }),
             // Syndicate investments

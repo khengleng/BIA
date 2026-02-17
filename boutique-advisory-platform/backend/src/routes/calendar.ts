@@ -1,11 +1,14 @@
 import { Router, Response } from 'express';
-import { AuthenticatedRequest } from '../middleware/jwt-auth';
+import { AuthenticatedRequest, authorize } from '../middleware/authorize';
 
 const router = Router();
 
 // Get calendar events
-router.get('/', async (req: AuthenticatedRequest, res: Response) => {
+router.get('/', authorize('calendar.read'), async (req: AuthenticatedRequest, res: Response) => {
     try {
+        if (!req.user?.tenantId) {
+            return res.status(403).json({ error: 'Tenant context required' });
+        }
         const events = [
             {
                 id: '1',
@@ -25,10 +28,10 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
             }
         ];
 
-        res.json({ events });
+        return res.json({ events });
     } catch (error) {
         console.error('Error fetching calendar events:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
     }
 });
 

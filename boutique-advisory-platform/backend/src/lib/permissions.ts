@@ -194,6 +194,10 @@ export const PERMISSIONS: Record<string, string[]> = {
     'analytics.financial': ['SUPER_ADMIN', 'ADMIN'],
     'analytics.system': ['SUPER_ADMIN'],
 
+    // ==================== Dashboard/Calendar Permissions ====================
+    'dashboard.read': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
+    'calendar.read': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
+
     // ==================== Payment Permissions ====================
     'payment.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR:owner', 'INVESTOR:owner', 'SME:owner'],
     'payment.read': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR:owner', 'INVESTOR:owner', 'SME:owner'],
