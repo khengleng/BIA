@@ -149,6 +149,32 @@ app.set('trust proxy', 1);
 app.disable('x-powered-by');
 
 // Security Headers with Helmet (stricter in production)
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginOpenerPolicy: { policy: "same-origin" },
+  crossOriginEmbedderPolicy: { policy: "credentialless" },
+  contentSecurityPolicy: isProduction ? {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "https://fonts.googleapis.com"], // SECURITY: Removed 'unsafe-inline' for better posture
+      imgSrc: ["'self'", "data:", "blob:", "https://storage.googleapis.com", "https://*.stripe.com", "https://*.sumsub.com"],
+      connectSrc: ["'self'", process.env.FRONTEND_URL || "https://www.cambobia.com", "https://storage.googleapis.com", "https://*.stripe.com", "https://*.sumsub.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'none'"],
+      formAction: ["'self'"],
+      baseUri: ["'self'"],
+      upgradeInsecureRequests: [],
+    }
+  } : false,
+  hsts: isProduction ? {
+    maxAge: 63072000,
+    includeSubDomains: true,
+    preload: true
+  } : false,
+}));
+
 app.get('/health', async (req, res) => {
   try {
     // 1. Check Database
@@ -180,32 +206,6 @@ app.get('/health', async (req, res) => {
     });
   }
 });
-
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" },
-  crossOriginOpenerPolicy: { policy: "same-origin" },
-  crossOriginEmbedderPolicy: { policy: "credentialless" },
-  contentSecurityPolicy: isProduction ? {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "https://fonts.googleapis.com"], // SECURITY: Removed 'unsafe-inline' for better posture
-      imgSrc: ["'self'", "data:", "blob:", "https://storage.googleapis.com", "https://*.stripe.com", "https://*.sumsub.com"],
-      connectSrc: ["'self'", process.env.FRONTEND_URL || "https://www.cambobia.com", "https://storage.googleapis.com", "https://*.stripe.com", "https://*.sumsub.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      objectSrc: ["'none'"],
-      frameAncestors: ["'none'"],
-      formAction: ["'self'"],
-      baseUri: ["'self'"],
-      upgradeInsecureRequests: [],
-    }
-  } : false,
-  hsts: isProduction ? {
-    maxAge: 63072000,
-    includeSubDomains: true,
-    preload: true
-  } : false,
-}));
 
 // Logging - reduced in production
 app.use(morgan(isProduction ? 'combined' : 'dev'));
