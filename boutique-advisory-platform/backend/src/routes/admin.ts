@@ -364,10 +364,12 @@ router.get('/business-ops/overview', authorize('admin.read'), async (req: Authen
                 }
             }),
             prisma.dueDiligence.count({
-                where: {
-                    ...scope,
-                    status: 'IN_PROGRESS'
-                }
+                where: isSuperAdmin
+                    ? { status: 'IN_PROGRESS' }
+                    : {
+                        status: 'IN_PROGRESS',
+                        sme: { tenantId }
+                    }
             }),
             prisma.user.count({
                 where: {
