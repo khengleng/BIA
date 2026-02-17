@@ -18,18 +18,17 @@ router.post('/start', async (req: AuthenticatedRequest, res: Response) => {
         }
 
         // Verify recipient is ACTIVE
-        const recipient = await prisma.user.findUnique({ where: { id: recipientId } });
+        const recipient = await prisma.user.findFirst({ where: { id: recipientId, tenantId } });
         if (!recipient || recipient.status !== 'ACTIVE') {
             return res.status(404).json({ error: 'Recipient not found or account is inactive' });
         }
 
         console.log(`[MESSAGES] Start request: ${userId} -> ${recipientId} (Deal: ${dealId})`);
 
-        // Check if conversation already exists between these two
-        // We ignore tenantId for existing conversation check to ensure users can connect 
-        // regardless of minor sharding inconsistencies
+        // Check if conversation already exists between these two within the same tenant.
         const existingConv = await (prisma as any).conversation.findFirst({
             where: {
+                tenantId,
                 AND: [
                     { participants: { some: { userId: userId } } },
                     { participants: { some: { userId: recipientId } } }
@@ -101,10 +100,15 @@ router.post('/start', async (req: AuthenticatedRequest, res: Response) => {
 router.get('/conversations', async (req: AuthenticatedRequest, res: Response) => {
     try {
         const userId = req.user?.id;
-        // const tenantId = req.user?.tenantId; // Removed for visibility across sharded contexts
+        const tenantId = req.user?.tenantId;
+
+        if (!tenantId) {
+            return res.status(403).json({ error: 'Tenant context required' });
+        }
 
         const conversations = await (prisma as any).conversation.findMany({
             where: {
+                tenantId,
                 participants: {
                     some: { userId }
                 }
@@ -190,6 +194,11 @@ router.get('/conversations/:id', async (req: AuthenticatedRequest, res: Response
     try {
         const { id } = req.params;
         const userId = req.user?.id;
+        const tenantId = req.user?.tenantId;
+
+        if (!tenantId) {
+            return res.status(403).json({ error: 'Tenant context required' });
+        }
 
         // Verify participation
         const conversation = await (prisma as any).conversation.findUnique({
@@ -199,7 +208,7 @@ router.get('/conversations/:id', async (req: AuthenticatedRequest, res: Response
             }
         });
 
-        if (!conversation || !conversation.participants.some((p: any) => p.userId === userId)) {
+        if (!conversation || conversation.tenantId !== tenantId || !conversation.participants.some((p: any) => p.userId === userId)) {
             return res.status(403).json({ error: 'Access denied' });
         }
 
@@ -261,6 +270,11 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
     try {
         const { conversationId, content, type, attachments } = req.body;
         const userId = req.user?.id;
+        const tenantId = req.user?.tenantId;
+
+        if (!tenantId) {
+            return res.status(403).json({ error: 'Tenant context required' });
+        }
 
         // Verify participation first
         const conversation = await (prisma as any).conversation.findUnique({
@@ -268,7 +282,7 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
             include: { participants: true }
         });
 
-        if (!conversation || !conversation.participants.some((p: any) => p.userId === userId)) {
+        if (!conversation || conversation.tenantId !== tenantId || !conversation.participants.some((p: any) => p.userId === userId)) {
             return res.status(403).json({ error: 'Access denied' });
         }
 

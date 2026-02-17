@@ -385,7 +385,7 @@ router.get('/:id/breakdown', authorize('due_diligence.read'), async (req: Authen
 });
 
 // Get due diligence stats
-router.get('/stats/overview', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get('/stats/overview', authorize('due_diligence.list'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
             res.json({
@@ -399,15 +399,21 @@ router.get('/stats/overview', async (req: AuthenticatedRequest, res: Response): 
             return;
         }
 
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+            res.status(403).json({ error: 'Tenant context required' });
+            return;
+        }
+
         const [total, completed, pending, inProgress] = await Promise.all([
-            prismaReplica.dueDiligence.count(),
-            prismaReplica.dueDiligence.count({ where: { status: 'COMPLETED' } }),
-            prismaReplica.dueDiligence.count({ where: { status: 'PENDING' } }),
-            prismaReplica.dueDiligence.count({ where: { status: 'IN_PROGRESS' } })
+            prismaReplica.dueDiligence.count({ where: { sme: { tenantId } } }),
+            prismaReplica.dueDiligence.count({ where: { status: 'COMPLETED', sme: { tenantId } } }),
+            prismaReplica.dueDiligence.count({ where: { status: 'PENDING', sme: { tenantId } } }),
+            prismaReplica.dueDiligence.count({ where: { status: 'IN_PROGRESS', sme: { tenantId } } })
         ]);
 
         const completedDDs = await prismaReplica.dueDiligence.findMany({
-            where: { status: 'COMPLETED' },
+            where: { status: 'COMPLETED', sme: { tenantId } },
             select: { overallScore: true, riskLevel: true }
         });
 

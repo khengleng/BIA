@@ -4,6 +4,7 @@ import { AuthenticatedRequest, authorize } from '../middleware/authorize';
 import { prisma } from '../database';
 import { z } from 'zod';
 import { validateBody } from '../middleware/validation';
+import { sanitizeAgreementContent } from '../utils/content-sanitizer';
 
 const router = Router();
 
@@ -63,6 +64,8 @@ router.post('/:dealId', authorize('deal.update'), validateBody(createAgreementSc
         const { title, content, signerIds } = req.body;
         const tenantId = req.user?.tenantId || 'default';
         const createdBy = req.user?.id;
+        const sanitizedTitle = sanitizeAgreementContent(title);
+        const sanitizedContent = sanitizeAgreementContent(content);
 
         // Verify Deal
         const deal = await prisma.deal.findUnique({ where: { id: dealId } });
@@ -73,8 +76,8 @@ router.post('/:dealId', authorize('deal.update'), validateBody(createAgreementSc
             data: {
                 dealId,
                 tenantId,
-                title,
-                content,
+                title: sanitizedTitle,
+                content: sanitizedContent,
                 status: 'PENDING_SIGNATURES',
                 signers: {
                     create: signerIds.map((signerId: string) => ({
@@ -105,6 +108,7 @@ router.post('/:agreementId/sign', authorize('deal.read'), validateBody(signAgree
         const userId = req.user?.id;
         const ipAddress = req.ip;
         const userAgent = req.headers['user-agent'];
+        const sanitizedSignature = sanitizeAgreementContent(signature);
 
         // Find Signer Record
         const signerRecord = await (prisma as any).agreementSigner.findFirst({
@@ -124,7 +128,7 @@ router.post('/:agreementId/sign', authorize('deal.read'), validateBody(signAgree
             where: { id: signerRecord.id },
             data: {
                 status: 'SIGNED',
-                signature,
+                signature: sanitizedSignature,
                 signedAt: new Date(),
                 ipAddress,
                 userAgent

@@ -1,13 +1,35 @@
 import { Router, Response } from 'express';
-import { AuthenticatedRequest } from '../middleware/jwt-auth';
+import { AuthenticatedRequest, authorize } from '../middleware/authorize';
 import { prisma } from '../database';
 
 const router = Router();
 
 // Get pipeline deals
-router.get('/deals', async (req: AuthenticatedRequest, res: Response) => {
+router.get('/deals', authorize('deal.list'), async (req: AuthenticatedRequest, res: Response) => {
     try {
+        const userId = req.user?.id;
+        const userRole = req.user?.role;
+        const tenantId = req.user?.tenantId;
+
+        if (!tenantId) {
+            return res.status(403).json({ error: 'Tenant context required' });
+        }
+
+        const where: any = { tenantId };
+
+        if (userRole === 'SME') {
+            const sme = await prisma.sME.findUnique({ where: { userId } });
+            if (!sme) {
+                return res.json({ stages: [], pipeline: {}, summary: { totalDeals: 0, totalValue: 0, highPriority: 0, avgProgress: 0 } });
+            }
+            where.smeId = sme.id;
+        } else if (userRole === 'INVESTOR') {
+            // Investors only see published/funded/closed pipeline entries.
+            where.status = { in: ['PUBLISHED', 'NEGOTIATION', 'FUNDED', 'CLOSED'] };
+        }
+
         const deals = await prisma.deal.findMany({
+            where,
             include: {
                 sme: true,
                 investors: {
@@ -55,28 +77,54 @@ router.get('/deals', async (req: AuthenticatedRequest, res: Response) => {
             avgProgress: 45
         };
 
-        res.json({ stages, pipeline, summary });
+        return res.json({ stages, pipeline, summary });
     } catch (error) {
         console.error('Error fetching pipeline deals:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
     }
 });
 
 // Update deal stage
-router.put('/deals/:id/stage', async (req: AuthenticatedRequest, res: Response) => {
+router.put('/deals/:id/stage', authorize('deal.update', {
+    getOwnerId: async (req) => {
+        const deal = await prisma.deal.findUnique({
+            where: { id: req.params.id },
+            include: { sme: { select: { userId: true } } }
+        });
+        return deal?.sme?.userId;
+    }
+}), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const { id } = req.params;
         const { newStage } = req.body;
+        const tenantId = req.user?.tenantId;
+
+        if (!tenantId) {
+            return res.status(403).json({ error: 'Tenant context required' });
+        }
+
+        const allowedStages = ['DRAFT', 'PUBLISHED', 'NEGOTIATION', 'FUNDED', 'CLOSED'];
+        if (!allowedStages.includes(newStage)) {
+            return res.status(400).json({ error: 'Invalid stage' });
+        }
+
+        const existingDeal = await prisma.deal.findFirst({
+            where: { id, tenantId },
+            include: { sme: true }
+        });
+        if (!existingDeal) {
+            return res.status(404).json({ error: 'Deal not found' });
+        }
 
         const updatedDeal = await prisma.deal.update({
-            where: { id },
+            where: { id, tenantId },
             data: { status: newStage as any }
         });
 
-        res.json(updatedDeal);
+        return res.json(updatedDeal);
     } catch (error) {
         console.error('Error updating deal stage:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
     }
 });
 

@@ -165,9 +165,14 @@ export default function AgreementSigning({ dealId, userRole }: Props) {
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-6 bg-gray-50 text-gray-900 font-serif leading-relaxed text-sm">
-                            {/* In a real app, this would be a PDF viewer or heavily sanitized HTML */}
-                            <div dangerouslySetInnerHTML={{ __html: selectedAgreement.content }} />
-                            {!selectedAgreement.content && <p className="italic text-gray-500 text-center mt-10">Document content preview unavailable.</p>}
+                            {/* Render as plain text to avoid executing attacker-controlled markup. */}
+                            {selectedAgreement.content ? (
+                                <pre className="whitespace-pre-wrap break-words font-serif text-sm leading-relaxed">
+                                    {selectedAgreement.content}
+                                </pre>
+                            ) : (
+                                <p className="italic text-gray-500 text-center mt-10">Document content preview unavailable.</p>
+                            )}
                         </div>
 
                         {selectedAgreement.canSign ? (

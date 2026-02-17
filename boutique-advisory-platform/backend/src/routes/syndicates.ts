@@ -554,7 +554,7 @@ router.post('/:id/members/:memberId/approve', authorize('syndicate.manage'), asy
 });
 
 // Get syndicate stats
-router.get('/stats/overview', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get('/stats/overview', authorize('syndicate.list'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
             res.json({
@@ -567,20 +567,27 @@ router.get('/stats/overview', async (req: AuthenticatedRequest, res: Response): 
             return;
         }
 
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+            res.status(403).json({ error: 'Tenant context required' });
+            return;
+        }
+
         const [totalSyndicates, openSyndicates, formingSyndicates, fundedSyndicates, totalMembers] = await Promise.all([
-            prismaReplica.syndicate.count(),
-            prismaReplica.syndicate.count({ where: { status: 'OPEN' } }),
-            prismaReplica.syndicate.count({ where: { status: 'FORMING' } }),
-            prismaReplica.syndicate.count({ where: { status: 'FUNDED' } }),
-            prismaReplica.syndicateMember.count({ where: { status: 'APPROVED' } })
+            prismaReplica.syndicate.count({ where: { tenantId } }),
+            prismaReplica.syndicate.count({ where: { tenantId, status: 'OPEN' } }),
+            prismaReplica.syndicate.count({ where: { tenantId, status: 'FORMING' } }),
+            prismaReplica.syndicate.count({ where: { tenantId, status: 'FUNDED' } }),
+            prismaReplica.syndicateMember.count({ where: { status: 'APPROVED', syndicate: { tenantId } } })
         ]);
 
         const totalRaisedResult = await prismaReplica.syndicateMember.aggregate({
-            where: { status: 'APPROVED' },
+            where: { status: 'APPROVED', syndicate: { tenantId } },
             _sum: { amount: true }
         });
 
         const totalTargetResult = await prismaReplica.syndicate.aggregate({
+            where: { tenantId },
             _sum: { targetAmount: true }
         });
 

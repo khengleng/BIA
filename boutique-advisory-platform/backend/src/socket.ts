@@ -93,8 +93,28 @@ export function initSocket(server: HttpServer) {
 
         // Handle joining conversation rooms
         socket.on('join_conversation', (conversationId: string) => {
-            socket.join(`conversation_${conversationId}`);
-            console.log(`💬 User ${user.email} joined conversation ${conversationId}`);
+            (async () => {
+                try {
+                    const { prisma } = await import('./database');
+                    const conversation = await (prisma as any).conversation.findUnique({
+                        where: { id: conversationId },
+                        include: { participants: true }
+                    });
+
+                    const inTenant = conversation?.tenantId === user.tenantId;
+                    const isParticipant = !!conversation?.participants?.some((p: any) => p.userId === user.userId);
+                    if (!conversation || !inTenant || !isParticipant) {
+                        socket.emit('error_message', { error: 'Access denied to conversation room' });
+                        return;
+                    }
+
+                    socket.join(`conversation_${conversationId}`);
+                    console.log(`💬 User ${user.email} joined conversation ${conversationId}`);
+                } catch (error) {
+                    console.error('join_conversation auth check failed:', error);
+                    socket.emit('error_message', { error: 'Failed to join conversation' });
+                }
+            })();
         });
 
         // Handle leaving conversation rooms
@@ -118,6 +138,12 @@ export function initSocket(server: HttpServer) {
                 });
 
                 if (!conversation) return;
+                const inTenant = conversation.tenantId === user.tenantId;
+                const isParticipant = conversation.participants.some((p: any) => p.userId === user.userId);
+                if (!inTenant || !isParticipant) {
+                    socket.emit('error_message', { error: 'Access denied to conversation' });
+                    return;
+                }
 
                 const messagePayload = {
                     conversationId: data.conversationId,

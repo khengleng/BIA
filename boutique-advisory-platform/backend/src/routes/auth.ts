@@ -1,7 +1,8 @@
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 
-import { COOKIE_OPTIONS, issueTokensAndSetCookies, getTenantId } from '../utils/auth-utils';
+import { COOKIE_OPTIONS, issueTokensAndSetCookies } from '../utils/auth-utils';
+import { getTenantId } from '../utils/tenant-utils';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../database';
 import { Prisma } from '@prisma/client';
