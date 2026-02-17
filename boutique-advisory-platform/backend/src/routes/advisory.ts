@@ -549,7 +549,7 @@ router.get('/certifications', authorize('certification.list'), async (req: Authe
         if (!tenantId) return;
 
         const certifications = await prisma.certification.findMany({
-            where: { tenantId },
+            where: { sme: { tenantId } },
             include: {
                 sme: {
                     select: {
@@ -579,7 +579,7 @@ router.patch('/certifications/:id', authorize('certification.approve'), async (r
         const { status, comments, score } = req.body;
 
         const existingCertification = await prisma.certification.findFirst({
-            where: { id, tenantId },
+            where: { id, sme: { tenantId } },
             select: { id: true }
         });
         if (!existingCertification) {
