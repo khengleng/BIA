@@ -1361,22 +1361,12 @@ router.post('/delete-account', authenticateToken, async (req: AuthenticatedReque
 
 // Switch Role Endpoint
 // Switch Role Endpoint
-router.post('/switch-role', async (req: Request, res: Response) => {
+router.post('/switch-role', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    let token = req.headers.authorization?.replace('Bearer ', '');
-    // Check cookie if header missing
-    if (!token && req.cookies && req.cookies['token']) {
-      token = req.cookies['token'];
-    }
-
-    if (!token) {
+    const userId = req.user?.id;
+    if (!userId) {
       return res.status(401).json({ error: 'Authentication required' });
     }
-
-    if (!process.env.JWT_SECRET) return res.status(500).json({ error: 'Config error' });
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET) as any;
-    const userId = decoded.userId;
 
     const { targetRole } = req.body;
 

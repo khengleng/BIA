@@ -6,7 +6,8 @@
     "dev": "next dev -p 3005 -H 127.0.0.1",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "rm -rf .test-dist && tsc -p tsconfig.test.json && node --test .test-dist/src/tests/**/*.test.js"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.7",
@@ -21,7 +22,7 @@
     "i18next-browser-languagedetector": "^8.2.0",
     "i18next-http-backend": "^3.0.2",
     "lucide-react": "^0.563.0",
-    "next": "^15.1.11",
+    "next": "^15.5.11",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-hook-form": "^7.62.0",
@@ -39,7 +40,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "15.5.0",
+    "eslint-config-next": "15.5.11",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

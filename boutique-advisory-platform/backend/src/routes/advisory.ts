@@ -5,11 +5,23 @@ import { sendNewBookingNotification, sendBookingConfirmation, sendPaymentReceipt
 
 const router = Router();
 
+function requireTenantId(req: AuthenticatedRequest, res: Response): string | undefined {
+    const tenantId = req.user?.tenantId;
+    if (!tenantId) {
+        res.status(403).json({ error: 'Tenant context required' });
+        return undefined;
+    }
+    return tenantId;
+}
+
 // Get all advisory services
 router.get('/services', async (req: AuthenticatedRequest, res: Response) => {
     try {
+        const tenantId = requireTenantId(req, res);
+        if (!tenantId) return;
+
         const services = await prisma.advisoryService.findMany({
-            where: { status: 'ACTIVE' },
+            where: { status: 'ACTIVE', tenantId },
             include: {
                 advisor: {
                     select: {
@@ -39,6 +51,9 @@ router.get('/services', async (req: AuthenticatedRequest, res: Response) => {
 // Get single advisory service
 router.get('/services/:id', async (req: AuthenticatedRequest, res: Response) => {
     try {
+        const tenantId = requireTenantId(req, res);
+        if (!tenantId) return;
+
         const { id } = req.params;
 
         // Handle mock IDs
@@ -49,8 +64,8 @@ router.get('/services/:id', async (req: AuthenticatedRequest, res: Response) => 
             return res.json({ id: '2', name: 'Financial Modeling', description: 'Comprehensive financial forecasting and modeling.', price: 2500, category: 'Financial', duration: '1 week', advisor: { name: 'Sarah Chen' } });
         }
 
-        const service = await prisma.advisoryService.findUnique({
-            where: { id },
+        const service = await prisma.advisoryService.findFirst({
+            where: { id, tenantId },
             include: {
                 advisor: {
                     select: {
@@ -76,8 +91,11 @@ router.get('/services/:id', async (req: AuthenticatedRequest, res: Response) => 
 // Get all advisors
 router.get('/advisors', async (req: AuthenticatedRequest, res: Response) => {
     try {
+        const tenantId = requireTenantId(req, res);
+        if (!tenantId) return;
+
         const advisors = await prisma.advisor.findMany({
-            where: { status: 'ACTIVE' },
+            where: { status: 'ACTIVE', tenantId },
             include: {
                 user: {
                     select: {
@@ -107,6 +125,9 @@ router.get('/advisors', async (req: AuthenticatedRequest, res: Response) => {
 // Get single advisor
 router.get('/advisors/:id', async (req: AuthenticatedRequest, res: Response) => {
     try {
+        const tenantId = requireTenantId(req, res);
+        if (!tenantId) return;
+
         const { id } = req.params;
 
         // Mock fallback
@@ -139,8 +160,8 @@ router.get('/advisors/:id', async (req: AuthenticatedRequest, res: Response) => 
             });
         }
 
-        const advisor = await prisma.advisor.findUnique({
-            where: { id },
+        const advisor = await prisma.advisor.findFirst({
+            where: { id, tenantId },
             include: {
                 user: {
                     select: {
@@ -183,7 +204,9 @@ router.post('/book', async (req: AuthenticatedRequest, res: Response) => {
     try {
         const { serviceId, serviceName, advisorId, preferredDate, notes, amount } = req.body;
         const userId = req.user?.id;
+        const tenantId = requireTenantId(req, res);
 
+        if (!tenantId) return;
         if (!userId) {
             return res.status(401).json({ error: 'User not authenticated' });
         }
@@ -193,8 +216,8 @@ router.post('/book', async (req: AuthenticatedRequest, res: Response) => {
         let actualAdvisorId = null;
 
         if (serviceId) {
-            const serviceExists = await prisma.advisoryService.findUnique({
-                where: { id: serviceId }
+            const serviceExists = await prisma.advisoryService.findFirst({
+                where: { id: serviceId, tenantId }
             });
             if (serviceExists) {
                 actualServiceId = serviceId;
@@ -202,8 +225,8 @@ router.post('/book', async (req: AuthenticatedRequest, res: Response) => {
         }
 
         if (advisorId) {
-            const advisorExists = await prisma.advisor.findUnique({
-                where: { id: advisorId }
+            const advisorExists = await prisma.advisor.findFirst({
+                where: { id: advisorId, tenantId }
             });
             if (advisorExists) {
                 actualAdvisorId = advisorId;
@@ -223,6 +246,7 @@ router.post('/book', async (req: AuthenticatedRequest, res: Response) => {
 
             const conflicts = await prisma.booking.findMany({
                 where: {
+                    tenantId,
                     advisorId: actualAdvisorId,
                     status: { in: ['CONFIRMED', 'PENDING'] },
                     preferredDate: {
@@ -240,7 +264,7 @@ router.post('/book', async (req: AuthenticatedRequest, res: Response) => {
         const booking = await prisma.booking.create({
             data: {
                 userId,
-                tenantId: 'default',
+                tenantId,
                 serviceId: actualServiceId,
                 advisorId: actualAdvisorId,
                 preferredDate: new Date(preferredDate),
@@ -310,8 +334,11 @@ router.post('/book', async (req: AuthenticatedRequest, res: Response) => {
 router.get('/my-bookings', async (req: AuthenticatedRequest, res: Response) => {
     try {
         const userId = req.user?.id;
+        const tenantId = requireTenantId(req, res);
+        if (!tenantId) return;
+
         const bookings = await prisma.booking.findMany({
-            where: { userId },
+            where: { userId, tenantId },
             include: {
                 service: true,
                 advisor: true
@@ -331,16 +358,17 @@ router.get('/my-bookings', async (req: AuthenticatedRequest, res: Response) => {
 router.post('/services', authorize('advisory_service.create'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const userId = req.user?.id;
-        const userRole = req.user?.role;
+        const tenantId = requireTenantId(req, res);
+        if (!tenantId) return;
 
         const { name, category, description, price, duration, features } = req.body;
 
         // Get advisor profile
         const advisor = await prisma.advisor.findUnique({
-            where: { userId }
+            where: { userId },
         });
 
-        if (!advisor) {
+        if (!advisor || advisor.tenantId !== tenantId) {
             return res.status(403).json({ error: 'Only registered Advisors can create advisory services' });
         }
 
@@ -348,7 +376,7 @@ router.post('/services', authorize('advisory_service.create'), async (req: Authe
 
         const service = await prisma.advisoryService.create({
             data: {
-                tenantId: 'default',
+                tenantId,
                 advisorId,
                 name,
                 category,
@@ -384,11 +412,13 @@ router.put('/services/:id', authorize('advisory_service.manage'), async (req: Au
     try {
         const userId = req.user?.id;
         const userRole = req.user?.role;
+        const tenantId = requireTenantId(req, res);
+        if (!tenantId) return;
         const { id } = req.params;
 
         // Get the service to check ownership
-        const existingService = await prisma.advisoryService.findUnique({
-            where: { id },
+        const existingService = await prisma.advisoryService.findFirst({
+            where: { id, tenantId },
             include: { advisor: true }
         });
 
@@ -440,11 +470,13 @@ router.delete('/services/:id', authorize('advisory_service.delete'), async (req:
     try {
         const userId = req.user?.id;
         const userRole = req.user?.role;
+        const tenantId = requireTenantId(req, res);
+        if (!tenantId) return;
         const { id } = req.params;
 
         // Get the service to check ownership
-        const existingService = await prisma.advisoryService.findUnique({
-            where: { id },
+        const existingService = await prisma.advisoryService.findFirst({
+            where: { id, tenantId },
             include: { advisor: true }
         });
 
@@ -475,10 +507,13 @@ router.get('/my-services', authorize('advisory_service.manage'), async (req: Aut
     try {
         const userId = req.user?.id;
         const userRole = req.user?.role;
+        const tenantId = requireTenantId(req, res);
+        if (!tenantId) return;
 
         // If Admin, return all services
         if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') {
             const allServices = await prisma.advisoryService.findMany({
+                where: { tenantId },
                 include: { advisor: true },
                 orderBy: { createdAt: 'desc' }
             });
@@ -489,12 +524,12 @@ router.get('/my-services', authorize('advisory_service.manage'), async (req: Aut
             where: { userId }
         });
 
-        if (!advisor) {
+        if (!advisor || advisor.tenantId !== tenantId) {
             return res.status(404).json({ error: 'Advisor profile not found' });
         }
 
         const services = await prisma.advisoryService.findMany({
-            where: { advisorId: advisor.id },
+            where: { advisorId: advisor.id, tenantId },
             orderBy: { createdAt: 'desc' }
         });
 
@@ -510,7 +545,11 @@ router.get('/my-services', authorize('advisory_service.manage'), async (req: Aut
 // Get certification requests (for Advisors/Admins)
 router.get('/certifications', authorize('certification.list'), async (req: AuthenticatedRequest, res: Response) => {
     try {
+        const tenantId = requireTenantId(req, res);
+        if (!tenantId) return;
+
         const certifications = await prisma.certification.findMany({
+            where: { tenantId },
             include: {
                 sme: {
                     select: {
@@ -533,11 +572,22 @@ router.get('/certifications', authorize('certification.list'), async (req: Authe
 // Update certification status
 router.patch('/certifications/:id', authorize('certification.approve'), async (req: AuthenticatedRequest, res: Response) => {
     try {
+        const tenantId = requireTenantId(req, res);
+        if (!tenantId) return;
+
         const { id } = req.params;
         const { status, comments, score } = req.body;
 
+        const existingCertification = await prisma.certification.findFirst({
+            where: { id, tenantId },
+            select: { id: true }
+        });
+        if (!existingCertification) {
+            return res.status(404).json({ error: 'Certification not found' });
+        }
+
         const certification = await prisma.certification.update({
-            where: { id },
+            where: { id: existingCertification.id },
             data: {
                 status,
                 ...(comments && { comments }),

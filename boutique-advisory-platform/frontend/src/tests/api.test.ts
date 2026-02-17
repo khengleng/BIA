@@ -1,14 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert';
-
-function clearApiModuleCache(): void {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const modulePath = require.resolve('../lib/api');
-  delete require.cache[modulePath];
-}
+import { apiRequest, __resetApiTestState } from '../lib/api';
 
 test('apiRequest - GET uses include credentials and skips CSRF fetch', async () => {
-  clearApiModuleCache();
+  __resetApiTestState();
 
   const calls: Array<{ url: string; options: RequestInit }> = [];
   const mockResponse = { ok: true, status: 200 } as Response;
@@ -21,8 +16,6 @@ test('apiRequest - GET uses include credentials and skips CSRF fetch', async () 
     return mockResponse;
   }) as typeof fetch;
 
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { apiRequest } = require('../lib/api') as typeof import('../lib/api');
   await apiRequest('/api/health');
 
   assert.strictEqual(calls.length, 1);
@@ -33,7 +26,7 @@ test('apiRequest - GET uses include credentials and skips CSRF fetch', async () 
 });
 
 test('apiRequest - POST fetches csrf token and sends it in request header', async () => {
-  clearApiModuleCache();
+  __resetApiTestState();
 
   const calls: Array<{ url: string; options: RequestInit }> = [];
 
@@ -54,9 +47,6 @@ test('apiRequest - POST fetches csrf token and sends it in request header', asyn
     return { ok: true, status: 200 } as Response;
   }) as typeof fetch;
 
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { apiRequest } = require('../lib/api') as typeof import('../lib/api');
-
   await apiRequest('/api/deals', {
     method: 'POST',
     body: JSON.stringify({ name: 'Deal A' }),
@@ -72,7 +62,7 @@ test('apiRequest - POST fetches csrf token and sends it in request header', asyn
 });
 
 test('apiRequest - reuses previously fetched csrf token for second state-changing call', async () => {
-  clearApiModuleCache();
+  __resetApiTestState();
 
   let csrfFetchCount = 0;
   const calls: Array<{ url: string; options: RequestInit }> = [];
@@ -94,9 +84,6 @@ test('apiRequest - reuses previously fetched csrf token for second state-changin
 
     return { ok: true, status: 200 } as Response;
   }) as typeof fetch;
-
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { apiRequest } = require('../lib/api') as typeof import('../lib/api');
 
   await apiRequest('/api/first', { method: 'POST', body: '{}' });
   await apiRequest('/api/second', { method: 'PATCH', body: '{}' });

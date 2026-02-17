@@ -8,6 +8,11 @@ export const API_URL = typeof window !== 'undefined' && window.location.hostname
 let csrfToken: string | null = null;
 let csrfTokenPromise: Promise<string | null> | null = null;
 
+export function __resetApiTestState(): void {
+    csrfToken = null;
+    csrfTokenPromise = null;
+}
+
 async function ensureCsrfToken(): Promise<void> {
     if (csrfToken) return;
     if (csrfTokenPromise) {

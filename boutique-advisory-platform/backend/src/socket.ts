@@ -2,14 +2,30 @@ import { Server as HttpServer } from 'http';
 import { Server, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
+if (!process.env.JWT_SECRET) {
     console.error('FATAL: JWT_SECRET environment variable is not set for WebSockets');
     // We don't exit here to allow the rest of the server to potentially function or log errors, 
     // but socket initialization will effectively fail verification for all clients.
 }
 
 export let io: Server;
+
+function getJwtSecret(): string {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        throw new Error('Authentication error: Server configuration error');
+    }
+    return secret;
+}
+
+export function verifySocketAuthToken(token: string): any {
+    const decoded = jwt.verify(token, getJwtSecret()) as any;
+    if (decoded?.isPreAuth) {
+        throw new Error('Authentication error: Two-factor authentication required');
+    }
+
+    return decoded;
+}
 
 export function initSocket(server: HttpServer) {
     const isProduction = process.env.NODE_ENV === 'production';
@@ -66,15 +82,12 @@ export function initSocket(server: HttpServer) {
             return next(new Error('Authentication error: No token provided'));
         }
 
-        if (!JWT_SECRET) {
-            return next(new Error('Authentication error: Server configuration error'));
-        }
-
-        jwt.verify(token, JWT_SECRET, (err: any, decoded: any) => {
-            if (err) return next(new Error('Authentication error: Invalid token'));
-            (socket as any).user = decoded;
+        try {
+            (socket as any).user = verifySocketAuthToken(token);
             next();
-        });
+        } catch (error: any) {
+            return next(new Error(error?.message || 'Authentication error: Invalid token'));
+        }
     });
 
     io.on('connection', (socket: Socket) => {

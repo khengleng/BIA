@@ -86,9 +86,10 @@ async function ensureAdminAccount() {
     // SECURITY: Never use hardcoded fallback passwords in production
     const crypto = require('crypto');
     adminPassword = crypto.randomBytes(16).toString('hex') + 'A!1';
-    console.error('CRITICAL SECURITY NOTICE: INITIAL_ADMIN_PASSWORD not set.');
-    console.error(`A secure random password has been generated for ${adminEmail}: ${adminPassword}`);
-    console.error('Please change this password immediately after first login or set INITIAL_ADMIN_PASSWORD env var.');
+    console.warn('CRITICAL SECURITY: INITIAL_ADMIN_PASSWORD not set. A secure random password has been generated.');
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[DEV ONLY] Initial Admin Password: ${adminPassword}`);
+    }
   }
 
   try {
@@ -410,6 +411,10 @@ const migrationAuthMiddleware = (req: express.Request, res: express.Response, ne
   try {
     const jwt = require('jsonwebtoken');
     const decoded = jwt.verify(token, process.env.JWT_SECRET) as any;
+
+    if (decoded?.isPreAuth) {
+      return res.status(401).json({ error: 'Two-factor authentication required' });
+    }
 
     if (decoded.role !== 'SUPER_ADMIN') {
       return res.status(403).json({ error: 'Migration endpoints require SUPER_ADMIN role' });

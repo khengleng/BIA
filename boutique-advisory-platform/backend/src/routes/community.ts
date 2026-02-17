@@ -11,9 +11,21 @@ import { shouldUseDatabase } from '../migration-manager';
 
 const router = Router();
 
+function requireTenantId(req: AuthenticatedRequest, res: Response): string | undefined {
+    const tenantId = req.user?.tenantId;
+    if (!tenantId) {
+        res.status(403).json({ error: 'Tenant context required' });
+        return undefined;
+    }
+    return tenantId;
+}
+
 // Get all posts
 router.get('/posts', authorize('community.post_list'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
+        const tenantId = requireTenantId(req, res);
+        if (!tenantId) return;
+
         if (!shouldUseDatabase()) {
             res.json({ posts: [], total: 0, page: 1, limit: 20, totalPages: 0 });
             return;
@@ -24,7 +36,7 @@ router.get('/posts', authorize('community.post_list'), async (req: Authenticated
         const limitNum = parseInt(limit as string);
         const skip = (pageNum - 1) * limitNum;
 
-        const where: any = { status: 'PUBLISHED' };
+        const where: any = { status: 'PUBLISHED', tenantId };
 
         if (category) where.category = category;
         if (isPinned === 'true') where.isPinned = true;
@@ -57,7 +69,7 @@ router.get('/posts', authorize('community.post_list'), async (req: Authenticated
         // Fetch author info for each post
         const authorIds = [...new Set(posts.map(p => p.authorId))] as string[];
         const authors = await prismaReplica.user.findMany({
-            where: { id: { in: authorIds } },
+            where: { id: { in: authorIds }, tenantId },
             select: {
                 id: true,
                 firstName: true,
@@ -101,14 +113,17 @@ router.get('/posts', authorize('community.post_list'), async (req: Authenticated
 // Get post by ID
 router.get('/posts/:id', authorize('community.post_read'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
+        const tenantId = requireTenantId(req, res);
+        if (!tenantId) return;
+
         if (!shouldUseDatabase()) {
             res.status(404).json({ error: 'Post not found' });
             return;
         }
 
         // Read from replica
-        const post = await prismaReplica.communityPost.findUnique({
-            where: { id: req.params.id },
+        const post = await prismaReplica.communityPost.findFirst({
+            where: { id: req.params.id, tenantId },
             include: {
                 comments: {
                     orderBy: { createdAt: 'asc' },
@@ -128,7 +143,7 @@ router.get('/posts/:id', authorize('community.post_read'), async (req: Authentic
 
         // Increment view count on primary (fire and forget mostly, or await)
         await prisma.communityPost.update({
-            where: { id: req.params.id },
+            where: { id: post.id },
             data: { views: { increment: 1 } }
         });
 
@@ -142,6 +157,9 @@ router.get('/posts/:id', authorize('community.post_read'), async (req: Authentic
 // Create post
 router.post('/posts', authorize('community.post_create'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
+        const tenantId = requireTenantId(req, res);
+        if (!tenantId) return;
+
         if (!shouldUseDatabase()) {
             res.status(503).json({ error: 'Database not available' });
             return;
@@ -156,7 +174,7 @@ router.post('/posts', authorize('community.post_create'), async (req: Authentica
 
         const post = await prisma.communityPost.create({
             data: {
-                tenantId: 'default',
+                tenantId,
                 authorId: req.user?.id || 'anonymous',
                 title,
                 content,
@@ -178,13 +196,16 @@ router.post('/posts', authorize('community.post_create'), async (req: Authentica
 // Update post
 router.put('/posts/:id', authorize('community.post_update'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
+        const tenantId = requireTenantId(req, res);
+        if (!tenantId) return;
+
         if (!shouldUseDatabase()) {
             res.status(503).json({ error: 'Database not available' });
             return;
         }
 
-        const existing = await prisma.communityPost.findUnique({
-            where: { id: req.params.id }
+        const existing = await prisma.communityPost.findFirst({
+            where: { id: req.params.id, tenantId }
         });
 
         if (!existing) {
@@ -227,13 +248,16 @@ router.put('/posts/:id', authorize('community.post_update'), async (req: Authent
 // Delete post
 router.delete('/posts/:id', authorize('community.post_delete'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
+        const tenantId = requireTenantId(req, res);
+        if (!tenantId) return;
+
         if (!shouldUseDatabase()) {
             res.status(503).json({ error: 'Database not available' });
             return;
         }
 
-        const existing = await prisma.communityPost.findUnique({
-            where: { id: req.params.id }
+        const existing = await prisma.communityPost.findFirst({
+            where: { id: req.params.id, tenantId }
         });
 
         if (!existing) {
@@ -266,17 +290,29 @@ router.delete('/posts/:id', authorize('community.post_delete'), async (req: Auth
 // Like post
 router.post('/posts/:id/like', authorize('community.post_read'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
+        const tenantId = requireTenantId(req, res);
+        if (!tenantId) return;
+
         if (!shouldUseDatabase()) {
             res.status(503).json({ error: 'Database not available' });
             return;
         }
 
-        const post = await prisma.communityPost.update({
-            where: { id: req.params.id },
+        const post = await prisma.communityPost.findFirst({
+            where: { id: req.params.id, tenantId },
+            select: { id: true }
+        });
+        if (!post) {
+            res.status(404).json({ error: 'Post not found' });
+            return;
+        }
+
+        const updatedPost = await prisma.communityPost.update({
+            where: { id: post.id },
             data: { likes: { increment: 1 } }
         });
 
-        res.json({ likes: post.likes });
+        res.json({ likes: updatedPost.likes });
     } catch (error) {
         console.error('Error liking post:', error);
         res.status(500).json({ error: 'Failed to like post' });
@@ -286,6 +322,9 @@ router.post('/posts/:id/like', authorize('community.post_read'), async (req: Aut
 // Add comment
 router.post('/posts/:id/comments', authorize('community.comment_create'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
+        const tenantId = requireTenantId(req, res);
+        if (!tenantId) return;
+
         if (!shouldUseDatabase()) {
             res.status(503).json({ error: 'Database not available' });
             return;
@@ -299,8 +338,8 @@ router.post('/posts/:id/comments', authorize('community.comment_create'), async 
         }
 
         // Verify post exists
-        const post = await prisma.communityPost.findUnique({
-            where: { id: req.params.id }
+        const post = await prisma.communityPost.findFirst({
+            where: { id: req.params.id, tenantId }
         });
 
         if (!post) {
@@ -327,13 +366,25 @@ router.post('/posts/:id/comments', authorize('community.comment_create'), async 
 // Like comment
 router.post('/comments/:id/like', authorize('community.post_read'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
+        const tenantId = requireTenantId(req, res);
+        if (!tenantId) return;
+
         if (!shouldUseDatabase()) {
             res.status(503).json({ error: 'Database not available' });
             return;
         }
 
+        const existingComment = await prisma.comment.findFirst({
+            where: { id: req.params.id, post: { tenantId } },
+            select: { id: true }
+        });
+        if (!existingComment) {
+            res.status(404).json({ error: 'Comment not found' });
+            return;
+        }
+
         const comment = await prisma.comment.update({
-            where: { id: req.params.id },
+            where: { id: existingComment.id },
             data: { likes: { increment: 1 } }
         });
 
@@ -347,6 +398,9 @@ router.post('/comments/:id/like', authorize('community.post_read'), async (req: 
 // Get community stats
 router.get('/stats', authorize('community.post_list'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
+        const tenantId = requireTenantId(req, res);
+        if (!tenantId) return;
+
         if (!shouldUseDatabase()) {
             res.json({
                 totalPosts: 0,
@@ -359,10 +413,10 @@ router.get('/stats', authorize('community.post_list'), async (req: Authenticated
         }
 
         const [totalPosts, totalComments, likesResult] = await Promise.all([
-            prismaReplica.communityPost.count({ where: { status: 'PUBLISHED' } }),
-            prismaReplica.comment.count(),
+            prismaReplica.communityPost.count({ where: { status: 'PUBLISHED', tenantId } }),
+            prismaReplica.comment.count({ where: { post: { tenantId } } }),
             prismaReplica.communityPost.aggregate({
-                where: { status: 'PUBLISHED' },
+                where: { status: 'PUBLISHED', tenantId },
                 _sum: { likes: true }
             })
         ]);
@@ -370,7 +424,7 @@ router.get('/stats', authorize('community.post_list'), async (req: Authenticated
         // Get category distribution
         const categories = await prismaReplica.communityPost.groupBy({
             by: ['category'],
-            where: { status: 'PUBLISHED' },
+            where: { status: 'PUBLISHED', tenantId },
             _count: { category: true },
             orderBy: { _count: { category: 'desc' } },
             take: 5

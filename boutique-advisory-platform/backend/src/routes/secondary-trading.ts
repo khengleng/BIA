@@ -12,12 +12,24 @@ import { shouldUseDatabase } from '../migration-manager';
 
 const router = Router();
 
+function requireTenantId(req: AuthenticatedRequest, res: Response): string | undefined {
+    const tenantId = req.user?.tenantId;
+    if (!tenantId) {
+        res.status(403).json({ error: 'Tenant context required' });
+        return undefined;
+    }
+    return tenantId;
+}
+
 // Platform fee percentage
 const PLATFORM_FEE = 0.01; // 1%
 
 // Get all active listings
 router.get('/listings', authorize('secondary_trading.list'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
+        const tenantId = requireTenantId(req, res);
+        if (!tenantId) return;
+
         if (!shouldUseDatabase()) {
             res.json([]);
             return;
@@ -26,6 +38,7 @@ router.get('/listings', authorize('secondary_trading.list'), async (req: Authent
         const { status, dealId, sellerId, minPrice, maxPrice } = req.query;
 
         const where: any = {
+            tenantId,
             seller: {
                 status: { not: 'DELETED' }
             }
@@ -59,7 +72,7 @@ router.get('/listings', authorize('secondary_trading.list'), async (req: Authent
         let currentInvestorId: string | undefined;
         if (req.user) {
             const investor = await prismaReplica.investor.findFirst({
-                where: { userId: req.user.id }
+                where: { userId: req.user.id, tenantId }
             });
             currentInvestorId = investor?.id;
         }
@@ -83,13 +96,16 @@ router.get('/listings', authorize('secondary_trading.list'), async (req: Authent
 // Get listing by ID
 router.get('/listings/:id', authorize('secondary_trading.read'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
+        const tenantId = requireTenantId(req, res);
+        if (!tenantId) return;
+
         if (!shouldUseDatabase()) {
             res.status(404).json({ error: 'Listing not found' });
             return;
         }
 
-        const listing = await prismaReplica.secondaryListing.findUnique({
-            where: { id: req.params.id },
+        const listing = await prismaReplica.secondaryListing.findFirst({
+            where: { id: req.params.id, tenantId },
             include: {
                 trades: {
                     orderBy: { createdAt: 'desc' }
@@ -112,6 +128,9 @@ router.get('/listings/:id', authorize('secondary_trading.read'), async (req: Aut
 // Create listing
 router.post('/listings', authorize('secondary_trading.create_listing'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
+        const tenantId = requireTenantId(req, res);
+        if (!tenantId) return;
+
         if (!shouldUseDatabase()) {
             res.status(503).json({ error: 'Database not available' });
             return;
@@ -143,7 +162,7 @@ router.post('/listings', authorize('secondary_trading.create_listing'), async (r
 
         // Get investor ID for the current user
         const investor = await prisma.investor.findFirst({
-            where: { userId: req.user?.id }
+            where: { userId: req.user?.id, tenantId }
         });
 
         if (!investor) {
@@ -152,8 +171,8 @@ router.post('/listings', authorize('secondary_trading.create_listing'), async (r
         }
 
         // Verify the deal investment exists and deal is closed
-        const dealInvestor = await prisma.dealInvestor.findUnique({
-            where: { id: dealInvestorId },
+        const dealInvestor = await prisma.dealInvestor.findFirst({
+            where: { id: dealInvestorId, deal: { tenantId } },
             include: { deal: true }
         });
 
@@ -175,6 +194,7 @@ router.post('/listings', authorize('secondary_trading.create_listing'), async (r
         const activeListings = await prisma.secondaryListing.findMany({
             where: {
                 dealInvestorId,
+                tenantId,
                 status: 'ACTIVE'
             }
         });
@@ -198,7 +218,7 @@ router.post('/listings', authorize('secondary_trading.create_listing'), async (r
 
         const listing = await prisma.secondaryListing.create({
             data: {
-                tenantId: 'default',
+                tenantId,
                 sellerId: investor.id,
                 dealInvestorId,
                 sharesAvailable,
@@ -219,13 +239,16 @@ router.post('/listings', authorize('secondary_trading.create_listing'), async (r
 // Update listing
 router.put('/listings/:id', authorize('secondary_trading.update_listing'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
+        const tenantId = requireTenantId(req, res);
+        if (!tenantId) return;
+
         if (!shouldUseDatabase()) {
             res.status(503).json({ error: 'Database not available' });
             return;
         }
 
-        const existing = await prisma.secondaryListing.findUnique({
-            where: { id: req.params.id }
+        const existing = await prisma.secondaryListing.findFirst({
+            where: { id: req.params.id, tenantId }
         });
 
         if (!existing) {
@@ -235,7 +258,7 @@ router.put('/listings/:id', authorize('secondary_trading.update_listing'), async
 
         // Check ownership
         const investor = await prisma.investor.findFirst({
-            where: { userId: req.user?.id }
+            where: { userId: req.user?.id, tenantId }
         });
 
         const isOwner = investor && existing.sellerId === investor.id;
@@ -269,13 +292,16 @@ router.put('/listings/:id', authorize('secondary_trading.update_listing'), async
 // Cancel listing (seller only)
 router.delete('/listings/:id', authorize('secondary_trading.update_listing'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
+        const tenantId = requireTenantId(req, res);
+        if (!tenantId) return;
+
         if (!shouldUseDatabase()) {
             res.status(503).json({ error: 'Database not available' });
             return;
         }
 
-        const listing = await prisma.secondaryListing.findUnique({
-            where: { id: req.params.id }
+        const listing = await prisma.secondaryListing.findFirst({
+            where: { id: req.params.id, tenantId }
         });
 
         if (!listing) {
@@ -285,7 +311,7 @@ router.delete('/listings/:id', authorize('secondary_trading.update_listing'), as
 
         // Check ownership
         const investor = await prisma.investor.findFirst({
-            where: { userId: req.user?.id }
+            where: { userId: req.user?.id, tenantId }
         });
 
         if (!investor || listing.sellerId !== investor.id) {
@@ -314,6 +340,9 @@ router.delete('/listings/:id', authorize('secondary_trading.update_listing'), as
 // Buy shares (create trade)
 router.post('/listings/:id/buy', authorize('secondary_trading.buy'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
+        const tenantId = requireTenantId(req, res);
+        if (!tenantId) return;
+
         if (!shouldUseDatabase()) {
             res.status(503).json({ error: 'Database not available' });
             return;
@@ -329,7 +358,7 @@ router.post('/listings/:id/buy', authorize('secondary_trading.buy'), async (req:
 
         // Get buyer investor ID
         const buyer = await prisma.investor.findFirst({
-            where: { userId: req.user?.id }
+            where: { userId: req.user?.id, tenantId }
         });
 
         if (!buyer) {
@@ -337,8 +366,8 @@ router.post('/listings/:id/buy', authorize('secondary_trading.buy'), async (req:
             return;
         }
 
-        const listing = await prisma.secondaryListing.findUnique({
-            where: { id: req.params.id }
+        const listing = await prisma.secondaryListing.findFirst({
+            where: { id: req.params.id, tenantId }
         });
 
         if (!listing) {
@@ -468,13 +497,16 @@ router.post('/listings/:id/buy', authorize('secondary_trading.buy'), async (req:
 // Get trades for current user
 router.get('/trades/my', authorize('secondary_trading.read'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
+        const tenantId = requireTenantId(req, res);
+        if (!tenantId) return;
+
         if (!shouldUseDatabase()) {
             res.json({ asBuyer: [], asSeller: [] });
             return;
         }
 
         const investor = await prisma.investor.findFirst({
-            where: { userId: req.user?.id }
+            where: { userId: req.user?.id, tenantId }
         });
 
         if (!investor) {
@@ -484,7 +516,7 @@ router.get('/trades/my', authorize('secondary_trading.read'), async (req: Authen
 
         const [purchases, sales] = await Promise.all([
             prismaReplica.secondaryTrade.findMany({
-                where: { buyerId: investor.id },
+                where: { buyerId: investor.id, listing: { tenantId } },
                 include: {
                     listing: {
                         include: {
@@ -505,7 +537,7 @@ router.get('/trades/my', authorize('secondary_trading.read'), async (req: Authen
                 orderBy: { createdAt: 'desc' }
             }),
             prismaReplica.secondaryTrade.findMany({
-                where: { sellerId: investor.id },
+                where: { sellerId: investor.id, listing: { tenantId } },
                 include: {
                     listing: {
                         include: {
@@ -537,6 +569,9 @@ router.get('/trades/my', authorize('secondary_trading.read'), async (req: Authen
 // Execute trade (admin only or webhook)
 router.post('/trades/:id/execute', authorize('secondary_trading.execute'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
+        const tenantId = requireTenantId(req, res);
+        if (!tenantId) return;
+
         if (!shouldUseDatabase()) {
             res.status(503).json({ error: 'Database not available' });
             return;
@@ -552,6 +587,9 @@ router.post('/trades/:id/execute', authorize('secondary_trading.execute'), async
             });
 
             if (!trade) {
+                throw new Error('Trade not found');
+            }
+            if (trade.listing.tenantId !== tenantId) {
                 throw new Error('Trade not found');
             }
 
@@ -630,8 +668,11 @@ router.post('/trades/:id/execute', authorize('secondary_trading.execute'), async
 });
 
 // Get trading stats
-router.get('/stats', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get('/stats', authorize('secondary_trading.list'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
+        const tenantId = requireTenantId(req, res);
+        if (!tenantId) return;
+
         if (!shouldUseDatabase()) {
             res.json({
                 totalListings: 0,
@@ -644,19 +685,19 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response): Promise<v
         }
 
         const [totalListings, activeListings, totalTrades, volumeResult, feeResult, listingValueResult] = await Promise.all([
-            prismaReplica.secondaryListing.count(),
-            prismaReplica.secondaryListing.count({ where: { status: 'ACTIVE' } }),
-            prismaReplica.secondaryTrade.count({ where: { status: 'COMPLETED' } }),
+            prismaReplica.secondaryListing.count({ where: { tenantId } }),
+            prismaReplica.secondaryListing.count({ where: { status: 'ACTIVE', tenantId } }),
+            prismaReplica.secondaryTrade.count({ where: { status: 'COMPLETED', listing: { tenantId } } }),
             prismaReplica.secondaryTrade.aggregate({
-                where: { status: 'COMPLETED' },
+                where: { status: 'COMPLETED', listing: { tenantId } },
                 _sum: { totalAmount: true }
             }),
             prismaReplica.secondaryTrade.aggregate({
-                where: { status: 'COMPLETED' },
+                where: { status: 'COMPLETED', listing: { tenantId } },
                 _sum: { fee: true }
             }),
             prismaReplica.secondaryListing.findMany({
-                where: { status: 'ACTIVE' },
+                where: { status: 'ACTIVE', tenantId },
                 select: { pricePerShare: true, sharesAvailable: true }
             })
         ]);
@@ -667,7 +708,7 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response): Promise<v
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
         const dayVolume = await prismaReplica.secondaryTrade.aggregate({
-            where: { status: 'COMPLETED', executedAt: { gte: yesterday } },
+            where: { status: 'COMPLETED', executedAt: { gte: yesterday }, listing: { tenantId } },
             _sum: { totalAmount: true }
         });
 
