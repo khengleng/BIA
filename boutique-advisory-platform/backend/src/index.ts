@@ -305,6 +305,18 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: 'Too many login attempts, please try again later.' },
   skipSuccessfulRequests: true,
+  // Prevent one user's failed attempts from locking out all users on the same IP.
+  keyGenerator: (req) => {
+    if (req.path === '/login' && req.method === 'POST') {
+      const email = typeof (req as any).body?.email === 'string'
+        ? (req as any).body.email.trim().toLowerCase()
+        : 'unknown-email';
+      return `auth:login:${req.ip}:${email}`;
+    }
+    return `auth:${req.ip}`;
+  },
+  // CSRF token endpoint should stay available even during auth throttling.
+  skip: (req) => req.path === '/csrf-token',
   store: new RedisStore({
     sendCommand: ((...args: string[]) => redis.call(args[0], ...args.slice(1))) as any,
     prefix: 'bia:rl:auth:',
