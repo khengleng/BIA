@@ -156,6 +156,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         { href: '/admin/dashboard', label: 'Admin Panel', icon: LayoutDashboard, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'admin.read' },
         { href: '/admin/business-ops', label: 'Business Ops', icon: Briefcase, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'admin.read' },
         { href: '/admin/billing', label: 'Billing Ops', icon: Wallet, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'billing.read' },
+        { href: '/admin/operations', label: 'Ops Readiness', icon: ShieldCheck, roles: ['ADMIN', 'SUPER_ADMIN', 'SUPPORT'], permission: 'support_ticket.list' },
         { href: '/admin/users', label: 'User Management', icon: UserCog, roles: ['ADMIN', 'SUPER_ADMIN'] },
         { href: '/admin/settings/branding', label: 'Platform Branding', icon: Palette, roles: ['ADMIN', 'SUPER_ADMIN'] },
         { href: '/admin/audit', label: 'System Audit', icon: History, roles: ['ADMIN', 'SUPER_ADMIN'] },

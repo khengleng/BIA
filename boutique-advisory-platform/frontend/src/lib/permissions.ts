@@ -89,6 +89,15 @@ export const PERMISSIONS: Record<string, string[]> = {
     'admin.read': ['SUPER_ADMIN', 'ADMIN'],
     'billing.read': ['SUPER_ADMIN', 'ADMIN'],
     'billing.manage': ['SUPER_ADMIN', 'ADMIN'],
+    'invoice.read': ['SUPER_ADMIN', 'ADMIN'],
+    'invoice.manage': ['SUPER_ADMIN', 'ADMIN'],
+    'subscription.read': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
+    'subscription.manage': ['SUPER_ADMIN', 'ADMIN'],
+    'support_ticket.list': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
+    'support_ticket.read': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
+    'support_ticket.create': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT', 'ADVISOR', 'INVESTOR', 'SME'],
+    'support_ticket.update': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
+    'escalation.run': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
 
     // Matchmaking Permissions
     'matchmaking.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],

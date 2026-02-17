@@ -44,7 +44,7 @@ interface Invoice {
     month: string
     invoiceNumber: string
     amountDue: number
-    status: 'PENDING' | 'ISSUED' | 'SETTLED'
+    status: 'PENDING' | 'ISSUED' | 'SETTLED' | 'DRAFT' | 'PAID' | 'PARTIALLY_PAID' | 'OVERDUE' | 'VOID'
     completedAmount: number
     pendingAmount: number
     refundedAmount: number
@@ -64,6 +64,7 @@ export default function AdminBillingPage() {
     const [invoices, setInvoices] = useState<Invoice[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
+    const [isGeneratingInvoices, setIsGeneratingInvoices] = useState(false)
     const [error, setError] = useState('')
     const [message, setMessage] = useState('')
     const [status, setStatus] = useState<StatusFilter>('ALL')
@@ -85,7 +86,7 @@ export default function AdminBillingPage() {
             const [overviewRes, txRes, invoicesRes] = await Promise.all([
                 authorizedRequest('/api/payments/admin/overview'),
                 authorizedRequest(`/api/payments/admin/transactions?${query}`),
-                authorizedRequest(`/api/payments/admin/invoices?month=${invoiceMonth}`)
+                authorizedRequest(`/api/operations/invoices?month=${invoiceMonth}`)
             ])
 
             if (!overviewRes.ok || !txRes.ok || !invoicesRes.ok) {
@@ -154,6 +155,29 @@ export default function AdminBillingPage() {
             setError('Failed to refund payment')
         } finally {
             setActionLoadingId(null)
+        }
+    }
+
+    const handleGenerateInvoices = async () => {
+        setIsGeneratingInvoices(true)
+        setError('')
+        setMessage('')
+        try {
+            const res = await authorizedRequest('/api/operations/invoices/generate-monthly', {
+                method: 'POST',
+                body: JSON.stringify({ month: invoiceMonth })
+            })
+            const payload = await res.json().catch(() => null)
+            if (!res.ok) {
+                setError(payload?.error || 'Failed to generate invoices')
+                return
+            }
+            setMessage(`Invoices generated: ${payload?.generated ?? 0} for ${payload?.month || invoiceMonth}`)
+            await fetchData()
+        } catch {
+            setError('Failed to generate invoices')
+        } finally {
+            setIsGeneratingInvoices(false)
         }
     }
 
@@ -298,12 +322,21 @@ export default function AdminBillingPage() {
                 <div className="bg-gray-800 border border-gray-700 rounded-2xl p-4">
                     <div className="flex items-center justify-between mb-4">
                         <h2 className="text-white font-semibold">Invoice Ledger</h2>
-                        <input
-                            type="month"
-                            value={invoiceMonth}
-                            onChange={(e) => setInvoiceMonth(e.target.value)}
-                            className="bg-gray-900 border border-gray-700 text-gray-200 rounded px-2 py-1 text-sm"
-                        />
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="month"
+                                value={invoiceMonth}
+                                onChange={(e) => setInvoiceMonth(e.target.value)}
+                                className="bg-gray-900 border border-gray-700 text-gray-200 rounded px-2 py-1 text-sm"
+                            />
+                            <button
+                                onClick={handleGenerateInvoices}
+                                disabled={isGeneratingInvoices}
+                                className="px-3 py-1.5 text-xs rounded-lg bg-blue-600/20 text-blue-300 border border-blue-500/30 hover:bg-blue-600/30 disabled:opacity-50"
+                            >
+                                {isGeneratingInvoices ? 'Generating...' : 'Generate'}
+                            </button>
+                        </div>
                     </div>
 
                     {isLoading ? (
@@ -380,10 +413,15 @@ function StatusBadge({ status }: { status: Transaction['status'] }) {
 
 function InvoiceStatusBadge({ status }: { status: Invoice['status'] }) {
     const cls = {
+        DRAFT: 'bg-gray-500/15 text-gray-300 border-gray-500/30',
         PENDING: 'bg-yellow-500/15 text-yellow-300 border-yellow-500/30',
         ISSUED: 'bg-blue-500/15 text-blue-300 border-blue-500/30',
-        SETTLED: 'bg-green-500/15 text-green-300 border-green-500/30'
+        SETTLED: 'bg-green-500/15 text-green-300 border-green-500/30',
+        PAID: 'bg-green-500/15 text-green-300 border-green-500/30',
+        PARTIALLY_PAID: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30',
+        OVERDUE: 'bg-red-500/15 text-red-300 border-red-500/30',
+        VOID: 'bg-gray-500/15 text-gray-300 border-gray-500/30'
     }[status]
 
-    return <span className={`px-2 py-0.5 rounded text-xs border ${cls}`}>{status}</span>
+    return <span className={`px-2 py-0.5 rounded text-xs border ${cls || 'bg-gray-500/15 text-gray-300 border-gray-500/30'}`}>{status}</span>
 }
