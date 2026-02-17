@@ -158,7 +158,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         { href: '/syndicates', label: 'Syndicates', icon: UsersRound, roles: ['ADMIN', 'ADVISOR', 'INVESTOR'] },
         { href: '/due-diligence', label: t('advisory.assessment'), icon: Shield, roles: ['ADMIN', 'ADVISOR'] },
         { href: '/community', label: 'Community', icon: MessagesSquare, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
-        { href: '/secondary-trading', label: 'Trading', icon: ArrowLeftRight, isNew: true, roles: ['INVESTOR'] },
+        { href: '/secondary-trading', label: 'Trading', icon: ArrowLeftRight, roles: ['INVESTOR'] },
         // Security Section (Universal)
         { href: '', label: '― Security ―', icon: null, divider: true, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
         { href: '/settings/sessions', label: 'Manage Sessions', icon: ShieldCheck, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
@@ -245,11 +245,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                             >
                                 {Icon && <Icon className="w-5 h-5 mr-3" />}
                                 <span className="flex-1">{item.label}</span>
-                                {(item as any).isNew && (
-                                    <span className="px-1.5 py-0.5 text-[10px] font-bold bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded">
-                                        NEW
-                                    </span>
-                                )}
                             </Link>
                         )
                     })}
