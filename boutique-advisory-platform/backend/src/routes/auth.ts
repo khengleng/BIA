@@ -1447,6 +1447,19 @@ router.get('/sessions', authenticateToken, async (req: AuthenticatedRequest, res
     const user = req.user;
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
+    const currentRefreshToken = req.cookies?.['refreshToken'];
+    let currentSessionId: string | null = null;
+    if (currentRefreshToken) {
+      const currentTokenHash = hashToken(currentRefreshToken);
+      const currentSession = await prisma.refreshToken.findUnique({
+        where: { token: currentTokenHash },
+        select: { id: true, userId: true }
+      });
+      if (currentSession && currentSession.userId === user.id) {
+        currentSessionId = currentSession.id;
+      }
+    }
+
     const sessions = await prisma.refreshToken.findMany({
       where: { userId: user.id },
       select: {
@@ -1459,7 +1472,7 @@ router.get('/sessions', authenticateToken, async (req: AuthenticatedRequest, res
       orderBy: { createdAt: 'desc' }
     });
 
-    return res.json({ sessions });
+    return res.json({ sessions, currentSessionId });
   } catch (error) {
     console.error('List sessions error:', error);
     return res.status(500).json({ error: 'Internal server error' });
@@ -1478,7 +1491,8 @@ router.delete('/sessions/:id', authenticateToken, async (req: AuthenticatedReque
 
     // Ensure session belongs to user
     const session = await prisma.refreshToken.findFirst({
-      where: { id: sessionId, userId: user.id }
+      where: { id: sessionId, userId: user.id },
+      select: { id: true, token: true }
     });
 
     if (!session) {
@@ -1488,6 +1502,14 @@ router.delete('/sessions/:id', authenticateToken, async (req: AuthenticatedReque
     await prisma.refreshToken.delete({
       where: { id: sessionId }
     });
+
+    const currentRefreshToken = req.cookies?.['refreshToken'];
+    if (currentRefreshToken && session.token === hashToken(currentRefreshToken)) {
+      // If user revoked the current device session, clear local auth cookies immediately.
+      res.clearCookie('token', { ...COOKIE_OPTIONS, maxAge: 0 });
+      res.clearCookie('accessToken', { ...COOKIE_OPTIONS, maxAge: 0 });
+      res.clearCookie('refreshToken', { ...COOKIE_OPTIONS, path: '/api', maxAge: 0 });
+    }
 
     return res.json({ message: 'Session revoked successfully' });
   } catch (error) {

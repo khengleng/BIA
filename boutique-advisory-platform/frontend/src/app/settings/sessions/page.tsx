@@ -15,8 +15,11 @@ interface Session {
 
 export default function SessionsPage() {
     const [sessions, setSessions] = useState<Session[]>([])
+    const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(true)
+    const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null)
     const [error, setError] = useState('')
+    const [message, setMessage] = useState('')
 
     useEffect(() => {
         fetchSessions()
@@ -24,15 +27,17 @@ export default function SessionsPage() {
 
     const fetchSessions = async () => {
         setIsLoading(true)
+        setError('')
         try {
             const res = await authorizedRequest('/api/auth/sessions')
             if (res.ok) {
                 const data = await res.json()
                 setSessions(data.sessions)
+                setCurrentSessionId(data.currentSessionId || null)
             } else {
                 setError('Failed to load active sessions')
             }
-        } catch (err) {
+        } catch {
             setError('An error occurred while fetching sessions')
         } finally {
             setIsLoading(false)
@@ -44,17 +49,30 @@ export default function SessionsPage() {
             return
         }
 
+        setRevokingSessionId(sessionId)
+        setError('')
+        setMessage('')
         try {
             const res = await authorizedRequest(`/api/auth/sessions/${sessionId}`, {
                 method: 'DELETE'
             })
             if (res.ok) {
-                setSessions(sessions.filter(s => s.id !== sessionId))
+                const isCurrentSession = currentSessionId === sessionId
+                setMessage(isCurrentSession ? 'Current session logged out. Redirecting...' : 'Session logged out successfully.')
+                await fetchSessions()
+                if (isCurrentSession) {
+                    localStorage.removeItem('user')
+                    window.location.href = '/'
+                    return
+                }
             } else {
-                alert('Failed to revoke session')
+                const payload = await res.json().catch(() => null)
+                setError(payload?.error || 'Failed to revoke session')
             }
-        } catch (err) {
-            alert('Error revoking session')
+        } catch {
+            setError('Error revoking session')
+        } finally {
+            setRevokingSessionId(null)
         }
     }
 
@@ -93,6 +111,12 @@ export default function SessionsPage() {
                         {error}
                     </div>
                 )}
+                {message && (
+                    <div className="bg-green-500/10 border border-green-500/50 p-4 rounded-xl text-green-400 mb-6 flex items-center gap-3">
+                        <CheckCircle className="w-5 h-5" />
+                        {message}
+                    </div>
+                )}
 
                 <div className="space-y-4">
                     {isLoading ? (
@@ -112,7 +136,11 @@ export default function SessionsPage() {
                                                 <h3 className="text-xl font-semibold text-white">
                                                     {parseUserAgent(session.userAgent)}
                                                 </h3>
-                                                {/* Current Session indicator logic would go here if we had currentToken ID */}
+                                                {currentSessionId === session.id && (
+                                                    <span className="px-2 py-0.5 text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40 rounded">
+                                                        Current
+                                                    </span>
+                                                )}
                                             </div>
                                             <p className="text-gray-400 text-sm mb-3">
                                                 {parseBrowser(session.userAgent)} • {session.ipAddress}
@@ -133,9 +161,10 @@ export default function SessionsPage() {
 
                                     <button
                                         onClick={() => revokeSession(session.id)}
+                                        disabled={revokingSessionId === session.id}
                                         className="px-4 py-2 bg-red-600/10 hover:bg-red-600/20 text-red-500 rounded-lg text-sm font-medium transition-colors border border-red-500/20"
                                     >
-                                        Log Out
+                                        {revokingSessionId === session.id ? 'Logging out...' : 'Log Out'}
                                     </button>
                                 </div>
                             </div>
@@ -155,7 +184,7 @@ export default function SessionsPage() {
                         Security Tip
                     </h4>
                     <p className="text-sm text-gray-400 leading-relaxed">
-                        If you see a session or device that you don't recognize, log out immediately and consider changing your password. Enabling Two-Factor Authentication (2FA) adds an extra layer of security to your account.
+                        If you see a session or device that you do not recognize, log out immediately and consider changing your password. Enabling Two-Factor Authentication (2FA) adds an extra layer of security to your account.
                     </p>
                 </div>
             </div>
