@@ -342,10 +342,10 @@ router.post('/login', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid email format' });
     }
 
-    // SECURITY: Check for account lockout (brute force protection)
+    // SECURITY: Check account-centric lockout (email only).
+    // IP abuse protection is enforced by the auth rate limiter in index.ts.
     const emailLocked = await isLockedOut(sanitizedEmail);
-    const ipLocked = await isLockedOut(clientIp);
-    if (emailLocked || ipLocked) {
+    if (emailLocked) {
       await logAuditEvent({
         userId: 'unknown',
         action: 'LOGIN_BLOCKED',
@@ -369,7 +369,6 @@ router.post('/login', async (req: Request, res: Response) => {
     if (!user) {
       // SECURITY: Record failed attempt but don't reveal if user exists
       await recordFailedAttempt(sanitizedEmail);
-      await recordFailedAttempt(clientIp);
       await logAuditEvent({
         userId: 'unknown',
         action: 'LOGIN_FAILED',
@@ -389,7 +388,6 @@ router.post('/login', async (req: Request, res: Response) => {
     if (!isValidPassword) {
       // SECURITY: Record failed attempt
       await recordFailedAttempt(sanitizedEmail);
-      await recordFailedAttempt(clientIp);
       await logAuditEvent({
         userId: user.id,
         action: 'LOGIN_FAILED',
@@ -440,7 +438,6 @@ router.post('/login', async (req: Request, res: Response) => {
 
     // SECURITY: Clear failed attempts on successful login
     await clearFailedAttempts(sanitizedEmail);
-    await clearFailedAttempts(clientIp);
 
     // Generate JWT token
     if (!process.env.JWT_SECRET) {
