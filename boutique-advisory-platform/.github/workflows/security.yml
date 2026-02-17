@@ -5,15 +5,21 @@ on:
     branches: [ main, master, develop ]
   pull_request:
     branches: [ main, master, develop ]
+  workflow_dispatch:
+    inputs:
+      run_railway_smoke:
+        description: "Run smoke checks against Railway deployment"
+        required: false
+        default: "false"
 
 jobs:
   dependency-audit:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Use Node.js
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: '20'
 
@@ -29,64 +35,51 @@ jobs:
         npm ci
         npm audit --audit-level=high --omit=dev
 
-  security-check:
+  backend-tests:
     needs: dependency-audit
     runs-on: ubuntu-latest
-
     services:
       redis:
-        image: redis
+        image: redis:7
         ports:
           - 6379:6379
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Use Node.js
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: '20'
         cache: 'npm'
         cache-dependency-path: backend/package-lock.json
 
-    - name: Install Dependencies
+    - name: Install Backend Dependencies
       run: |
         cd backend
-        npm install
-
-    - name: Run Build
-      run: |
-        cd backend
-        npm run build
-
-    - name: Start Backend in Background
-      run: |
-        cd backend
-        export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/postgres"
-        export JWT_SECRET="ci-test-secret-at-least-32-characters-long"
-        export ENCRYPTION_KEY="ci-test-encryption-key-at-least-32-chars"
-        export COOKIE_SECRET="ci-test-cookie-secret"
-        export CSRF_SECRET="ci-test-csrf-secret"
-        export NODE_ENV=development
-        npm run dev &
-        
-        # Wait for server to be healthy
-        echo "Waiting for backend to be healthy..."
-        for i in {1..30}; do
-          if curl -s http://localhost:3001/health | grep -q "ok"; then
-            echo "Backend is up!"
-            break
-          fi
-          echo "Waiting..."
-          sleep 1
-        done
-
-    - name: Check Security Headers
-      run: |
-        cd backend
-        npm run security:check http://localhost:3001
+        npm ci
 
     - name: Run Unit Tests
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        JWT_SECRET: ci-test-secret-at-least-32-characters-long
+        ENCRYPTION_KEY: ci-test-encryption-key-at-least-32-chars
+        COOKIE_SECRET: ci-test-cookie-secret-at-least-32-chars
+        CSRF_SECRET: ci-test-csrf-secret-at-least-32-chars
+        NODE_ENV: development
       run: |
         cd backend
         npm test
@@ -104,3 +97,134 @@ jobs:
         ENCRYPTION_KEY_ROTATED_AT="2026-01-01" \
         COOKIE_SECRET_ROTATED_AT="2026-01-01" \
         npm run security:prod-secrets
+
+  frontend-tests:
+    needs: dependency-audit
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install Frontend Dependencies
+      run: |
+        cd frontend
+        npm ci
+
+    - name: Run Frontend Tests
+      run: |
+        cd frontend
+        npm test
+
+  smoke-security-local:
+    needs: [backend-tests, frontend-tests]
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: |
+          backend/package-lock.json
+          frontend/package-lock.json
+
+    - name: Install Backend Dependencies
+      run: |
+        cd backend
+        npm ci
+
+    - name: Prepare Database Schema
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      run: |
+        cd backend
+        npx prisma db push
+
+    - name: Start Backend
+      env:
+        PORT: 3000
+        DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        REDIS_URL: redis://127.0.0.1:6379
+        JWT_SECRET: ci-test-secret-at-least-32-characters-long
+        ENCRYPTION_KEY: ci-test-encryption-key-at-least-32-chars
+        COOKIE_SECRET: ci-test-cookie-secret-at-least-32-chars
+        CSRF_SECRET: ci-test-csrf-secret-at-least-32-chars
+        NODE_ENV: development
+      run: |
+        cd backend
+        npx ts-node src/index.ts > ../backend_ci.log 2>&1 &
+        echo $! > ../backend_ci.pid
+
+        for i in {1..60}; do
+          if curl -fsS http://127.0.0.1:3000/health >/dev/null; then
+            echo "Backend is healthy"
+            exit 0
+          fi
+          sleep 1
+        done
+
+        echo "Backend did not become healthy in time"
+        cat ../backend_ci.log || true
+        exit 1
+
+    - name: Run Local Manipulation Smoke Checks
+      run: |
+        node scripts/railway-smoke-security.mjs --base-url http://127.0.0.1:3000
+
+    - name: Stop Backend
+      if: always()
+      run: |
+        if [ -f backend_ci.pid ]; then
+          kill "$(cat backend_ci.pid)" || true
+        fi
+
+  smoke-security-railway:
+    needs: [backend-tests, frontend-tests]
+    runs-on: ubuntu-latest
+    if: >
+      secrets.RAILWAY_SMOKE_BASE_URL != '' &&
+      (
+        (github.event_name == 'workflow_dispatch' && github.event.inputs.run_railway_smoke == 'true') ||
+        github.ref == 'refs/heads/main'
+      )
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Run Railway Manipulation Smoke Checks
+      env:
+        SMOKE_BASE_URL: ${{ secrets.RAILWAY_SMOKE_BASE_URL }}
+        SMOKE_INVESTOR_EMAIL: ${{ secrets.RAILWAY_SMOKE_INVESTOR_EMAIL }}
+        SMOKE_INVESTOR_PASSWORD: ${{ secrets.RAILWAY_SMOKE_INVESTOR_PASSWORD }}
+      run: |
+        node scripts/railway-smoke-security.mjs --base-url "$SMOKE_BASE_URL"
