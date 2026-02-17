@@ -5,19 +5,16 @@ import {
     Users,
     Building2,
     Handshake,
-    BarChart3,
-    TrendingUp,
     ShieldCheck,
     AlertTriangle,
     Activity,
-    ArrowUpRight,
-    ArrowDownRight,
     DollarSign,
     UserX,
     CheckCircle,
     Server,
     Database,
-    Coins,
+    Globe,
+    HardDrive,
     Clock
 } from 'lucide-react'
 import DashboardLayout from '../../../components/layout/DashboardLayout'
@@ -59,10 +56,37 @@ export default function AdminDashboardPage() {
         users: stats?.users ?? stats?.totalUsers ?? 0,
         smes: stats?.smes ?? stats?.totalSMEs ?? 0,
         deals: stats?.deals ?? stats?.activeDeals ?? 0,
-        revenue: stats?.totalVolume ?? stats?.platformRevenue ?? stats?.totalFees ?? 0,
+        revenue: stats?.platformRevenue ?? stats?.totalFees ?? stats?.totalVolume ?? 0,
         deletedUsers: stats?.deletedUsers ?? 0,
         activeDisputes: actionStats?.dealDisputes ?? stats?.activeDisputes ?? 0
     }
+    const lastUpdatedAt = stats?.generatedAt
+        ? new Date(stats.generatedAt).toLocaleTimeString()
+        : new Date().toLocaleTimeString()
+    const systemOverview = [
+        {
+            key: 'api',
+            title: 'API Service',
+            subtitle: 'Core Gateway',
+            status: stats?.systemOverview?.api || 'unknown',
+            icon: Globe
+        },
+        {
+            key: 'database',
+            title: 'Database',
+            subtitle: 'Primary Storage',
+            status: stats?.systemOverview?.database || 'unknown',
+            icon: Database
+        },
+        {
+            key: 'redis',
+            title: 'Redis',
+            subtitle: 'Cache / Rate Limit',
+            status: stats?.systemOverview?.redis || 'unknown',
+            icon: HardDrive
+        }
+    ]
+    const recentActivity = stats?.recentActivity || []
 
     if (isLoading) {
         return (
@@ -88,7 +112,7 @@ export default function AdminDashboardPage() {
                     </div>
                     <div className="text-right">
                         <p className="text-sm text-gray-500">Last updated</p>
-                        <p className="text-white font-medium">{new Date().toLocaleTimeString()}</p>
+                        <p className="text-white font-medium">{lastUpdatedAt}</p>
                     </div>
                 </div>
 
@@ -129,7 +153,7 @@ export default function AdminDashboardPage() {
                     <div className="bg-gradient-to-br from-emerald-900/40 to-emerald-800/20 border border-emerald-700/50 rounded-xl p-5">
                         <div className="flex items-center gap-2 text-emerald-400 text-xs mb-2">
                             <DollarSign className="w-4 h-4" />
-                            Revenue
+                            Platform Revenue
                         </div>
                         <p className="text-2xl font-bold text-white">${normalizedStats.revenue.toLocaleString()}</p>
                     </div>
@@ -152,53 +176,27 @@ export default function AdminDashboardPage() {
                             System Overview
                         </h2>
                         <div className="space-y-4">
-                            <div className="flex items-center justify-between p-4 bg-gray-900/50 rounded-lg border border-gray-700">
-                                <div className="flex items-center gap-3">
-                                    <div className="bg-green-500/20 p-2 rounded-lg">
-                                        <Database className="w-5 h-5 text-green-400" />
+                            {systemOverview.map((item) => {
+                                const Icon = item.icon
+                                const isOnline = item.status === 'online'
+                                return (
+                                    <div key={item.key} className="flex items-center justify-between p-4 bg-gray-900/50 rounded-lg border border-gray-700">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`${isOnline ? 'bg-green-500/20' : 'bg-yellow-500/20'} p-2 rounded-lg`}>
+                                                <Icon className={`w-5 h-5 ${isOnline ? 'text-green-400' : 'text-yellow-400'}`} />
+                                            </div>
+                                            <div>
+                                                <p className="text-white font-medium">{item.title}</p>
+                                                <p className="text-xs text-gray-400">{item.subtitle}</p>
+                                            </div>
+                                        </div>
+                                        <span className={`flex items-center gap-2 text-sm font-medium ${isOnline ? 'text-green-400' : 'text-yellow-400'}`}>
+                                            <CheckCircle className="w-4 h-4" />
+                                            {isOnline ? 'Online' : 'Degraded'}
+                                        </span>
                                     </div>
-                                    <div>
-                                        <p className="text-white font-medium">DID Infrastructure</p>
-                                        <p className="text-xs text-gray-400">API Gateway</p>
-                                    </div>
-                                </div>
-                                <span className="flex items-center gap-2 text-green-400 text-sm font-medium">
-                                    <CheckCircle className="w-4 h-4" />
-                                    Online
-                                </span>
-                            </div>
-
-                            <div className="flex items-center justify-between p-4 bg-gray-900/50 rounded-lg border border-gray-700">
-                                <div className="flex items-center gap-3">
-                                    <div className="bg-blue-500/20 p-2 rounded-lg">
-                                        <ShieldCheck className="w-5 h-5 text-blue-400" />
-                                    </div>
-                                    <div>
-                                        <p className="text-white font-medium">CM Infrastructure</p>
-                                        <p className="text-xs text-gray-400">Case Management</p>
-                                    </div>
-                                </div>
-                                <span className="flex items-center gap-2 text-blue-400 text-sm font-medium">
-                                    <CheckCircle className="w-4 h-4" />
-                                    Online
-                                </span>
-                            </div>
-
-                            <div className="flex items-center justify-between p-4 bg-gray-900/50 rounded-lg border border-gray-700">
-                                <div className="flex items-center gap-3">
-                                    <div className="bg-purple-500/20 p-2 rounded-lg">
-                                        <Coins className="w-5 h-5 text-purple-400" />
-                                    </div>
-                                    <div>
-                                        <p className="text-white font-medium">RWA Infrastructure</p>
-                                        <p className="text-xs text-gray-400">Tokenization</p>
-                                    </div>
-                                </div>
-                                <span className="flex items-center gap-2 text-purple-400 text-sm font-medium">
-                                    <CheckCircle className="w-4 h-4" />
-                                    Online
-                                </span>
-                            </div>
+                                )
+                            })}
                         </div>
                     </div>
 
@@ -209,44 +207,22 @@ export default function AdminDashboardPage() {
                             Recent Activity
                         </h2>
                         <div className="space-y-4">
-                            <div className="flex items-start gap-3 p-4 bg-gray-900/50 rounded-lg border border-gray-700">
-                                <div className="bg-blue-500/20 p-2 rounded-lg mt-0.5">
-                                    <Users className="w-4 h-4 text-blue-400" />
+                            {recentActivity.length > 0 ? recentActivity.map((activity: any) => (
+                                <div key={activity.id} className="flex items-start gap-3 p-4 bg-gray-900/50 rounded-lg border border-gray-700">
+                                    <div className="bg-blue-500/20 p-2 rounded-lg mt-0.5">
+                                        <Activity className="w-4 h-4 text-blue-400" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-white font-medium text-sm">{activity.title}</p>
+                                        <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                                            <Clock className="w-3 h-3" />
+                                            {new Date(activity.timestamp).toLocaleString()}
+                                        </p>
+                                    </div>
                                 </div>
-                                <div className="flex-1">
-                                    <p className="text-white font-medium text-sm">New tenant registered</p>
-                                    <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                                        <Clock className="w-3 h-3" />
-                                        2 hours ago
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="flex items-start gap-3 p-4 bg-gray-900/50 rounded-lg border border-gray-700">
-                                <div className="bg-green-500/20 p-2 rounded-lg mt-0.5">
-                                    <CheckCircle className="w-4 h-4 text-green-400" />
-                                </div>
-                                <div className="flex-1">
-                                    <p className="text-white font-medium text-sm">System backup completed</p>
-                                    <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                                        <Clock className="w-3 h-3" />
-                                        1 day ago
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="flex items-start gap-3 p-4 bg-gray-900/50 rounded-lg border border-gray-700">
-                                <div className="bg-purple-500/20 p-2 rounded-lg mt-0.5">
-                                    <Handshake className="w-4 h-4 text-purple-400" />
-                                </div>
-                                <div className="flex-1">
-                                    <p className="text-white font-medium text-sm">New deal published</p>
-                                    <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                                        <Clock className="w-3 h-3" />
-                                        2 days ago
-                                    </p>
-                                </div>
-                            </div>
+                            )) : (
+                                <p className="text-gray-500 text-sm">No recent activity found.</p>
+                            )}
                         </div>
                     </div>
                 </div>
