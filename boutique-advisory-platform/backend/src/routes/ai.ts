@@ -12,6 +12,22 @@ const router = Router();
 const apiKey = process.env.ANTHROPIC_API_KEY;
 const anthropic = apiKey ? new Anthropic({ apiKey }) : null;
 const MODEL_NAME = "claude-3-haiku-20240307";
+const PLATFORM_UPDATE_DATE = "2026-02-17";
+
+const PLATFORM_FEATURE_CONTEXT = `
+Platform Capabilities (${PLATFORM_UPDATE_DATE}):
+- Role-based platform for SMEs, Investors, Advisors, Admins, and Super Admins with RBAC enforcement.
+- Core modules: Deals, Dataroom, Due Diligence, Syndicates, Community, Messaging, Calendar, Reports, and Advisory.
+- Admin modules: Dashboard, Users, Audit, Business Ops, Billing Ops, and Operations.
+- Operations readiness includes subscription/invoice workflows, support ticket operations, and escalation endpoints.
+- Security controls include CSRF protection, security headers, session management, login throttling, and account lockout protections.
+- Active session management supports device/session listing and revocation.
+
+Security Notes (${PLATFORM_UPDATE_DATE}):
+- Auth lockout is account-centric (email) to reduce shared-IP disruption.
+- Login throttling remains active to limit abuse attempts.
+- Production smoke security and ATO baseline checks were validated successfully in recent verification runs.
+`;
 
 // Helper to get platform context
 async function getPlatformContext() {
@@ -48,10 +64,12 @@ Platform Overview:
 Sample Investors: ${topInvestors.map(i => `${i.name} (${i.type})`).join(', ')}
 Sample SMEs: ${topSMEs.map(s => `${s.name} (${s.sector} - ${s.stage})`).join(', ')}
 Sample Advisors: ${topAdvisors.map(a => `${a.name} (${Array.isArray(a.specialization) ? a.specialization.join('/') : a.specialization})`).join(', ')}
+
+${PLATFORM_FEATURE_CONTEXT}
         `;
     } catch (e) {
         console.error("Context fetch error:", e);
-        return "Platform data currently limited.";
+        return `Platform data currently limited.\n\n${PLATFORM_FEATURE_CONTEXT}`;
     }
 }
 
@@ -90,6 +108,8 @@ Instructions:
 - ${langInstructions[language] || "Respond in English."}
 - Provide a helpful, professional answer based on the context.
 - If asking about specific people not in the summary, encourage them to use the search feature.
+- When describing capabilities, reflect the latest platform update date and avoid claiming unavailable features.
+- If uncertain about tenant-specific configuration, ask the user to verify with their admin.
 - Be concise (max 3 sentences unless detailed info is requested).
         `;
 
