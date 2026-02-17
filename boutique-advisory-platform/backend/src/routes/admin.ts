@@ -273,6 +273,208 @@ router.get('/stats', authorize('admin.read'), async (req: AuthenticatedRequest, 
     }
 });
 
+// ==================== Business Operations Overview ====================
+
+router.get('/business-ops/overview', authorize('admin.read'), async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const tenantId = req.user?.tenantId || 'default';
+        const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
+        const scope = isSuperAdmin ? {} : { tenantId };
+
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        const last7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const staleCutoff = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+
+        const [
+            monthlyRevenueAggregate,
+            pendingPayments,
+            refundedPayments,
+            onboardingActive,
+            onboardingStale,
+            kycPending,
+            kycRejected,
+            complianceOpenDisputes,
+            activeDeals,
+            dueDiligenceInProgress,
+            activeUsers,
+            newUsersLast7d,
+            messagesLast24h,
+            supportOpenDisputes,
+            highSeverityEvents
+        ] = await Promise.all([
+            prisma.payment.aggregate({
+                where: {
+                    ...scope,
+                    status: 'COMPLETED',
+                    createdAt: { gte: monthStart }
+                },
+                _sum: { amount: true }
+            }),
+            prisma.payment.count({
+                where: {
+                    ...scope,
+                    status: { in: ['PENDING', 'PROCESSING'] }
+                }
+            }),
+            prisma.payment.count({
+                where: {
+                    ...scope,
+                    status: 'REFUNDED'
+                }
+            }),
+            prisma.workflow.count({
+                where: {
+                    ...scope,
+                    type: { in: ['SME_ONBOARDING', 'INVESTOR_ONBOARDING'] },
+                    status: { in: ['PENDING', 'IN_PROGRESS'] }
+                }
+            }),
+            prisma.workflow.count({
+                where: {
+                    ...scope,
+                    type: { in: ['SME_ONBOARDING', 'INVESTOR_ONBOARDING'] },
+                    status: { in: ['PENDING', 'IN_PROGRESS'] },
+                    createdAt: { lte: staleCutoff }
+                }
+            }),
+            prisma.investor.count({
+                where: {
+                    ...scope,
+                    kycStatus: { in: ['PENDING', 'UNDER_REVIEW'] }
+                }
+            }),
+            prisma.investor.count({
+                where: {
+                    ...scope,
+                    kycStatus: 'REJECTED'
+                }
+            }),
+            prisma.dispute.count({
+                where: {
+                    ...scope,
+                    status: { in: ['OPEN', 'IN_PROGRESS'] }
+                }
+            }),
+            prisma.deal.count({
+                where: {
+                    ...scope,
+                    status: { in: ['PUBLISHED', 'NEGOTIATION', 'DUE_DILIGENCE', 'FUNDED'] }
+                }
+            }),
+            prisma.dueDiligence.count({
+                where: {
+                    ...scope,
+                    status: 'IN_PROGRESS'
+                }
+            }),
+            prisma.user.count({
+                where: {
+                    ...scope,
+                    status: 'ACTIVE'
+                }
+            }),
+            prisma.user.count({
+                where: {
+                    ...scope,
+                    createdAt: { gte: last7d },
+                    status: { not: 'DELETED' as any }
+                }
+            }),
+            prisma.message.count({
+                where: {
+                    conversation: isSuperAdmin ? {} : { tenantId },
+                    createdAt: { gte: last24h }
+                }
+            }),
+            prisma.dispute.count({
+                where: {
+                    ...scope,
+                    status: 'OPEN'
+                }
+            }),
+            prisma.activityLog.count({
+                where: {
+                    ...scope,
+                    timestamp: { gte: last7d },
+                    action: {
+                        in: ['LOGIN_FAILED', 'SESSION_REVOKED', 'PASSWORD_RESET', 'ACCOUNT_LOCKED']
+                    }
+                }
+            })
+        ]);
+
+        const monthlyRevenue = monthlyRevenueAggregate._sum.amount || 0;
+
+        return res.json({
+            generatedAt: now.toISOString(),
+            overview: [
+                {
+                    key: 'billing',
+                    title: 'Revenue & Billing',
+                    metrics: {
+                        monthlyRevenue,
+                        pendingPayments,
+                        refundedPayments
+                    },
+                    focus: pendingPayments > 0 ? 'Review pending/processing payments and retry failures.' : 'Billing queue is clear.'
+                },
+                {
+                    key: 'onboarding',
+                    title: 'Client Onboarding Pipeline',
+                    metrics: {
+                        activeOnboarding: onboardingActive,
+                        staleOnboarding: onboardingStale,
+                        newUsersLast7d
+                    },
+                    focus: onboardingStale > 0 ? 'Escalate onboarding items older than 48 hours.' : 'Onboarding SLA is currently healthy.'
+                },
+                {
+                    key: 'compliance',
+                    title: 'Compliance & Risk',
+                    metrics: {
+                        kycPending,
+                        kycRejected,
+                        openDisputes: complianceOpenDisputes
+                    },
+                    focus: kycPending > 0 ? 'Prioritize KYC queue to reduce onboarding bottlenecks.' : 'KYC queue is clear.'
+                },
+                {
+                    key: 'dealops',
+                    title: 'Deal Operations',
+                    metrics: {
+                        activeDeals,
+                        dueDiligenceInProgress
+                    },
+                    focus: dueDiligenceInProgress > 0 ? 'Review due diligence workload and assign owners.' : 'No diligence backlog detected.'
+                },
+                {
+                    key: 'support',
+                    title: 'Support & Customer Success',
+                    metrics: {
+                        openSupportCases: supportOpenDisputes,
+                        messagesLast24h
+                    },
+                    focus: supportOpenDisputes > 0 ? 'Resolve open support/dispute cases before SLA breach.' : 'Support case queue is healthy.'
+                },
+                {
+                    key: 'security',
+                    title: 'Trust & Security',
+                    metrics: {
+                        activeUsers,
+                        highSeverityEvents
+                    },
+                    focus: highSeverityEvents > 0 ? 'Investigate recent high-severity auth/session events.' : 'No high-severity events in last 7 days.'
+                }
+            ]
+        });
+    } catch (error) {
+        console.error('Error fetching business operations overview:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 // ==================== Tenant Settings (Branding) ====================
 
 // Get tenant settings

@@ -32,11 +32,13 @@ import {
     History,
     Briefcase,
     Palette,
-    RefreshCw
+    RefreshCw,
+    Wallet
 } from 'lucide-react'
 import { useTranslations } from '../../hooks/useTranslations'
 import { User } from '../../types'
 import { API_URL, authorizedRequest } from '@/lib/api'
+import { hasPermission as hasUiPermission } from '@/lib/permissions'
 import NotificationCenter from '../NotificationCenter'
 import LanguageSwitcher from '../LanguageSwitcher'
 import Chatbot from '../Chatbot'
@@ -151,7 +153,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         { href: '/investor/portfolio', label: 'My Portfolio', icon: Briefcase, roles: ['ADMIN', 'ADVISOR', 'INVESTOR'] },
         // Admin Section
         { href: '', label: '― Administration ―', icon: null, divider: true, roles: ['ADMIN', 'SUPER_ADMIN'] },
-        { href: '/admin/dashboard', label: 'Admin Panel', icon: LayoutDashboard, roles: ['ADMIN', 'SUPER_ADMIN'] },
+        { href: '/admin/dashboard', label: 'Admin Panel', icon: LayoutDashboard, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'admin.read' },
+        { href: '/admin/business-ops', label: 'Business Ops', icon: Briefcase, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'admin.read' },
+        { href: '/admin/billing', label: 'Billing Ops', icon: Wallet, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'billing.read' },
         { href: '/admin/users', label: 'User Management', icon: UserCog, roles: ['ADMIN', 'SUPER_ADMIN'] },
         { href: '/admin/settings/branding', label: 'Platform Branding', icon: Palette, roles: ['ADMIN', 'SUPER_ADMIN'] },
         { href: '/admin/audit', label: 'System Audit', icon: History, roles: ['ADMIN', 'SUPER_ADMIN'] },
@@ -167,9 +171,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     ]
 
     // Filter nav items based on user role
-    const filteredNavItems = navItems.filter(item => {
-        if (!item.roles) return true;
-        return user && item.roles.includes(user.role);
+    const filteredNavItems = navItems.filter((item: any) => {
+        if (!user) return false
+        if (item.permission && !hasUiPermission(user.role, item.permission)) return false
+        if (!item.roles) return true
+        return item.roles.includes(user.role)
     });
 
     if (isLoading) {

@@ -203,6 +203,8 @@ export const PERMISSIONS: Record<string, string[]> = {
     'payment.read': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR:owner', 'INVESTOR:owner', 'SME:owner'],
     'payment.create': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
     'payment.refund': ['SUPER_ADMIN', 'ADMIN'],
+    'billing.read': ['SUPER_ADMIN', 'ADMIN'],
+    'billing.manage': ['SUPER_ADMIN', 'ADMIN'],
 
     // ==================== Dataroom Permissions ====================
     'dataroom.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR', 'SME'],

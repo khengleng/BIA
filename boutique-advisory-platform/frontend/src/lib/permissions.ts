@@ -85,6 +85,11 @@ export const PERMISSIONS: Record<string, string[]> = {
     'settings.update': ['SUPER_ADMIN', 'ADMIN'],
     'settings.system': ['SUPER_ADMIN'],
 
+    // Billing/Admin Operations Permissions
+    'admin.read': ['SUPER_ADMIN', 'ADMIN'],
+    'billing.read': ['SUPER_ADMIN', 'ADMIN'],
+    'billing.manage': ['SUPER_ADMIN', 'ADMIN'],
+
     // Matchmaking Permissions
     'matchmaking.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
     'matchmaking.read': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
