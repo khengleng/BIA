@@ -137,61 +137,93 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         return pathname === path || pathname?.startsWith(`${path}/`)
     }
 
-    const navItems = [
-        { href: '', label: '― Workspace ―', icon: null, divider: true, roles: ['ADMIN', 'SUPER_ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
-        { href: '/dashboard', label: t('navigation.dashboard'), icon: BarChart3, roles: ['ADVISOR', 'INVESTOR', 'SME'] },
-        { href: '/calendar', label: 'Calendar', icon: Calendar, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
-        { href: '/messages', label: 'Messages', icon: MessageSquare, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
-        { href: '/dataroom', label: 'Data Room', icon: FolderLock, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
-        { href: '/reports', label: t('navigation.reports'), icon: FileText, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
-        { href: '/analytics', label: t('home.features.analytics.title'), icon: TrendingUp, roles: ['ADMIN', 'ADVISOR', 'INVESTOR'] },
-
-        { href: '', label: '― Deals & Network ―', icon: null, divider: true, roles: ['ADMIN', 'SUPER_ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
-        { href: '/smes', label: t('navigation.smes'), icon: Building2, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
-        { href: '/investors', label: t('navigation.investors'), icon: Users, roles: ['ADMIN', 'ADVISOR', 'SME'] },
-        { href: '/pipeline', label: t('navigation.deals'), icon: KanbanSquare, roles: ['ADMIN', 'ADVISOR'] },
-        { href: '/sme-pipeline', label: t('advisory.pipeline'), icon: ClipboardCheck, roles: ['ADMIN', 'ADVISOR'] },
-        { href: '/matchmaking', label: 'AI Matching', icon: Sparkles, roles: ['ADMIN', 'ADVISOR'] },
-        { href: '/investor/portfolio', label: 'My Portfolio', icon: Briefcase, roles: ['ADMIN', 'ADVISOR', 'INVESTOR'] },
-        // Admin Section
-        { href: '', label: '― Administration ―', icon: null, divider: true, roles: ['ADMIN', 'SUPER_ADMIN'] },
-        { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'admin.read' },
-        { href: '/admin/business-ops', label: 'Business Ops', icon: Briefcase, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'admin.read' },
-        { href: '/admin/billing', label: 'Billing Ops', icon: Wallet, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'billing.read' },
-        { href: '/admin/operations', label: 'Ops Readiness', icon: ShieldCheck, roles: ['ADMIN', 'SUPER_ADMIN', 'SUPPORT'], permission: 'support_ticket.list' },
-        { href: '/admin/cases', label: 'Case Management', icon: ClipboardList, roles: ['ADMIN', 'SUPER_ADMIN', 'SUPPORT'], permission: 'case.list' },
-        { href: '/admin/onboarding', label: 'Onboarding Ops', icon: ClipboardCheck, roles: ['ADMIN', 'SUPER_ADMIN', 'SUPPORT'], permission: 'onboarding_task.list' },
-        { href: '/admin/role-lifecycle', label: 'Role Lifecycle', icon: Shield, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'role_grant.list' },
-        { href: '/admin/deal-ops', label: 'Deal Ops', icon: Briefcase, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'admin.read' },
-        { href: '/admin/advisor-ops', label: 'Advisor Ops', icon: Users, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'advisor_ops.read' },
-        { href: '/admin/investor-ops', label: 'Investor Ops', icon: UsersRound, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'investor_ops.read' },
-        { href: '/admin/reconciliation', label: 'Reconciliation', icon: Wallet, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'reconciliation.read' },
-        { href: '/admin/data-governance', label: 'Data Governance', icon: ShieldCheck, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'data_governance.read' },
-        { href: '/admin/users', label: 'User Management', icon: UserCog, roles: ['ADMIN', 'SUPER_ADMIN'] },
-        { href: '/admin/settings/branding', label: 'Platform Branding', icon: Palette, roles: ['ADMIN', 'SUPER_ADMIN'] },
-        { href: '/admin/audit', label: 'System Audit', icon: History, roles: ['ADMIN', 'SUPER_ADMIN'] },
-
-        { href: '', label: '― Products ―', icon: null, divider: true, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
-        { href: '/advisory', label: t('navigation.advisory'), icon: Award, roles: ['ADMIN', 'SME', 'INVESTOR'] },
-        { href: '/advisory/manage', label: 'Manage Services', icon: Settings, roles: ['ADMIN', 'ADVISOR'] },
-        { href: '/syndicates', label: 'Syndicates', icon: UsersRound, roles: ['ADMIN', 'ADVISOR', 'INVESTOR'] },
-        { href: '/due-diligence', label: t('advisory.assessment'), icon: Shield, roles: ['ADMIN', 'ADVISOR'] },
-        { href: '/community', label: 'Community', icon: MessagesSquare, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
-        { href: '/secondary-trading', label: 'Trading', icon: ArrowLeftRight, roles: ['INVESTOR'] },
-        // Security Section (Universal)
-        { href: '', label: '― Security ―', icon: null, divider: true, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
-        { href: '/settings/sessions', label: 'Manage Sessions', icon: ShieldCheck, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
-        // Settings at the end
-        { href: '/settings', label: t('navigation.settings'), icon: Settings, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
+    const navSections = [
+        {
+            label: '― Workspace ―',
+            roles: ['ADMIN', 'SUPER_ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
+            items: [
+                { href: '/dashboard', label: t('navigation.dashboard'), icon: BarChart3, roles: ['ADVISOR', 'INVESTOR', 'SME'] },
+                { href: '/calendar', label: 'Calendar', icon: Calendar, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
+                { href: '/messages', label: 'Messages', icon: MessageSquare, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
+                { href: '/dataroom', label: 'Data Room', icon: FolderLock, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
+                { href: '/reports', label: t('navigation.reports'), icon: FileText, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
+                { href: '/analytics', label: t('home.features.analytics.title'), icon: TrendingUp, roles: ['ADMIN', 'ADVISOR', 'INVESTOR'] },
+            ]
+        },
+        {
+            label: '― Deals & Network ―',
+            roles: ['ADMIN', 'SUPER_ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
+            items: [
+                { href: '/smes', label: t('navigation.smes'), icon: Building2, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
+                { href: '/investors', label: t('navigation.investors'), icon: Users, roles: ['ADMIN', 'ADVISOR', 'SME'] },
+                { href: '/pipeline', label: t('navigation.deals'), icon: KanbanSquare, roles: ['ADMIN', 'ADVISOR'] },
+                { href: '/sme-pipeline', label: t('advisory.pipeline'), icon: ClipboardCheck, roles: ['ADMIN', 'ADVISOR'] },
+                { href: '/matchmaking', label: 'AI Matching', icon: Sparkles, roles: ['ADMIN', 'ADVISOR'] },
+                { href: '/investor/portfolio', label: 'My Portfolio', icon: Briefcase, roles: ['ADMIN', 'ADVISOR', 'INVESTOR'] },
+            ]
+        },
+        {
+            label: '― Administration ―',
+            roles: ['ADMIN', 'SUPER_ADMIN', 'SUPPORT'],
+            items: [
+                { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'admin.read' },
+                { href: '/admin/business-ops', label: 'Business Ops', icon: Briefcase, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'admin.read' },
+                { href: '/admin/billing', label: 'Billing Ops', icon: Wallet, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'billing.read' },
+                { href: '/admin/operations', label: 'Ops Readiness', icon: ShieldCheck, roles: ['ADMIN', 'SUPER_ADMIN', 'SUPPORT'], permission: 'support_ticket.list' },
+                { href: '/admin/cases', label: 'Case Management', icon: ClipboardList, roles: ['ADMIN', 'SUPER_ADMIN', 'SUPPORT'], permission: 'case.list' },
+                { href: '/admin/onboarding', label: 'Onboarding Ops', icon: ClipboardCheck, roles: ['ADMIN', 'SUPER_ADMIN', 'SUPPORT'], permission: 'onboarding_task.list' },
+                { href: '/admin/role-lifecycle', label: 'Role Lifecycle', icon: Shield, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'role_grant.list' },
+                { href: '/admin/deal-ops', label: 'Deal Ops', icon: Briefcase, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'admin.read' },
+                { href: '/admin/advisor-ops', label: 'Advisor Ops', icon: Users, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'advisor_ops.read' },
+                { href: '/admin/investor-ops', label: 'Investor Ops', icon: UsersRound, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'investor_ops.read' },
+                { href: '/admin/reconciliation', label: 'Reconciliation', icon: Wallet, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'reconciliation.read' },
+                { href: '/admin/data-governance', label: 'Data Governance', icon: ShieldCheck, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'data_governance.read' },
+                { href: '/admin/users', label: 'User Management', icon: UserCog, roles: ['ADMIN', 'SUPER_ADMIN'] },
+                { href: '/admin/settings/branding', label: 'Platform Branding', icon: Palette, roles: ['ADMIN', 'SUPER_ADMIN'] },
+                { href: '/admin/audit', label: 'System Audit', icon: History, roles: ['ADMIN', 'SUPER_ADMIN'] },
+            ]
+        },
+        {
+            label: '― Products ―',
+            roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
+            items: [
+                { href: '/advisory', label: t('navigation.advisory'), icon: Award, roles: ['ADMIN', 'SME', 'INVESTOR'] },
+                { href: '/advisory/manage', label: 'Manage Services', icon: Settings, roles: ['ADMIN', 'ADVISOR'] },
+                { href: '/syndicates', label: 'Syndicates', icon: UsersRound, roles: ['ADMIN', 'ADVISOR', 'INVESTOR'] },
+                { href: '/due-diligence', label: t('advisory.assessment'), icon: Shield, roles: ['ADMIN', 'ADVISOR'] },
+                { href: '/community', label: 'Community', icon: MessagesSquare, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
+                { href: '/secondary-trading', label: 'Trading', icon: ArrowLeftRight, roles: ['INVESTOR'] },
+            ]
+        },
+        {
+            label: '― Security ―',
+            roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
+            items: [
+                { href: '/settings/sessions', label: 'Manage Sessions', icon: ShieldCheck, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
+            ]
+        },
+        {
+            label: '― Preferences ―',
+            roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
+            items: [
+                { href: '/settings', label: t('navigation.settings'), icon: Settings, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
+            ]
+        },
     ]
 
-    // Filter nav items based on user role
-    const filteredNavItems = navItems.filter((item: any) => {
-        if (!user) return false
-        if (item.permission && !hasUiPermission(user.role, item.permission)) return false
-        if (!item.roles) return true
-        return item.roles.includes(user.role)
-    });
+    const filteredNavItems = navSections.flatMap((section: any) => {
+        if (!user) return []
+        if (section.roles && !section.roles.includes(user.role)) return []
+
+        const items = section.items.filter((item: any) => {
+            if (item.permission && !hasUiPermission(user.role, item.permission)) return false
+            if (!item.roles) return true
+            return item.roles.includes(user.role)
+        })
+
+        if (items.length === 0) return []
+        return [{ href: '', label: section.label, icon: null, divider: true }, ...items]
+    })
 
     if (isLoading) {
         return (
