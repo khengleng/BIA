@@ -42,6 +42,9 @@ model Tenant {
   onboardingTasks OnboardingTask[]
   roleChangeRequests RoleChangeRequest[]
   temporaryRoleGrants TemporaryRoleGrant[]
+  advisorCapacities AdvisorCapacity[]
+  advisorAssignments AdvisorAssignment[]
+  advisorConflicts AdvisorConflictDeclaration[]
   activityLogs  ActivityLog[]
 
   @@map("tenants")
@@ -105,6 +108,8 @@ model User {
   reviewedRoleChanges    RoleChangeRequest[] @relation("RoleChangeReviewer")
   roleGrants             TemporaryRoleGrant[] @relation("RoleGrantTarget")
   grantedRolePrivileges  TemporaryRoleGrant[] @relation("RoleGrantIssuer")
+  advisorAssignmentCreator AdvisorAssignment[] @relation("AdvisorAssignmentCreator")
+  advisorConflictReviewer AdvisorConflictDeclaration[] @relation("AdvisorConflictReviewer")
   invoices      Invoice[] @relation("InvoiceCustomer")
 
   refreshTokens     RefreshToken[]
@@ -217,6 +222,9 @@ model Advisor {
   dueDiligences   DueDiligence[]  // New: Due diligence conducted
   services        AdvisoryService[]
   bookings        Booking[]
+  capacities      AdvisorCapacity[]
+  assignments     AdvisorAssignment[]
+  conflictDeclarations AdvisorConflictDeclaration[]
 
   @@map("advisors")
 }
@@ -249,6 +257,7 @@ model Deal {
   dueDiligenceItems DueDiligenceItem[]
   escrowAccount   EscrowAccount?
   agreements      Agreement[]
+  advisorConflicts AdvisorConflictDeclaration[]
 
   @@map("deals")
 }
@@ -1417,6 +1426,77 @@ model TemporaryRoleGrant {
   @@map("temporary_role_grants")
 }
 
+model AdvisorCapacity {
+  id                    String   @id @default(cuid())
+  tenantId              String
+  advisorId             String
+  weeklyCapacityHours   Int      @default(40)
+  activeAssignments     Int      @default(0)
+  utilizationPct        Float    @default(0)
+  notes                 String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  tenant                Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  advisor               Advisor  @relation(fields: [advisorId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, advisorId])
+  @@index([tenantId, utilizationPct])
+  @@map("advisor_capacities")
+}
+
+model AdvisorAssignment {
+  id                    String               @id @default(cuid())
+  tenantId              String
+  advisorId             String
+  createdById           String
+  title                 String
+  description           String?
+  sourceType            String?
+  sourceId              String?
+  status                AdvisorAssignmentStatus @default(OPEN)
+  priority              AdvisorAssignmentPriority @default(MEDIUM)
+  dueAt                 DateTime?
+  startedAt             DateTime?
+  completedAt           DateTime?
+  metadata              Json                 @default("{}")
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  tenant                Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  advisor               Advisor              @relation(fields: [advisorId], references: [id], onDelete: Cascade)
+  createdBy             User                 @relation("AdvisorAssignmentCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status, dueAt])
+  @@index([tenantId, advisorId, status])
+  @@map("advisor_assignments")
+}
+
+model AdvisorConflictDeclaration {
+  id                    String               @id @default(cuid())
+  tenantId              String
+  advisorId             String
+  dealId                String?
+  entityName            String
+  conflictType          String
+  details               String
+  status                AdvisorConflictStatus @default(PENDING)
+  reviewedById          String?
+  reviewNote            String?
+  reviewedAt            DateTime?
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  tenant                Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  advisor               Advisor              @relation(fields: [advisorId], references: [id], onDelete: Cascade)
+  reviewedBy            User?                @relation("AdvisorConflictReviewer", fields: [reviewedById], references: [id])
+  deal                  Deal?                @relation(fields: [dealId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, advisorId, status])
+  @@map("advisor_conflict_declarations")
+}
+
 enum PaymentMethod {
   CREDIT_CARD
   BANK_TRANSFER
@@ -1518,6 +1598,27 @@ enum GrantStatus {
   ACTIVE
   EXPIRED
   REVOKED
+}
+
+enum AdvisorAssignmentStatus {
+  OPEN
+  IN_PROGRESS
+  BLOCKED
+  COMPLETED
+  CANCELLED
+}
+
+enum AdvisorAssignmentPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum AdvisorConflictStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum SupportTicketPriority {

@@ -122,6 +122,14 @@ export const PERMISSIONS: Record<string, string[]> = {
     'role_grant.list': ['SUPER_ADMIN', 'ADMIN'],
     'role_grant.create': ['SUPER_ADMIN', 'ADMIN'],
     'role_grant.revoke': ['SUPER_ADMIN', 'ADMIN'],
+    'advisor_ops.read': ['SUPER_ADMIN', 'ADMIN'],
+    'advisor_capacity.read': ['SUPER_ADMIN', 'ADMIN'],
+    'advisor_capacity.update': ['SUPER_ADMIN', 'ADMIN'],
+    'advisor_assignment.list': ['SUPER_ADMIN', 'ADMIN'],
+    'advisor_assignment.create': ['SUPER_ADMIN', 'ADMIN'],
+    'advisor_assignment.update': ['SUPER_ADMIN', 'ADMIN'],
+    'advisor_conflict.list': ['SUPER_ADMIN', 'ADMIN'],
+    'advisor_conflict.review': ['SUPER_ADMIN', 'ADMIN'],
 
     // Matchmaking Permissions
     'matchmaking.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
