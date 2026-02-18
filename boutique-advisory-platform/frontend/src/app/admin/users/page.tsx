@@ -4,14 +4,8 @@ import { useState, useEffect } from 'react'
 import {
     Users,
     Search,
-    Filter,
-    MoreVertical,
     Shield,
     UserPlus,
-    Mail,
-    Calendar,
-    CheckCircle,
-    XCircle,
     UserCheck,
     UserX,
     MoreHorizontal,
@@ -21,9 +15,25 @@ import DashboardLayout from '../../../components/layout/DashboardLayout'
 import { authorizedRequest } from '../../../lib/api'
 import { useToast } from '../../../contexts/ToastContext'
 
+interface UserRecord {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    role: string;
+    status: string;
+    createdAt: string;
+}
+
+interface RbacOverview {
+    roles: string[];
+    permissionKeys: string[];
+    matrix: Array<{ role: string; permissions: string[] }>;
+}
+
 export default function UserManagementPage() {
     const { addToast } = useToast()
-    const [users, setUsers] = useState<any[]>([])
+    const [users, setUsers] = useState<UserRecord[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [searchQuery, setSearchQuery] = useState('')
     const [roleFilter, setRoleFilter] = useState('ALL')
@@ -36,9 +46,19 @@ export default function UserManagementPage() {
         password: '',
         role: 'SME'
     })
+    const [rbacOverview, setRbacOverview] = useState<RbacOverview | null>(null)
+    const [rbacRole, setRbacRole] = useState('SME')
+    const [rbacPermission, setRbacPermission] = useState('deal.read')
+    const [rbacIsOwner, setRbacIsOwner] = useState(false)
+    const [rbacResult, setRbacResult] = useState<{ allowed: boolean; reason: string } | null>(null)
+    const [isRbacChecking, setIsRbacChecking] = useState(false)
+    const [recentDenials, setRecentDenials] = useState<Array<{ userRole: string; permission: string; reason: string; timestamp: string }>>([])
 
     useEffect(() => {
         fetchUsers()
+        fetchRbacOverview()
+        fetchRecentDenials()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [statusFilter])
 
     const fetchUsers = async () => {
@@ -57,6 +77,61 @@ export default function UserManagementPage() {
             addToast('error', 'Failed to load users')
         } finally {
             setIsLoading(false)
+        }
+    }
+
+    const fetchRbacOverview = async () => {
+        try {
+            const response = await authorizedRequest('/api/admin/rbac/overview')
+            if (!response.ok) return
+            const data = await response.json()
+            setRbacOverview(data)
+            if (Array.isArray(data.roles) && data.roles.length > 0) {
+                setRbacRole(data.roles.includes(rbacRole) ? rbacRole : data.roles[0])
+            }
+            if (Array.isArray(data.permissionKeys) && data.permissionKeys.length > 0) {
+                setRbacPermission(data.permissionKeys.includes(rbacPermission) ? rbacPermission : data.permissionKeys[0])
+            }
+        } catch (error) {
+            console.error('Error loading RBAC overview:', error)
+        }
+    }
+
+    const fetchRecentDenials = async () => {
+        try {
+            const response = await authorizedRequest('/api/admin/rbac/denials?limit=10')
+            if (!response.ok) return
+            const data = await response.json()
+            setRecentDenials(data.denials || [])
+        } catch (error) {
+            console.error('Error loading RBAC denials:', error)
+        }
+    }
+
+    const runRbacCheck = async () => {
+        setIsRbacChecking(true)
+        setRbacResult(null)
+        try {
+            const response = await authorizedRequest('/api/admin/rbac/check', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    role: rbacRole,
+                    permission: rbacPermission,
+                    isOwner: rbacIsOwner
+                })
+            })
+            const data = await response.json()
+            if (!response.ok) {
+                addToast('error', data.error || 'RBAC check failed')
+                return
+            }
+            setRbacResult({ allowed: Boolean(data.allowed), reason: String(data.reason || 'denied') })
+        } catch (error) {
+            console.error('Error running RBAC check:', error)
+            addToast('error', 'Failed to run RBAC diagnostic')
+        } finally {
+            setIsRbacChecking(false)
         }
     }
 
@@ -110,7 +185,7 @@ export default function UserManagementPage() {
     })
 
     const getRoleBadge = (role: string) => {
-        const styles: any = {
+        const styles: Record<string, string> = {
             SUPER_ADMIN: 'bg-red-500/10 text-red-400 border-red-500/20',
             ADMIN: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
             ADVISOR: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
@@ -184,6 +259,83 @@ export default function UserManagementPage() {
                             <option value="INVESTOR">Investor</option>
                             <option value="SME">SME</option>
                         </select>
+                    </div>
+                </div>
+
+                <div className="bg-gray-800 border border-gray-700 rounded-2xl p-5 space-y-4">
+                    <div className="flex items-center gap-2">
+                        <Shield className="w-5 h-5 text-blue-400" />
+                        <h2 className="text-white font-semibold">RBAC Diagnostics</h2>
+                    </div>
+                    <p className="text-xs text-gray-400">
+                        Check exact permission outcomes and inspect recent denied authorization attempts.
+                    </p>
+                    <div className="grid md:grid-cols-4 gap-3">
+                        <select
+                            className="bg-gray-900 border-gray-700 rounded-xl text-white px-3 py-2"
+                            value={rbacRole}
+                            onChange={(e) => setRbacRole(e.target.value)}
+                        >
+                            {(rbacOverview?.roles || []).map((role) => (
+                                <option key={role} value={role}>{role}</option>
+                            ))}
+                        </select>
+                        <select
+                            className="bg-gray-900 border-gray-700 rounded-xl text-white px-3 py-2 md:col-span-2"
+                            value={rbacPermission}
+                            onChange={(e) => setRbacPermission(e.target.value)}
+                        >
+                            {(rbacOverview?.permissionKeys || []).map((permission) => (
+                                <option key={permission} value={permission}>{permission}</option>
+                            ))}
+                        </select>
+                        <label className="flex items-center gap-2 text-sm text-gray-300 bg-gray-900 border border-gray-700 rounded-xl px-3 py-2">
+                            <input
+                                type="checkbox"
+                                checked={rbacIsOwner}
+                                onChange={(e) => setRbacIsOwner(e.target.checked)}
+                            />
+                            Owner context
+                        </label>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <button
+                            onClick={runRbacCheck}
+                            disabled={isRbacChecking}
+                            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-semibold"
+                        >
+                            {isRbacChecking ? 'Checking...' : 'Run Check'}
+                        </button>
+                        {rbacResult && (
+                            <div className={`text-sm px-3 py-2 rounded-lg border ${rbacResult.allowed ? 'bg-green-500/10 text-green-300 border-green-600/30' : 'bg-red-500/10 text-red-300 border-red-600/30'}`}>
+                                {rbacResult.allowed ? 'Allowed' : 'Denied'} via `{rbacResult.reason}`
+                            </div>
+                        )}
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-4">
+                        <div className="bg-gray-900/60 border border-gray-700 rounded-xl p-3">
+                            <h3 className="text-xs text-gray-400 uppercase mb-2">Role Permission Count</h3>
+                            <div className="space-y-1 text-sm">
+                                {(rbacOverview?.matrix || []).map((row) => (
+                                    <div key={row.role} className="flex justify-between text-gray-300">
+                                        <span>{row.role}</span>
+                                        <span>{row.permissions.length}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="bg-gray-900/60 border border-gray-700 rounded-xl p-3">
+                            <h3 className="text-xs text-gray-400 uppercase mb-2">Recent Denied Checks</h3>
+                            <div className="space-y-1 text-xs text-gray-300 max-h-32 overflow-auto">
+                                {recentDenials.length === 0 ? (
+                                    <p className="text-gray-500">No denied checks captured yet.</p>
+                                ) : recentDenials.map((denial, idx) => (
+                                    <p key={idx}>
+                                        {denial.userRole} denied `{denial.permission}` ({denial.reason})
+                                    </p>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 </div>
 

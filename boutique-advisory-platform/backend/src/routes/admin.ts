@@ -1,10 +1,13 @@
 import { Router, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import { AuthenticatedRequest, authorize } from '../middleware/authorize';
+import { AuthenticatedRequest, authorize, getAuditLogs } from '../middleware/authorize';
 import { prisma } from '../database';
 import { canModifyAcrossTenant, isAllowedStatusTransition } from '../utils/admin-guards';
+import { checkPermissionDetailed, getPermissionsForRole, PERMISSIONS, UserRole } from '../lib/permissions';
 
 const router = Router();
+
+const RBAC_ROLES: UserRole[] = ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR', 'SME'];
 
 // ==================== User Management ====================
 
@@ -196,6 +199,73 @@ router.post('/users', authorize('admin.user_manage'), async (req: AuthenticatedR
 
     } catch (error) {
         console.error('Error creating user:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// ==================== RBAC Diagnostics ====================
+
+router.get('/rbac/overview', authorize('admin.read'), async (_req: AuthenticatedRequest, res: Response) => {
+    try {
+        const matrix = RBAC_ROLES.map((role) => ({
+            role,
+            permissions: getPermissionsForRole(role)
+        }));
+
+        return res.json({
+            roles: RBAC_ROLES,
+            permissionKeys: Object.keys(PERMISSIONS),
+            matrix
+        });
+    } catch (error) {
+        console.error('Error fetching RBAC overview:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+router.post('/rbac/check', authorize('admin.read'), async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const { role, permission, isOwner = false } = req.body || {};
+        if (!RBAC_ROLES.includes(role)) {
+            return res.status(400).json({ error: 'Invalid role' });
+        }
+        if (!permission || typeof permission !== 'string') {
+            return res.status(400).json({ error: 'Permission is required' });
+        }
+
+        const result = checkPermissionDetailed({
+            userId: 'diagnostic-user',
+            userRole: role,
+            resourceOwnerId: isOwner ? 'diagnostic-user' : undefined
+        }, permission);
+
+        return res.json({
+            role,
+            permission,
+            isOwner: Boolean(isOwner),
+            allowed: result.allowed,
+            reason: result.reason
+        });
+    } catch (error) {
+        console.error('Error checking RBAC permission:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+router.get('/rbac/denials', authorize('admin.read'), async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const limit = Math.min(Number(req.query.limit || 50), 200);
+        const userId = req.query.userId as string | undefined;
+        const permission = req.query.permission as string | undefined;
+        const deniedOnly = getAuditLogs({
+            result: 'denied',
+            userId,
+            permission
+        });
+
+        return res.json({ denials: deniedOnly.slice(-limit).reverse() });
+    } catch (error) {
+        console.error('Error fetching RBAC denials:', error);
         return res.status(500).json({ error: 'Internal server error' });
     }
 });

@@ -20,6 +20,11 @@ interface Dispute {
     deal: {
         title: string;
     },
+    resolver?: {
+        firstName: string;
+        lastName: string;
+        email: string;
+    };
     resolution?: string;
 }
 
@@ -27,12 +32,16 @@ export default function DisputesPage() {
     const [disputes, setDisputes] = useState<Dispute[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
+    const [statusFilter, setStatusFilter] = useState<'ALL' | 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'REJECTED'>('ALL')
     const [resolvingId, setResolvingId] = useState<string | null>(null)
     const [resolutionText, setResolutionText] = useState('')
+    const [rejectingId, setRejectingId] = useState<string | null>(null)
+    const [rejectionText, setRejectionText] = useState('')
 
     const fetchDisputes = async () => {
         try {
-            const response = await authorizedRequest('/api/admin/action-center/disputes')
+            const query = statusFilter === 'ALL' ? '' : `?status=${statusFilter}`
+            const response = await authorizedRequest(`/api/admin/action-center/disputes${query}`)
             if (response.ok) {
                 const data = await response.json()
                 setDisputes(data)
@@ -47,7 +56,8 @@ export default function DisputesPage() {
 
     useEffect(() => {
         fetchDisputes()
-    }, [])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [statusFilter])
 
     const handleStartMediation = async (id: string) => {
         try {
@@ -94,6 +104,53 @@ export default function DisputesPage() {
         }
     }
 
+    const handleReject = async (id: string) => {
+        if (!rejectionText.trim() || rejectionText.trim().length < 10) {
+            toast.error('Please provide at least 10 characters for rejection reason')
+            return
+        }
+
+        try {
+            const response = await authorizedRequest(`/api/admin/action-center/disputes/${id}/reject`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason: rejectionText })
+            })
+
+            if (response.ok) {
+                toast.success('Dispute rejected')
+                setDisputes(prev => prev.map(d => d.id === id ? { ...d, status: 'REJECTED', resolution: rejectionText } : d))
+                setRejectingId(null)
+                setRejectionText('')
+            } else {
+                const data = await response.json()
+                toast.error(data.error || 'Failed to reject dispute')
+            }
+        } catch (error) {
+            console.error('Error rejecting dispute:', error)
+            toast.error('Failed to reject dispute')
+        }
+    }
+
+    const handleReopen = async (id: string) => {
+        try {
+            const response = await authorizedRequest(`/api/admin/action-center/disputes/${id}/reopen`, {
+                method: 'POST'
+            })
+
+            if (response.ok) {
+                toast.success('Dispute reopened')
+                setDisputes(prev => prev.map(d => d.id === id ? { ...d, status: 'IN_PROGRESS' } : d))
+            } else {
+                const data = await response.json()
+                toast.error(data.error || 'Failed to reopen dispute')
+            }
+        } catch (error) {
+            console.error('Error reopening dispute:', error)
+            toast.error('Failed to reopen dispute')
+        }
+    }
+
     const filteredDisputes = disputes.filter(d =>
         d.deal.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         d.initiator.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -118,6 +175,21 @@ export default function DisputesPage() {
                         />
                         <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
                     </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                    {(['ALL', 'OPEN', 'IN_PROGRESS', 'RESOLVED', 'REJECTED'] as const).map((status) => (
+                        <button
+                            key={status}
+                            onClick={() => setStatusFilter(status)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${statusFilter === status
+                                ? 'bg-blue-600 text-white border-blue-500'
+                                : 'bg-gray-800 text-gray-300 border-gray-700 hover:bg-gray-700'
+                                }`}
+                        >
+                            {status === 'ALL' ? 'All' : status.replace('_', ' ')}
+                        </button>
+                    ))}
                 </div>
 
                 {isLoading ? (
@@ -146,6 +218,11 @@ export default function DisputesPage() {
                                             <p className="text-gray-400 text-sm mt-1">
                                                 Initiated by: {dispute.initiator.firstName} {dispute.initiator.lastName} ({dispute.initiator.email})
                                             </p>
+                                            {dispute.resolver && (
+                                                <p className="text-gray-500 text-xs mt-1">
+                                                    Assigned: {dispute.resolver.firstName} {dispute.resolver.lastName}
+                                                </p>
+                                            )}
                                         </div>
                                         <div className="text-right text-xs text-gray-500">
                                             {new Date(dispute.createdAt).toLocaleDateString()}
@@ -194,6 +271,29 @@ export default function DisputesPage() {
                                                 </button>
                                             </div>
                                         </div>
+                                    ) : rejectingId === dispute.id ? (
+                                        <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+                                            <textarea
+                                                placeholder="Describe why this dispute is rejected..."
+                                                value={rejectionText}
+                                                onChange={(e) => setRejectionText(e.target.value)}
+                                                className="w-full bg-gray-900 border border-red-500/50 rounded-xl p-4 text-white focus:ring-2 focus:ring-red-500 outline-none h-32"
+                                            />
+                                            <div className="flex justify-end gap-3">
+                                                <button
+                                                    onClick={() => { setRejectingId(null); setRejectionText('') }}
+                                                    className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
+                                                >
+                                                    Cancel
+                                                </button>
+                                                <button
+                                                    onClick={() => handleReject(dispute.id)}
+                                                    className="bg-red-600 hover:bg-red-500 text-white font-bold px-6 py-2 rounded-xl transition-all flex items-center gap-2"
+                                                >
+                                                    Reject Dispute
+                                                </button>
+                                            </div>
+                                        </div>
                                     ) : (
                                         <div className="flex justify-end gap-3">
                                             {dispute.status === 'OPEN' && (
@@ -205,12 +305,28 @@ export default function DisputesPage() {
                                                 </button>
                                             )}
                                             {dispute.status !== 'RESOLVED' && dispute.status !== 'REJECTED' && (
+                                                <>
+                                                    <button
+                                                        onClick={() => setRejectingId(dispute.id)}
+                                                        className="bg-red-600/20 hover:bg-red-600/30 text-red-400 font-bold px-6 py-2 rounded-xl border border-red-600/30 transition-all"
+                                                    >
+                                                        Reject
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setResolvingId(dispute.id)}
+                                                        className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-2 rounded-xl transition-all shadow-lg shadow-blue-900/20 flex items-center gap-2"
+                                                    >
+                                                        <MessageSquare className="w-4 h-4" />
+                                                        {dispute.status === 'IN_PROGRESS' ? 'Resolve Now' : 'Resolve Early'}
+                                                    </button>
+                                                </>
+                                            )}
+                                            {(dispute.status === 'RESOLVED' || dispute.status === 'REJECTED') && (
                                                 <button
-                                                    onClick={() => setResolvingId(dispute.id)}
-                                                    className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-2 rounded-xl transition-all shadow-lg shadow-blue-900/20 flex items-center gap-2"
+                                                    onClick={() => handleReopen(dispute.id)}
+                                                    className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-4 py-2 rounded-xl transition-colors"
                                                 >
-                                                    <MessageSquare className="w-4 h-4" />
-                                                    {dispute.status === 'IN_PROGRESS' ? 'Resolve Now' : 'Resolve Early'}
+                                                    Reopen
                                                 </button>
                                             )}
                                         </div>

@@ -4,6 +4,8 @@ import { prisma } from '../database';
 
 const router = Router();
 
+const FINAL_DISPUTE_STATUSES = new Set(['RESOLVED', 'REJECTED']);
+
 // GET /api/admin/action-center/stats
 router.get('/stats', authorize('admin.dashboard_view'), async (req: AuthenticatedRequest, res: Response) => {
     try {
@@ -80,16 +82,25 @@ router.get('/kyc-requests', authorize('admin.user_manage'), async (req: Authenti
 router.get('/disputes', authorize('admin.user_manage'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const tenantId = req.user?.tenantId || 'default';
+        const status = (req.query.status as string | undefined)?.toUpperCase();
+        const where: any = {
+            tenantId,
+            status: {
+                in: ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'REJECTED']
+            }
+        };
+
+        if (status && ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'REJECTED'].includes(status)) {
+            where.status = status;
+        }
 
         const disputes = await (prisma as any).dispute.findMany({
-            where: {
-                tenantId,
-                status: {
-                    in: ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'REJECTED']
-                }
-            },
+            where,
             include: {
                 initiator: {
+                    select: { firstName: true, lastName: true, email: true }
+                },
+                resolver: {
                     select: { firstName: true, lastName: true, email: true }
                 },
                 deal: {
@@ -172,6 +183,20 @@ router.post('/disputes/:id/resolve', authorize('admin.user_manage'), async (req:
             return res.status(400).json({ error: 'Resolution description is required' });
         }
 
+        const existingDispute = await (prisma as any).dispute.findUnique({
+            where: { id: disputeId },
+            select: { id: true, tenantId: true, status: true }
+        });
+        if (!existingDispute) {
+            return res.status(404).json({ error: 'Dispute not found' });
+        }
+        if (existingDispute.tenantId !== (req.user?.tenantId || 'default')) {
+            return res.status(403).json({ error: 'Cannot resolve dispute from another tenant' });
+        }
+        if (FINAL_DISPUTE_STATUSES.has(existingDispute.status)) {
+            return res.status(400).json({ error: `Cannot resolve dispute in ${existingDispute.status} status` });
+        }
+
         const dispute = await (prisma as any).dispute.update({
             where: { id: disputeId },
             data: {
@@ -206,10 +231,25 @@ router.post('/disputes/:id/resolve', authorize('admin.user_manage'), async (req:
 router.post('/disputes/:id/start-mediation', authorize('admin.user_manage'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const disputeId = req.params.id;
+        const resolverId = req.user?.id;
+
+        const existingDispute = await (prisma as any).dispute.findUnique({
+            where: { id: disputeId },
+            select: { id: true, tenantId: true, status: true }
+        });
+        if (!existingDispute) {
+            return res.status(404).json({ error: 'Dispute not found' });
+        }
+        if (existingDispute.tenantId !== (req.user?.tenantId || 'default')) {
+            return res.status(403).json({ error: 'Cannot update dispute from another tenant' });
+        }
+        if (FINAL_DISPUTE_STATUSES.has(existingDispute.status)) {
+            return res.status(400).json({ error: `Cannot start mediation for ${existingDispute.status} dispute` });
+        }
 
         const dispute = await (prisma as any).dispute.update({
             where: { id: disputeId },
-            data: { status: 'IN_PROGRESS' },
+            data: { status: 'IN_PROGRESS', resolverId },
             include: { initiator: true, deal: true }
         });
 
@@ -225,6 +265,101 @@ router.post('/disputes/:id/start-mediation', authorize('admin.user_manage'), asy
         return res.json({ message: 'Mediation started', dispute });
     } catch (error) {
         console.error('Error starting mediation:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Reject Dispute
+router.post('/disputes/:id/reject', authorize('admin.user_manage'), async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const disputeId = req.params.id;
+        const { reason } = req.body;
+        const resolverId = req.user?.id;
+
+        if (!reason || String(reason).trim().length < 10) {
+            return res.status(400).json({ error: 'Rejection reason must be at least 10 characters' });
+        }
+
+        const existingDispute = await (prisma as any).dispute.findUnique({
+            where: { id: disputeId },
+            select: { id: true, tenantId: true, status: true }
+        });
+        if (!existingDispute) {
+            return res.status(404).json({ error: 'Dispute not found' });
+        }
+        if (existingDispute.tenantId !== (req.user?.tenantId || 'default')) {
+            return res.status(403).json({ error: 'Cannot update dispute from another tenant' });
+        }
+        if (FINAL_DISPUTE_STATUSES.has(existingDispute.status)) {
+            return res.status(400).json({ error: `Cannot reject dispute in ${existingDispute.status} status` });
+        }
+
+        const dispute = await (prisma as any).dispute.update({
+            where: { id: disputeId },
+            data: {
+                status: 'REJECTED',
+                resolution: String(reason).trim(),
+                resolverId,
+                updatedAt: new Date()
+            },
+            include: { initiator: true, deal: true }
+        });
+
+        await sendNotification(
+            dispute.initiatorId,
+            'Dispute Rejected',
+            `Your dispute regarding deal "${dispute.deal.title}" was rejected: ${String(reason).trim()}`,
+            'WARNING',
+            `/deals/${dispute.dealId}`
+        );
+
+        return res.json({ message: 'Dispute rejected', dispute });
+    } catch (error) {
+        console.error('Error rejecting dispute:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Re-open closed dispute to in-progress for additional review
+router.post('/disputes/:id/reopen', authorize('admin.user_manage'), async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const disputeId = req.params.id;
+        const resolverId = req.user?.id;
+        const existingDispute = await (prisma as any).dispute.findUnique({
+            where: { id: disputeId },
+            select: { id: true, tenantId: true, status: true }
+        });
+
+        if (!existingDispute) {
+            return res.status(404).json({ error: 'Dispute not found' });
+        }
+        if (existingDispute.tenantId !== (req.user?.tenantId || 'default')) {
+            return res.status(403).json({ error: 'Cannot update dispute from another tenant' });
+        }
+        if (!FINAL_DISPUTE_STATUSES.has(existingDispute.status)) {
+            return res.status(400).json({ error: 'Only resolved or rejected disputes can be reopened' });
+        }
+
+        const dispute = await (prisma as any).dispute.update({
+            where: { id: disputeId },
+            data: {
+                status: 'IN_PROGRESS',
+                resolverId
+            },
+            include: { initiator: true, deal: true }
+        });
+
+        await sendNotification(
+            dispute.initiatorId,
+            'Dispute Reopened',
+            `Your dispute for "${dispute.deal.title}" has been reopened for additional review.`,
+            'INFO',
+            `/investor/portfolio`
+        );
+
+        return res.json({ message: 'Dispute reopened', dispute });
+    } catch (error) {
+        console.error('Error reopening dispute:', error);
         return res.status(500).json({ error: 'Internal server error' });
     }
 });
