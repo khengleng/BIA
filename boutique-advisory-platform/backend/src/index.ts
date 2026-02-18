@@ -45,6 +45,7 @@ import disputeRoutes from './routes/disputes';
 import escrowRoutes from './routes/escrow';
 import agreementRoutes from './routes/agreements';
 import operationsRoutes from './routes/operations';
+import adminCasesRoutes from './routes/admin-cases';
 
 // Core Feature Routes
 import authRoutes from './routes/auth';
@@ -406,6 +407,7 @@ app.use('/api/escrow', authenticateToken, escrowRoutes);
 app.use('/api/agreements', authenticateToken, agreementRoutes);
 app.use('/api/admin/action-center', authenticateToken, adminActionCenterRoutes);
 app.use('/api/operations', authenticateToken, operationsRoutes);
+app.use('/api/admin/cases', authenticateToken, adminCasesRoutes);
 
 // Migration endpoints - PROTECTED: Only available in development or with SUPER_ADMIN role (Fix #2)
 const migrationAuthMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {

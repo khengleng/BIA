@@ -40,6 +40,7 @@ export type Resource =
     | 'due_diligence'
     | 'community'
     | 'dispute'
+    | 'case'
     | 'admin';
 
 // Special permission modifiers
@@ -248,6 +249,14 @@ export const PERMISSIONS: Record<string, string[]> = {
     'dispute.read': ['SUPER_ADMIN', 'ADMIN', 'INVESTOR:owner', 'SME:owner'],
     'dispute.update': ['SUPER_ADMIN', 'ADMIN'],
     'dispute.delete': ['SUPER_ADMIN'],
+
+    // ==================== Unified Case Management Permissions ====================
+    'case.list': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
+    'case.read': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
+    'case.create': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
+    'case.update': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
+    'case.assign': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
+    'case.escalate': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
 
     // ==================== Admin Permissions ====================
     'admin.read': ['SUPER_ADMIN', 'ADMIN'],

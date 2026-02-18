@@ -37,6 +37,7 @@ model Tenant {
   invoices      Invoice[]
   supportTickets SupportTicket[]
   disputes      Dispute[]
+  cases         AdminCase[]
   activityLogs  ActivityLog[]
 
   @@map("tenants")
@@ -89,6 +90,10 @@ model User {
   agreementSignatures AgreementSigner[]
   requestedSupportTickets SupportTicket[] @relation("TicketRequester")
   assignedSupportTickets SupportTicket[] @relation("TicketAssignee")
+  requestedCases         AdminCase[]     @relation("CaseRequester")
+  assignedCases          AdminCase[]     @relation("CaseAssignee")
+  createdCases           AdminCase[]     @relation("CaseCreator")
+  caseEvents             AdminCaseEvent[] @relation("CaseEventActor")
   invoices      Invoice[] @relation("InvoiceCustomer")
 
   refreshTokens     RefreshToken[]
@@ -1252,6 +1257,56 @@ model SupportTicket {
   @@map("support_tickets")
 }
 
+model AdminCase {
+  id                String            @id @default(cuid())
+  tenantId          String
+  type              CaseType
+  title             String
+  description       String
+  status            CaseStatus        @default(OPEN)
+  priority          CasePriority      @default(MEDIUM)
+  requesterUserId   String?
+  assigneeId        String?
+  createdById       String
+  sourceDisputeId   String?
+  sourceTicketId    String?
+  relatedEntityType String?
+  relatedEntityId   String?
+  dueAt             DateTime?
+  escalatedAt       DateTime?
+  resolvedAt        DateTime?
+  closedAt          DateTime?
+  metadata          Json              @default("{}")
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  requester         User?             @relation("CaseRequester", fields: [requesterUserId], references: [id])
+  assignee          User?             @relation("CaseAssignee", fields: [assigneeId], references: [id])
+  createdBy         User              @relation("CaseCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  events            AdminCaseEvent[]
+
+  @@index([tenantId, status, priority])
+  @@index([tenantId, assigneeId, status])
+  @@map("admin_cases")
+}
+
+model AdminCaseEvent {
+  id          String    @id @default(cuid())
+  caseId      String
+  actorUserId String?
+  eventType   String
+  note        String?
+  metadata    Json      @default("{}")
+  createdAt   DateTime  @default(now())
+
+  case        AdminCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  actor       User?     @relation("CaseEventActor", fields: [actorUserId], references: [id])
+
+  @@index([caseId, createdAt])
+  @@map("admin_case_events")
+}
+
 enum PaymentMethod {
   CREDIT_CARD
   BANK_TRANSFER
@@ -1303,6 +1358,33 @@ enum SupportTicketStatus {
   RESOLVED
   CLOSED
   ESCALATED
+}
+
+enum CaseType {
+  KYC
+  DISPUTE
+  ONBOARDING
+  SUPPORT
+  COMPLIANCE
+  DEAL_OPS
+  OTHER
+}
+
+enum CaseStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_CUSTOMER
+  ESCALATED
+  RESOLVED
+  CLOSED
+  REJECTED
+}
+
+enum CasePriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
 }
 
 enum SupportTicketPriority {

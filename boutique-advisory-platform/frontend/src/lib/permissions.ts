@@ -26,7 +26,8 @@ export type Resource =
     | 'settings'
     | 'audit_log'
     | 'matchmaking'
-    | 'syndicate';
+    | 'syndicate'
+    | 'case';
 
 /**
  * Centralized Permission Definitions
@@ -98,6 +99,12 @@ export const PERMISSIONS: Record<string, string[]> = {
     'support_ticket.create': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT', 'ADVISOR', 'INVESTOR', 'SME'],
     'support_ticket.update': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
     'escalation.run': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
+    'case.list': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
+    'case.read': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
+    'case.create': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
+    'case.update': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
+    'case.assign': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
+    'case.escalate': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
 
     // Matchmaking Permissions
     'matchmaking.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
