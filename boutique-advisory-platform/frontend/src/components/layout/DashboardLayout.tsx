@@ -139,7 +139,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
     const navSections = [
         {
-            label: '― Workspace ―',
+            label: 'Workspace',
             roles: ['ADMIN', 'SUPER_ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
             items: [
                 { href: '/dashboard', label: t('navigation.dashboard'), icon: BarChart3, roles: ['ADVISOR', 'INVESTOR', 'SME'] },
@@ -151,7 +151,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             ]
         },
         {
-            label: '― Deals & Network ―',
+            label: 'Deals & Network',
             roles: ['ADMIN', 'SUPER_ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
             items: [
                 { href: '/smes', label: t('navigation.smes'), icon: Building2, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
@@ -163,7 +163,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             ]
         },
         {
-            label: '― Administration ―',
+            label: 'Administration',
             roles: ['ADMIN', 'SUPER_ADMIN', 'SUPPORT'],
             items: [
                 { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'admin.read' },
@@ -184,7 +184,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             ]
         },
         {
-            label: '― Products ―',
+            label: 'Products',
             roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
             items: [
                 { href: '/advisory', label: t('navigation.advisory'), icon: Award, roles: ['ADMIN', 'SME', 'INVESTOR'] },
@@ -196,14 +196,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             ]
         },
         {
-            label: '― Security ―',
+            label: 'Security',
             roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
             items: [
                 { href: '/settings/sessions', label: 'Manage Sessions', icon: ShieldCheck, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
             ]
         },
         {
-            label: '― Preferences ―',
+            label: 'Preferences',
             roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
             items: [
                 { href: '/settings', label: t('navigation.settings'), icon: Settings, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
@@ -211,7 +211,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         },
     ]
 
-    const filteredNavItems = navSections.flatMap((section: any) => {
+    const filteredNavSections = navSections.map((section: any) => {
         if (!user) return []
         if (section.roles && !section.roles.includes(user.role)) return []
 
@@ -221,9 +221,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             return item.roles.includes(user.role)
         })
 
-        if (items.length === 0) return []
-        return [{ href: '', label: section.label, icon: null, divider: true }, ...items]
-    })
+        if (items.length === 0) return null
+        return { label: section.label, items }
+    }).filter(Boolean)
 
     if (isLoading) {
         return (
@@ -271,36 +271,35 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     <LanguageSwitcher />
                 </div>
 
-                <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-                    {filteredNavItems.map((item, index) => {
-                        // Handle divider items
-                        if ((item as any).divider) {
-                            return (
-                                <div
-                                    key={`divider-${index}`}
-                                    className="text-xs text-gray-500 px-4 py-2 mt-4 font-medium"
-                                >
-                                    {item.label}
+                <nav className="flex-1 px-4 py-6 overflow-y-auto">
+                    <div className="space-y-5">
+                        {filteredNavSections.map((section: any) => (
+                            <div key={section.label}>
+                                <div className="text-[11px] text-gray-500 px-4 mb-2 uppercase tracking-wide font-semibold">
+                                    {section.label}
                                 </div>
-                            )
-                        }
-
-                        const Icon = item.icon
-                        return (
-                            <Link
-                                key={item.href}
-                                href={item.href}
-                                className={`flex items-center px-4 py-2 rounded-lg transition-colors ${isActive(item.href)
-                                    ? 'bg-blue-600 text-white'
-                                    : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                                    }`}
-                                onClick={() => setIsMobileMenuOpen(false)}
-                            >
-                                {Icon && <Icon className="w-5 h-5 mr-3" />}
-                                <span className="flex-1">{item.label}</span>
-                            </Link>
-                        )
-                    })}
+                                <div className="space-y-1">
+                                    {section.items.map((item: any) => {
+                                        const Icon = item.icon
+                                        return (
+                                            <Link
+                                                key={item.href}
+                                                href={item.href}
+                                                className={`flex items-center px-4 py-2 rounded-lg transition-colors ${isActive(item.href)
+                                                    ? 'bg-blue-600 text-white'
+                                                    : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                                                    }`}
+                                                onClick={() => setIsMobileMenuOpen(false)}
+                                            >
+                                                {Icon && <Icon className="w-5 h-5 mr-3" />}
+                                                <span className="flex-1">{item.label}</span>
+                                            </Link>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </nav>
 
                 <div className="p-4 border-t border-gray-700">
