@@ -1,25 +1,15 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
+import DashboardLayout from '../../components/layout/DashboardLayout'
 import {
   TrendingUp,
   TrendingDown,
   DollarSign,
-  Users,
   Building2,
-  Briefcase,
   Download,
-  Calendar,
-  ChevronDown,
-  ArrowUpRight,
-  ArrowDownRight,
-  BarChart3,
   Handshake,
-  LogOut,
-  Bell,
   FileText,
-  Settings
 } from 'lucide-react'
 import { API_URL, authorizedRequest } from '@/lib/api'
 
@@ -113,11 +103,6 @@ export default function ReportsPage() {
     fetchData()
   }, [])
 
-  const handleLogout = () => {
-    localStorage.removeItem('user')
-    window.location.href = '/'
-  }
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleDownloadReport = async (report: any) => {
     try {
@@ -172,114 +157,8 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900">
-      {/* Header */}
-      <header className="bg-gray-800 border-b border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-4">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <Building2 className="w-6 h-6 text-white" />
-              </div>
-              <h1 className="text-2xl font-bold text-white">Boutique Advisory</h1>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <button className="relative p-2 text-gray-400 hover:text-white">
-                <Bell className="w-6 h-6" />
-                <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-400"></span>
-              </button>
-
-              <div className="flex items-center space-x-3">
-                <div className="text-right">
-                  <p className="text-sm font-medium text-white">
-                    {user?.firstName} {user?.lastName}
-                  </p>
-                  <p className="text-xs text-gray-400 capitalize">
-                    {user?.role?.toLowerCase()}
-                  </p>
-                </div>
-                <button
-                  onClick={handleLogout}
-                  className="p-2 text-gray-400 hover:text-white"
-                >
-                  <LogOut className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="flex">
-        {/* Sidebar */}
-        <aside className="w-64 bg-gray-800 min-h-screen flex flex-col">
-          <nav className="mt-8 flex-1">
-            <div className="px-4 space-y-2">
-              <Link
-                href="/dashboard"
-                className="flex items-center px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg"
-              >
-                <BarChart3 className="w-5 h-5 mr-3" />
-                Dashboard
-              </Link>
-
-              <Link
-                href="/smes"
-                className="flex items-center px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg"
-              >
-                <Building2 className="w-5 h-5 mr-3" />
-                SMEs
-              </Link>
-
-              <Link
-                href="/investors"
-                className="flex items-center px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg"
-              >
-                <Users className="w-5 h-5 mr-3" />
-                Investors
-              </Link>
-
-              <Link
-                href="/deals"
-                className="flex items-center px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg"
-              >
-                <Handshake className="w-5 h-5 mr-3" />
-                Deals
-              </Link>
-
-              <Link
-                href="/reports"
-                className="flex items-center px-4 py-2 text-white bg-blue-600 rounded-lg"
-              >
-                <FileText className="w-5 h-5 mr-3" />
-                Reports
-              </Link>
-
-              <Link
-                href="/settings"
-                className="flex items-center px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg"
-              >
-                <Settings className="w-5 h-5 mr-3" />
-                Settings
-              </Link>
-            </div>
-          </nav>
-
-          {/* Logout Button at Bottom of Sidebar */}
-          <div className="px-4 pb-8">
-            <button
-              onClick={handleLogout}
-              className="flex items-center w-full px-4 py-2 text-red-400 hover:text-white hover:bg-red-600 rounded-lg transition-colors"
-            >
-              <LogOut className="w-5 h-5 mr-3" />
-              Logout
-            </button>
-          </div>
-        </aside>
-
-        {/* Main Content */}
-        <main className="flex-1 p-8">
+    <DashboardLayout>
+      <main>
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-3xl font-bold text-white">Reports</h1>
             {/* Only ADMIN and ADVISOR can generate reports */}
@@ -368,7 +247,6 @@ export default function ReportsPage() {
             </div>
           </div>
         </main>
-      </div>
-    </div>
+    </DashboardLayout>
   )
 }
