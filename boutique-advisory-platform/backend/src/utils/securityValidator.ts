@@ -118,7 +118,7 @@ function checkJwtSecret(): SecurityCheckResult {
             name: 'JWT_SECRET',
             passed: false,
             message: 'JWT_SECRET appears to contain weak/guessable content',
-            severity: 'CRITICAL'
+            severity: 'HIGH'
         };
     }
 
