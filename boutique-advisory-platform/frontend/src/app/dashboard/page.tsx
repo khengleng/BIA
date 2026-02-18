@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import DashboardLayout from '../../components/layout/DashboardLayout'
 import {
   Building2,
@@ -32,6 +33,7 @@ interface User {
 
 export default function DashboardPage() {
   const { t } = useTranslations()
+  const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
   const [stats, setStats] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -42,6 +44,13 @@ export default function DashboardPage() {
         const userData = localStorage.getItem('user')
         if (userData) {
           const parsedUser = JSON.parse(userData)
+
+          // Admin users use the dedicated admin dashboard.
+          if (parsedUser.role === 'ADMIN' || parsedUser.role === 'SUPER_ADMIN') {
+            router.replace('/admin/dashboard')
+            return
+          }
+
           setUser(parsedUser)
 
           const response = await authorizedRequest('/api/dashboard/stats')
@@ -58,7 +67,7 @@ export default function DashboardPage() {
     }
 
     fetchDashboardData()
-  }, [])
+  }, [router])
 
   const getDashboardContent = () => {
     if (!user) return null

@@ -138,7 +138,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
 
     const navItems = [
-        { href: '/dashboard', label: t('navigation.dashboard'), icon: BarChart3, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
+        { href: '/dashboard', label: t('navigation.dashboard'), icon: BarChart3, roles: ['ADVISOR', 'INVESTOR', 'SME'] },
         { href: '/analytics', label: t('home.features.analytics.title'), icon: TrendingUp, roles: ['ADMIN', 'ADVISOR', 'INVESTOR'] },
         { href: '/smes', label: t('navigation.smes'), icon: Building2, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
         { href: '/investors', label: t('navigation.investors'), icon: Users, roles: ['ADMIN', 'ADVISOR', 'SME'] },
@@ -154,7 +154,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         { href: '/investor/portfolio', label: 'My Portfolio', icon: Briefcase, roles: ['ADMIN', 'ADVISOR', 'INVESTOR'] },
         // Admin Section
         { href: '', label: '― Administration ―', icon: null, divider: true, roles: ['ADMIN', 'SUPER_ADMIN'] },
-        { href: '/admin/dashboard', label: 'Admin Panel', icon: LayoutDashboard, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'admin.read' },
+        { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'admin.read' },
         { href: '/admin/business-ops', label: 'Business Ops', icon: Briefcase, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'admin.read' },
         { href: '/admin/billing', label: 'Billing Ops', icon: Wallet, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'billing.read' },
         { href: '/admin/operations', label: 'Ops Readiness', icon: ShieldCheck, roles: ['ADMIN', 'SUPER_ADMIN', 'SUPPORT'], permission: 'support_ticket.list' },
