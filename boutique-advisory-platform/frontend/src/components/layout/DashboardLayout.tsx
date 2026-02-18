@@ -34,7 +34,9 @@ import {
     Palette,
     RefreshCw,
     Wallet,
-    ClipboardList
+    ClipboardList,
+    ChevronDown,
+    ChevronRight
 } from 'lucide-react'
 import { useTranslations } from '../../hooks/useTranslations'
 import { User } from '../../types'
@@ -56,6 +58,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     const [user, setUser] = useState<User | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+    const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({})
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -225,6 +228,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         return { label: section.label, items }
     }).filter(Boolean)
 
+    useEffect(() => {
+        setCollapsedSections((prev) => {
+            const next = { ...prev }
+            for (const section of filteredNavSections as any[]) {
+                if (!(section.label in next)) {
+                    next[section.label] = false
+                }
+            }
+            return next
+        })
+    }, [filteredNavSections])
+
     if (isLoading) {
         return (
             <div className="min-h-screen bg-gray-900 flex items-center justify-center">
@@ -275,28 +290,44 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     <div className="space-y-5">
                         {filteredNavSections.map((section: any) => (
                             <div key={section.label}>
-                                <div className="text-[11px] text-gray-500 px-4 mb-2 uppercase tracking-wide font-semibold">
-                                    {section.label}
-                                </div>
-                                <div className="space-y-1">
-                                    {section.items.map((item: any) => {
-                                        const Icon = item.icon
-                                        return (
-                                            <Link
-                                                key={item.href}
-                                                href={item.href}
-                                                className={`flex items-center px-4 py-2 rounded-lg transition-colors ${isActive(item.href)
-                                                    ? 'bg-blue-600 text-white'
-                                                    : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                                                    }`}
-                                                onClick={() => setIsMobileMenuOpen(false)}
-                                            >
-                                                {Icon && <Icon className="w-5 h-5 mr-3" />}
-                                                <span className="flex-1">{item.label}</span>
-                                            </Link>
-                                        )
-                                    })}
-                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setCollapsedSections((prev) => ({
+                                            ...prev,
+                                            [section.label]: !prev[section.label]
+                                        }))
+                                    }
+                                    className="w-full text-[11px] text-gray-500 px-4 mb-2 uppercase tracking-wide font-semibold flex items-center justify-between hover:text-gray-300"
+                                >
+                                    <span>{section.label}</span>
+                                    {collapsedSections[section.label] ? (
+                                        <ChevronRight className="w-3 h-3" />
+                                    ) : (
+                                        <ChevronDown className="w-3 h-3" />
+                                    )}
+                                </button>
+                                {!collapsedSections[section.label] && (
+                                    <div className="space-y-1">
+                                        {section.items.map((item: any) => {
+                                            const Icon = item.icon
+                                            return (
+                                                <Link
+                                                    key={item.href}
+                                                    href={item.href}
+                                                    className={`flex items-center px-4 py-2 rounded-lg transition-colors ${isActive(item.href)
+                                                        ? 'bg-blue-600 text-white'
+                                                        : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                                                        }`}
+                                                    onClick={() => setIsMobileMenuOpen(false)}
+                                                >
+                                                    {Icon && <Icon className="w-5 h-5 mr-3" />}
+                                                    <span className="flex-1">{item.label}</span>
+                                                </Link>
+                                            )
+                                        })}
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>
