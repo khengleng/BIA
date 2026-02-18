@@ -118,7 +118,7 @@ function checkJwtSecret(): SecurityCheckResult {
             name: 'JWT_SECRET',
             passed: false,
             message: 'JWT_SECRET appears to contain weak/guessable content',
-            severity: 'HIGH'
+            severity: 'CRITICAL'
         };
     }
 
@@ -183,13 +183,14 @@ function checkDatabaseUrl(): SecurityCheckResult {
         };
     }
 
-    // Check for SSL in production
-    if (process.env.NODE_ENV === 'production' && !dbUrl.includes('sslmode=require')) {
+    // Check for SSL in production (Railway internal host uses private network transport)
+    const isRailwayInternal = dbUrl.includes('.railway.internal');
+    if (process.env.NODE_ENV === 'production' && !isRailwayInternal && !dbUrl.includes('sslmode=require')) {
         return {
             name: 'DATABASE_URL',
             passed: false,
             message: 'DATABASE_URL should include sslmode=require for production',
-            severity: 'HIGH'
+            severity: 'CRITICAL'
         };
     }
 

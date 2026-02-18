@@ -14,19 +14,24 @@ import webpush from 'web-push';
 const router = Router();
 
 // Configure Web Push
-const publicVapidKey = process.env.VAPID_PUBLIC_KEY || 'BO2WrnjdJYmlc9gEeHjYpRn1p7r4TMB33gh70AqQQzIrcBAN_kNQZ-kX2b-G9HQ7Z4GVjGVISUC2NEjGpNBzgkY';
-const privateVapidKey = process.env.VAPID_PRIVATE_KEY || 'Inv2_qvKv8rCsnDG2VmoEi99mBExvU0cbecVWCApbTc';
+const publicVapidKey = process.env.VAPID_PUBLIC_KEY;
+const privateVapidKey = process.env.VAPID_PRIVATE_KEY;
+const isWebPushConfigured = Boolean(publicVapidKey && privateVapidKey);
 
 // Email for VAPID contact
 const vapidEmail = 'mailto:contact@cambobia.com';
 
 try {
-    webpush.setVapidDetails(
-        vapidEmail,
-        publicVapidKey,
-        privateVapidKey
-    );
-    console.log('✅ Web Push initialized');
+    if (isWebPushConfigured) {
+        webpush.setVapidDetails(
+            vapidEmail,
+            publicVapidKey!,
+            privateVapidKey!
+        );
+        console.log('✅ Web Push initialized');
+    } else {
+        console.warn('⚠️ Web Push disabled: VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY are not configured.');
+    }
 } catch (error) {
     console.error('❌ Failed to initialize Web Push:', error);
 }
@@ -34,6 +39,7 @@ try {
 // Helper to send push notification
 async function sendPushToUser(userId: string, title: string, body: string, url?: string) {
     if (!shouldUseDatabase()) return;
+    if (!isWebPushConfigured) return;
 
     try {
         // Get user subscriptions
