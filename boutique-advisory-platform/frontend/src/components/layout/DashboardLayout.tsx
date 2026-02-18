@@ -212,8 +212,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     ]
 
     const filteredNavSections = navSections.map((section: any) => {
-        if (!user) return []
-        if (section.roles && !section.roles.includes(user.role)) return []
+        if (!user) return null
+        if (section.roles && !section.roles.includes(user.role)) return null
 
         const items = section.items.filter((item: any) => {
             if (item.permission && !hasUiPermission(user.role, item.permission)) return false

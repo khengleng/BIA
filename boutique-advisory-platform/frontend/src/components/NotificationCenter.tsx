@@ -34,6 +34,7 @@ export default function NotificationCenter() {
     const [notifications, setNotifications] = useState<Notification[]>([])
     const [unreadCount, setUnreadCount] = useState(0)
     const [isLoading, setIsLoading] = useState(false)
+    const [isUnauthorized, setIsUnauthorized] = useState(false)
     const dropdownRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
@@ -52,8 +53,10 @@ export default function NotificationCenter() {
                     const data = await response.json()
                     setNotifications(data.notifications || [])
                     setUnreadCount(data.unreadCount || 0)
+                    setIsUnauthorized(false)
                 } else if (response.status === 401) {
-                    console.warn('Unauthorized access to notifications')
+                    // Session may be expired or switching accounts; stop polling noise.
+                    setIsUnauthorized(true)
                 } else {
                     console.error('Failed to fetch notifications:', response.statusText)
                 }
@@ -67,14 +70,16 @@ export default function NotificationCenter() {
         fetchNotifications()
 
         // Poll for new notifications every 60 seconds (fallback)
-        const interval = setInterval(fetchNotifications, 60000)
+        const interval = setInterval(() => {
+            if (!isUnauthorized) fetchNotifications()
+        }, 60000)
         return () => clearInterval(interval)
-    }, [])
+    }, [isUnauthorized])
 
     const { lastNotification } = useSocket()
 
     useEffect(() => {
-        if (lastNotification) {
+        if (lastNotification && typeof lastNotification === 'object') {
             setNotifications(prev => [lastNotification, ...prev])
             if (!lastNotification.read) {
                 setUnreadCount(prev => prev + 1)
@@ -189,7 +194,11 @@ export default function NotificationCenter() {
 
                     {/* Notifications List */}
                     <div className="max-h-96 overflow-y-auto">
-                        {isLoading ? (
+                        {isUnauthorized ? (
+                            <div className="p-6 text-center text-gray-400 text-sm">
+                                Notifications unavailable until you sign in again.
+                            </div>
+                        ) : isLoading ? (
                             <div className="p-8 text-center">
                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
                             </div>
