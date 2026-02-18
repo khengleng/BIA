@@ -47,6 +47,7 @@ import agreementRoutes from './routes/agreements';
 import operationsRoutes from './routes/operations';
 import adminCasesRoutes from './routes/admin-cases';
 import adminOnboardingRoutes from './routes/admin-onboarding';
+import adminRoleLifecycleRoutes from './routes/admin-role-lifecycle';
 
 // Core Feature Routes
 import authRoutes from './routes/auth';
@@ -410,6 +411,7 @@ app.use('/api/admin/action-center', authenticateToken, adminActionCenterRoutes);
 app.use('/api/operations', authenticateToken, operationsRoutes);
 app.use('/api/admin/cases', authenticateToken, adminCasesRoutes);
 app.use('/api/admin/onboarding', authenticateToken, adminOnboardingRoutes);
+app.use('/api/admin/role-lifecycle', authenticateToken, adminRoleLifecycleRoutes);
 
 // Migration endpoints - PROTECTED: Only available in development or with SUPER_ADMIN role (Fix #2)
 const migrationAuthMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {

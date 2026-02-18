@@ -11,6 +11,7 @@ import {
     PermissionContext,
     UserRole
 } from '../lib/permissions';
+import { prisma } from '../database';
 
 // Extended request interface
 export interface AuthenticatedRequest extends Request {
@@ -177,14 +178,48 @@ export function authorize(
             logPermissionCheck(auditEntry);
         }
 
-        // Return error if not allowed
         if (!checkResult.allowed) {
-            return res.status(403).json({
-                error: 'Insufficient permissions',
-                code: 'PERMISSION_DENIED',
-                required: permission,
-                reason: checkResult.reason,
+            // Fallback: check active temporary role grants (expiresAt enforced at query time).
+            const grantMatch = await prisma.temporaryRoleGrant.findMany({
+                where: {
+                    tenantId,
+                    userId,
+                    status: 'ACTIVE',
+                    expiresAt: { gt: new Date() }
+                },
+                select: { id: true, role: true, expiresAt: true }
             });
+
+            let granted = false;
+            let grantedRole: UserRole | undefined;
+            for (const grant of grantMatch) {
+                const grantedResult = checkPermissionDetailed(
+                    { ...ctx, userRole: grant.role as UserRole },
+                    permission
+                );
+                if (grantedResult.allowed) {
+                    granted = true;
+                    grantedRole = grant.role as UserRole;
+                    break;
+                }
+            }
+
+            if (!granted) {
+                return res.status(403).json({
+                    error: 'Insufficient permissions',
+                    code: 'PERMISSION_DENIED',
+                    required: permission,
+                    reason: checkResult.reason,
+                });
+            }
+
+            if (options.logAllChecks) {
+                logPermissionCheck({
+                    ...auditEntry,
+                    result: 'allowed',
+                    reason: `temporary_grant:${grantedRole || 'unknown'}`
+                });
+            }
         }
 
         next();

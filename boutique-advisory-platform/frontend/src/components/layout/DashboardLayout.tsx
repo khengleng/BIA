@@ -160,6 +160,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         { href: '/admin/operations', label: 'Ops Readiness', icon: ShieldCheck, roles: ['ADMIN', 'SUPER_ADMIN', 'SUPPORT'], permission: 'support_ticket.list' },
         { href: '/admin/cases', label: 'Case Management', icon: ClipboardList, roles: ['ADMIN', 'SUPER_ADMIN', 'SUPPORT'], permission: 'case.list' },
         { href: '/admin/onboarding', label: 'Onboarding Ops', icon: ClipboardCheck, roles: ['ADMIN', 'SUPER_ADMIN', 'SUPPORT'], permission: 'onboarding_task.list' },
+        { href: '/admin/role-lifecycle', label: 'Role Lifecycle', icon: Shield, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'role_grant.list' },
         { href: '/admin/users', label: 'User Management', icon: UserCog, roles: ['ADMIN', 'SUPER_ADMIN'] },
         { href: '/admin/settings/branding', label: 'Platform Branding', icon: Palette, roles: ['ADMIN', 'SUPER_ADMIN'] },
         { href: '/admin/audit', label: 'System Audit', icon: History, roles: ['ADMIN', 'SUPER_ADMIN'] },

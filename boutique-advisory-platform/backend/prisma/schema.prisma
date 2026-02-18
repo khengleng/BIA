@@ -40,6 +40,8 @@ model Tenant {
   cases         AdminCase[]
   onboardingTemplates OnboardingTemplate[]
   onboardingTasks OnboardingTask[]
+  roleChangeRequests RoleChangeRequest[]
+  temporaryRoleGrants TemporaryRoleGrant[]
   activityLogs  ActivityLog[]
 
   @@map("tenants")
@@ -99,6 +101,10 @@ model User {
   onboardingTemplates    OnboardingTemplate[] @relation("OnboardingTemplateCreator")
   onboardingTasks        OnboardingTask[] @relation("OnboardingTaskUser")
   assignedOnboardingTasks OnboardingTask[] @relation("OnboardingTaskAssignee")
+  requestedRoleChanges   RoleChangeRequest[] @relation("RoleChangeRequester")
+  reviewedRoleChanges    RoleChangeRequest[] @relation("RoleChangeReviewer")
+  roleGrants             TemporaryRoleGrant[] @relation("RoleGrantTarget")
+  grantedRolePrivileges  TemporaryRoleGrant[] @relation("RoleGrantIssuer")
   invoices      Invoice[] @relation("InvoiceCustomer")
 
   refreshTokens     RefreshToken[]
@@ -1363,6 +1369,54 @@ model OnboardingTask {
   @@map("onboarding_tasks")
 }
 
+model RoleChangeRequest {
+  id               String            @id @default(cuid())
+  tenantId         String
+  requesterId      String
+  currentRole      UserRole
+  requestedRole    UserRole
+  reason           String
+  status           RoleRequestStatus @default(PENDING)
+  reviewedById     String?
+  reviewNote       String?
+  reviewedAt       DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  requester        User              @relation("RoleChangeRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  reviewedBy       User?             @relation("RoleChangeReviewer", fields: [reviewedById], references: [id])
+
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, requesterId, status])
+  @@map("role_change_requests")
+}
+
+model TemporaryRoleGrant {
+  id               String            @id @default(cuid())
+  tenantId         String
+  userId           String
+  role             UserRole
+  reason           String?
+  status           GrantStatus       @default(ACTIVE)
+  grantedById      String
+  grantedAt        DateTime          @default(now())
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  revokedById      String?
+  revokeReason     String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user             User              @relation("RoleGrantTarget", fields: [userId], references: [id], onDelete: Cascade)
+  grantedBy        User              @relation("RoleGrantIssuer", fields: [grantedById], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, userId, status, expiresAt])
+  @@index([tenantId, status, expiresAt])
+  @@map("temporary_role_grants")
+}
+
 enum PaymentMethod {
   CREDIT_CARD
   BANK_TRANSFER
@@ -1451,6 +1505,19 @@ enum OnboardingTaskStatus {
   APPROVED
   REJECTED
   WAIVED
+}
+
+enum RoleRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum GrantStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
 }
 
 enum SupportTicketPriority {

@@ -116,6 +116,12 @@ export const PERMISSIONS: Record<string, string[]> = {
     'onboarding_task.create': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
     'onboarding_task.update': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
     'onboarding_task.remind': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
+    'role_request.create': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR', 'SME'],
+    'role_request.list': ['SUPER_ADMIN', 'ADMIN'],
+    'role_request.review': ['SUPER_ADMIN', 'ADMIN'],
+    'role_grant.list': ['SUPER_ADMIN', 'ADMIN'],
+    'role_grant.create': ['SUPER_ADMIN', 'ADMIN'],
+    'role_grant.revoke': ['SUPER_ADMIN', 'ADMIN'],
 
     // Matchmaking Permissions
     'matchmaking.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],

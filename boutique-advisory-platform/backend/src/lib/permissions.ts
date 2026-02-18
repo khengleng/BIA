@@ -271,6 +271,14 @@ export const PERMISSIONS: Record<string, string[]> = {
     'onboarding_task.update': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
     'onboarding_task.remind': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
 
+    // ==================== Role Lifecycle Controls ====================
+    'role_request.create': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'SUPPORT', 'INVESTOR', 'SME'],
+    'role_request.list': ['SUPER_ADMIN', 'ADMIN'],
+    'role_request.review': ['SUPER_ADMIN', 'ADMIN'],
+    'role_grant.list': ['SUPER_ADMIN', 'ADMIN'],
+    'role_grant.create': ['SUPER_ADMIN', 'ADMIN'],
+    'role_grant.revoke': ['SUPER_ADMIN', 'ADMIN'],
+
     // ==================== Admin Permissions ====================
     'admin.read': ['SUPER_ADMIN', 'ADMIN'],
     'admin.dashboard_view': ['SUPER_ADMIN', 'ADMIN'],
