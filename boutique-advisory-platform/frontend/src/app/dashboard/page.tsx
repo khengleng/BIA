@@ -26,7 +26,7 @@ interface User {
   firstName: string
   lastName: string
   email: string
-  role: 'SME' | 'INVESTOR' | 'ADVISOR' | 'ADMIN'
+  role: 'SME' | 'INVESTOR' | 'ADVISOR' | 'ADMIN' | 'SUPER_ADMIN'
   tenantId: string
 }
 
@@ -71,6 +71,7 @@ export default function DashboardPage() {
       case 'ADVISOR':
         return <AdvisorDashboard t={t} stats={stats} />
       case 'ADMIN':
+      case 'SUPER_ADMIN':
         return <AdminDashboard t={t} stats={stats} />
       default:
         return <div>Unknown role</div>
@@ -358,6 +359,27 @@ function AdminDashboard({ t, stats }: { t: any; stats: any }) {
     { label: 'Revenue', value: `$${adminStats.revenue.toLocaleString()}`, icon: CheckCircle, color: 'text-green-500' },
     { label: 'Deleted Users', value: adminStats.deletedUsers, icon: UserX, color: 'text-red-500' }
   ]
+  const systemOverview = [
+    {
+      key: 'api',
+      title: 'API Service',
+      subtitle: 'Core Gateway',
+      status: stats?.systemOverview?.api || 'unknown'
+    },
+    {
+      key: 'database',
+      title: 'Database',
+      subtitle: 'Primary Storage',
+      status: stats?.systemOverview?.database || 'unknown'
+    },
+    {
+      key: 'redis',
+      title: 'Redis',
+      subtitle: 'Cache / Rate Limit',
+      status: stats?.systemOverview?.redis || 'unknown'
+    }
+  ]
+  const recentActivity = stats?.recentActivity || []
 
   return (
     <div>
@@ -383,47 +405,34 @@ function AdminDashboard({ t, stats }: { t: any; stats: any }) {
         <div className="bg-gray-800 rounded-lg p-6">
           <h2 className="text-xl font-semibold text-white mb-4">System Overview</h2>
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-white font-medium">DID Infrastructure</p>
-                <p className="text-sm text-gray-400">API Gateway</p>
+            {systemOverview.map((item: any) => (
+              <div key={item.key} className="flex items-center justify-between">
+                <div>
+                  <p className="text-white font-medium">{item.title}</p>
+                  <p className="text-sm text-gray-400">{item.subtitle}</p>
+                </div>
+                <span className={`text-sm ${item.status === 'online' ? 'text-green-500' : 'text-yellow-500'}`}>
+                  {item.status === 'online' ? 'Online' : 'Degraded'}
+                </span>
               </div>
-              <span className="text-green-500 text-sm">Online</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-white font-medium">CM Infrastructure</p>
-                <p className="text-sm text-gray-400">Case Management</p>
-              </div>
-              <span className="text-green-500 text-sm">Online</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-white font-medium">RWA Infrastructure</p>
-                <p className="text-sm text-gray-400">Tokenization</p>
-              </div>
-              <span className="text-green-500 text-sm">Online</span>
-            </div>
+            ))}
           </div>
         </div>
 
         <div className="bg-gray-800 rounded-lg p-6">
           <h2 className="text-xl font-semibold text-white mb-4">{t('dashboard.recentActivity')}</h2>
           <div className="space-y-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              <div>
-                <p className="text-white">New tenant registered</p>
-                <p className="text-sm text-gray-400">2 hours ago</p>
+            {recentActivity.length > 0 ? recentActivity.map((item: any) => (
+              <div key={item.id} className="flex items-center space-x-3">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <div>
+                  <p className="text-white">{item.title}</p>
+                  <p className="text-sm text-gray-400">{new Date(item.timestamp).toLocaleString()}</p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center space-x-3">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <div>
-                <p className="text-white">System backup completed</p>
-                <p className="text-sm text-gray-400">1 day ago</p>
-              </div>
-            </div>
+            )) : (
+              <p className="text-sm text-gray-400">No recent activity found.</p>
+            )}
           </div>
         </div>
       </div>
