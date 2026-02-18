@@ -41,6 +41,7 @@ export type Resource =
     | 'community'
     | 'dispute'
     | 'case'
+    | 'onboarding'
     | 'admin';
 
 // Special permission modifiers
@@ -257,6 +258,18 @@ export const PERMISSIONS: Record<string, string[]> = {
     'case.update': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
     'case.assign': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
     'case.escalate': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
+
+    // ==================== Onboarding Orchestration Permissions ====================
+    'onboarding_template.list': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
+    'onboarding_template.read': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
+    'onboarding_template.create': ['SUPER_ADMIN', 'ADMIN'],
+    'onboarding_template.update': ['SUPER_ADMIN', 'ADMIN'],
+    'onboarding_template.publish': ['SUPER_ADMIN', 'ADMIN'],
+    'onboarding_task.list': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
+    'onboarding_task.read': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
+    'onboarding_task.create': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
+    'onboarding_task.update': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
+    'onboarding_task.remind': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
 
     // ==================== Admin Permissions ====================
     'admin.read': ['SUPER_ADMIN', 'ADMIN'],

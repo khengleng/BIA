@@ -27,7 +27,8 @@ export type Resource =
     | 'audit_log'
     | 'matchmaking'
     | 'syndicate'
-    | 'case';
+    | 'case'
+    | 'onboarding';
 
 /**
  * Centralized Permission Definitions
@@ -105,6 +106,16 @@ export const PERMISSIONS: Record<string, string[]> = {
     'case.update': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
     'case.assign': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
     'case.escalate': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
+    'onboarding_template.list': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
+    'onboarding_template.read': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
+    'onboarding_template.create': ['SUPER_ADMIN', 'ADMIN'],
+    'onboarding_template.update': ['SUPER_ADMIN', 'ADMIN'],
+    'onboarding_template.publish': ['SUPER_ADMIN', 'ADMIN'],
+    'onboarding_task.list': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
+    'onboarding_task.read': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
+    'onboarding_task.create': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
+    'onboarding_task.update': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
+    'onboarding_task.remind': ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'],
 
     // Matchmaking Permissions
     'matchmaking.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
