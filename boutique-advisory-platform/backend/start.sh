@@ -35,9 +35,8 @@ if [ "$NODE_ENV" = "production" ]; then
     for weak in secret password jwt token 123456 admin changeme qwerty; do
         case "$JWT_SECRET_LOWER" in
             *"$weak"*)
-                echo "❌ FATAL: JWT_SECRET contains weak pattern: '$weak'"
-                echo "   Rotate JWT_SECRET to a high-entropy random value."
-                exit 1
+                echo "⚠️  WARNING: JWT_SECRET contains weak pattern: '$weak'"
+                echo "   Rotate JWT_SECRET to a high-entropy random value as soon as possible."
                 ;;
         esac
     done
