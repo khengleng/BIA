@@ -230,13 +230,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
     useEffect(() => {
         setCollapsedSections((prev) => {
+            let changed = false
             const next = { ...prev }
             for (const section of filteredNavSections as any[]) {
                 if (!(section.label in next)) {
                     next[section.label] = false
+                    changed = true
                 }
             }
-            return next
+            return changed ? next : prev
         })
     }, [filteredNavSections])
 
