@@ -45,6 +45,10 @@ model Tenant {
   advisorCapacities AdvisorCapacity[]
   advisorAssignments AdvisorAssignment[]
   advisorConflicts AdvisorConflictDeclaration[]
+  retentionRules DataRetentionRule[]
+  legalHolds LegalHold[]
+  reconciliationRuns ReconciliationRun[]
+  reconciliationExceptions ReconciliationException[]
   activityLogs  ActivityLog[]
 
   @@map("tenants")
@@ -110,6 +114,10 @@ model User {
   grantedRolePrivileges  TemporaryRoleGrant[] @relation("RoleGrantIssuer")
   advisorAssignmentCreator AdvisorAssignment[] @relation("AdvisorAssignmentCreator")
   advisorConflictReviewer AdvisorConflictDeclaration[] @relation("AdvisorConflictReviewer")
+  createdLegalHolds LegalHold[] @relation("LegalHoldCreator")
+  releasedLegalHolds LegalHold[] @relation("LegalHoldReleaser")
+  createdReconciliationRuns ReconciliationRun[] @relation("ReconciliationRunCreator")
+  assignedReconciliationExceptions ReconciliationException[] @relation("ReconciliationExceptionAssignee")
   invoices      Invoice[] @relation("InvoiceCustomer")
 
   refreshTokens     RefreshToken[]
@@ -1497,6 +1505,99 @@ model AdvisorConflictDeclaration {
   @@map("advisor_conflict_declarations")
 }
 
+model DataRetentionRule {
+  id                 String               @id @default(cuid())
+  tenantId           String
+  module             RetentionModule
+  retentionDays      Int
+  archiveBeforeDelete Boolean             @default(true)
+  status             RetentionRuleStatus  @default(ACTIVE)
+  lastEvaluatedAt    DateTime?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  tenant             Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, module])
+  @@index([tenantId, status, module])
+  @@map("data_retention_rules")
+}
+
+model LegalHold {
+  id                 String          @id @default(cuid())
+  tenantId           String
+  title              String
+  reason             String
+  status             LegalHoldStatus @default(ACTIVE)
+  scopeType          String          @default("TENANT")
+  scope              Json            @default("{}")
+  createdById        String
+  releasedById       String?
+  releasedAt         DateTime?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  tenant             Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy          User            @relation("LegalHoldCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  releasedBy         User?           @relation("LegalHoldReleaser", fields: [releasedById], references: [id])
+
+  @@index([tenantId, status, createdAt])
+  @@map("legal_holds")
+}
+
+model ReconciliationRun {
+  id                  String                @id @default(cuid())
+  tenantId            String
+  periodStart         DateTime
+  periodEnd           DateTime
+  status              ReconciliationStatus  @default(RUNNING)
+  paymentsTotal       Float                 @default(0)
+  invoicesTotal       Float                 @default(0)
+  expectedPayout      Float                 @default(0)
+  actualPayout        Float                 @default(0)
+  discrepancyAmount   Float                 @default(0)
+  notes               String?
+  createdById         String
+  completedAt         DateTime?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+
+  tenant              Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy           User                  @relation("ReconciliationRunCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  exceptions          ReconciliationException[]
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, status])
+  @@map("reconciliation_runs")
+}
+
+model ReconciliationException {
+  id                  String                     @id @default(cuid())
+  tenantId            String
+  runId               String
+  type                ReconciliationExceptionType
+  severity            ReconciliationSeverity     @default(MEDIUM)
+  status              ReconciliationExceptionStatus @default(OPEN)
+  referenceType       String?
+  referenceId         String?
+  expectedAmount      Float?
+  actualAmount        Float?
+  delta               Float?
+  reason              String
+  assignedToId        String?
+  resolvedAt          DateTime?
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
+
+  tenant              Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  run                 ReconciliationRun          @relation(fields: [runId], references: [id], onDelete: Cascade)
+  assignedTo          User?                      @relation("ReconciliationExceptionAssignee", fields: [assignedToId], references: [id])
+
+  @@index([tenantId, status, severity])
+  @@index([runId, status])
+  @@map("reconciliation_exceptions")
+}
+
 enum PaymentMethod {
   CREDIT_CARD
   BANK_TRANSFER
@@ -1619,6 +1720,52 @@ enum AdvisorConflictStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+enum RetentionModule {
+  MESSAGES
+  DOCUMENTS
+  ACTIVITY_LOGS
+  SESSIONS
+  DISPUTES
+  WORKFLOWS
+}
+
+enum RetentionRuleStatus {
+  ACTIVE
+  PAUSED
+}
+
+enum LegalHoldStatus {
+  ACTIVE
+  RELEASED
+}
+
+enum ReconciliationStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum ReconciliationExceptionType {
+  PAYMENT_MISMATCH
+  INVOICE_MISMATCH
+  PAYOUT_MISSING
+  ORPHAN_TRANSACTION
+}
+
+enum ReconciliationSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ReconciliationExceptionStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  DISMISSED
 }
 
 enum SupportTicketPriority {

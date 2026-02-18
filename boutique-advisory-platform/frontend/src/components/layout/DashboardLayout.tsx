@@ -164,6 +164,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         { href: '/admin/deal-ops', label: 'Deal Ops', icon: Briefcase, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'admin.read' },
         { href: '/admin/advisor-ops', label: 'Advisor Ops', icon: Users, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'advisor_ops.read' },
         { href: '/admin/investor-ops', label: 'Investor Ops', icon: UsersRound, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'investor_ops.read' },
+        { href: '/admin/reconciliation', label: 'Reconciliation', icon: Wallet, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'reconciliation.read' },
+        { href: '/admin/data-governance', label: 'Data Governance', icon: ShieldCheck, roles: ['ADMIN', 'SUPER_ADMIN'], permission: 'data_governance.read' },
         { href: '/admin/users', label: 'User Management', icon: UserCog, roles: ['ADMIN', 'SUPER_ADMIN'] },
         { href: '/admin/settings/branding', label: 'Platform Branding', icon: Palette, roles: ['ADMIN', 'SUPER_ADMIN'] },
         { href: '/admin/audit', label: 'System Audit', icon: History, roles: ['ADMIN', 'SUPER_ADMIN'] },

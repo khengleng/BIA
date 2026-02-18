@@ -134,6 +134,16 @@ export const PERMISSIONS: Record<string, string[]> = {
     'investor_ops.list': ['SUPER_ADMIN', 'ADMIN'],
     'investor_ops.review': ['SUPER_ADMIN', 'ADMIN'],
     'investor_ops.update': ['SUPER_ADMIN', 'ADMIN'],
+    'data_governance.read': ['SUPER_ADMIN', 'ADMIN'],
+    'retention_rule.list': ['SUPER_ADMIN', 'ADMIN'],
+    'retention_rule.update': ['SUPER_ADMIN', 'ADMIN'],
+    'legal_hold.list': ['SUPER_ADMIN', 'ADMIN'],
+    'legal_hold.create': ['SUPER_ADMIN', 'ADMIN'],
+    'legal_hold.release': ['SUPER_ADMIN', 'ADMIN'],
+    'reconciliation.read': ['SUPER_ADMIN', 'ADMIN'],
+    'reconciliation.run': ['SUPER_ADMIN', 'ADMIN'],
+    'reconciliation.exception.list': ['SUPER_ADMIN', 'ADMIN'],
+    'reconciliation.exception.update': ['SUPER_ADMIN', 'ADMIN'],
 
     // Matchmaking Permissions
     'matchmaking.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
