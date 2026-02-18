@@ -130,6 +130,10 @@ export const PERMISSIONS: Record<string, string[]> = {
     'advisor_assignment.update': ['SUPER_ADMIN', 'ADMIN'],
     'advisor_conflict.list': ['SUPER_ADMIN', 'ADMIN'],
     'advisor_conflict.review': ['SUPER_ADMIN', 'ADMIN'],
+    'investor_ops.read': ['SUPER_ADMIN', 'ADMIN'],
+    'investor_ops.list': ['SUPER_ADMIN', 'ADMIN'],
+    'investor_ops.review': ['SUPER_ADMIN', 'ADMIN'],
+    'investor_ops.update': ['SUPER_ADMIN', 'ADMIN'],
 
     // Matchmaking Permissions
     'matchmaking.list': ['SUPER_ADMIN', 'ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
