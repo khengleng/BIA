@@ -67,8 +67,14 @@ export const ipSecurityMiddleware = async (req: Request, res: Response, next: Ne
     try {
         const clientIp = getClientIp(req);
 
+        // Skip check if Redis is not ready
+        if (!redis || redis.status !== 'ready') {
+            return next();
+        }
+
         // Check if IP is blocked in Redis
         const isBlocked = await redis.sismember(BLOCKED_IPS_KEY, clientIp);
+
         if (isBlocked) {
             logAuditEvent({
                 userId: 'system',
@@ -335,8 +341,14 @@ export const roleBasedRateLimiting = async (req: Request, res: Response, next: N
         const config = roleRateLimits[role] || roleRateLimits['anonymous'];
         const now = Date.now();
 
+        // Skip Redis ops if not connected
+        if (!redis || redis.status !== 'ready') {
+            return next();
+        }
+
         // Use Redis for atomic increment and TTL
         const currentCount = await redis.incr(key);
+
 
         // If it's a new key, set expiry
         if (currentCount === 1) {

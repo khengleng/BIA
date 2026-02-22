@@ -2,6 +2,34 @@ import dotenv from 'dotenv';
 // Load environment variables IMMEDIATELY
 dotenv.config();
 
+// ============================================
+// DATABASE URL HARDENING
+// ============================================
+if (process.env.NODE_ENV === 'production' && process.env.DATABASE_URL) {
+  let dbUrl = process.env.DATABASE_URL;
+
+  // 1. Ensure SSL mode for external databases
+  if (!dbUrl.includes('sslmode=') && !dbUrl.includes('.railway.internal')) {
+    const separator = dbUrl.includes('?') ? '&' : '?';
+    process.env.DATABASE_URL = `${dbUrl}${separator}sslmode=require`;
+    console.log('🔐 [Config] Appended sslmode=require to DATABASE_URL');
+  }
+
+  // 2. Log sanitized connection info
+  try {
+    const url = new URL(process.env.DATABASE_URL);
+    console.log(`📡 [Config] Database Target: ${url.hostname}:${url.port || '5432'}`);
+
+    if (url.hostname === 'postgres.railway.internal') {
+      console.log('💡 [Config] Note: If DB connection times out, try updating DATABASE_URL to use "database.railway.internal" instead of "postgres.railway.internal".');
+    }
+  } catch (e) {
+    console.log('📡 [Config] Database Target: [Invalid URL Format]');
+  }
+}
+
+
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -156,17 +184,23 @@ const PORT = parseInt(process.env.PORT || '8080', 10);
 const isProduction = process.env.NODE_ENV === 'production';
 
 // ============================================
-// ULTIMATE HEALTH CHECK (Top of stack)
+// STARTUP STATE TRACKING
 // ============================================
 let isStartingUp = true;
+let startupPhase = 'initializing';
+let startupError: string | null = null;
+
 app.get('/health', (req, res) => {
   // Ultra-simple response to pass Railway health checks immediately
   return res.status(200).json({
-    status: isStartingUp ? 'starting' : 'ok',
+    status: isStartingUp ? 'starting' : (startupError ? 'degraded' : 'ok'),
+    phase: startupPhase,
+    error: startupError,
     timestamp: new Date().toISOString(),
     env: process.env.NODE_ENV
   });
 });
+
 
 
 // Trust proxy (required for rate limiting and secure cookies on most cloud platforms)
@@ -301,19 +335,24 @@ const limiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests, please try again later.' },
-  skip: (req) => req.path === '/health' || req.path === '/csrf-token' || req.path.startsWith('/health'),
-
-  store: new RedisStore({
+  keyGenerator: (req, res) => {
+    // SECURITY: Use the built-in helper for IPv6 support to avoid ERR_ERL_KEY_GEN_IPV6
+    return (limiter as any).ipKeyGenerator(req, res);
+  },
+  store: (redis && redis.status === 'ready') ? new RedisStore({
     sendCommand: async (...args: string[]) => {
       try {
+        if (!redis || redis.status !== 'ready') throw new Error('Redis not ready');
         return await (redis as any).call(args[0], ...args.slice(1));
       } catch (err) {
         console.warn('⚠️ Redis rate limit failure (limiter):', err);
-        return 0; // Fail-open (allowed)
+        throw err; // Let it fallback to error handling or fail-open logic
       }
     },
     prefix: 'bia:rl:main:',
-  } as any),
+  } as any) : undefined, // Fallback to memory store if Redis is down
+
+
 
 });
 app.use('/api/', limiter);
@@ -327,8 +366,8 @@ const authLimiter = rateLimit({
   message: { error: 'Too many login attempts, please try again later.' },
   skipSuccessfulRequests: true,
   // Prevent one user's failed attempts from locking out all users on the same IP.
-  keyGenerator: (req) => {
-    const ip = req.ip || 'unknown-ip';
+  keyGenerator: (req, res) => {
+    const ip = (authLimiter as any).ipKeyGenerator(req, res);
     if (req.path === '/login' && req.method === 'POST') {
       const email = typeof (req as any).body?.email === 'string'
         ? (req as any).body.email.trim().toLowerCase()
@@ -339,17 +378,20 @@ const authLimiter = rateLimit({
   },
   // CSRF token endpoint should stay available even during auth throttling.
   skip: (req) => req.path === '/csrf-token' || req.path === '/api/csrf-token',
-  store: new RedisStore({
+  store: (redis && redis.status === 'ready') ? new RedisStore({
     sendCommand: async (...args: string[]) => {
       try {
+        if (!redis || redis.status !== 'ready') throw new Error('Redis not ready');
         return await (redis as any).call(args[0], ...args.slice(1));
       } catch (err) {
         console.warn('⚠️ Redis rate limit failure (authLimiter):', err);
-        return 0; // Fail-open (allowed)
+        throw err;
       }
     },
     prefix: 'bia:rl:auth:',
-  } as any),
+  } as any) : undefined, // Fallback to memory store
+
+
 
 });
 
@@ -388,9 +430,12 @@ app.get('/api/csrf-token', (req: express.Request, res: express.Response) => {
     if (isStartingUp) {
       return res.status(503).json({
         error: 'Service starting up',
-        message: 'The server is currently performing background migrations. Please try again in a few seconds.'
+        message: 'The server is currently performing background migrations or connecting to the database.',
+        phase: startupPhase,
+        details: startupError
       });
     }
+
     const csrfToken = generateCsrfToken(req, res);
     return res.json({ csrfToken });
   } catch (error: any) {
@@ -562,6 +607,8 @@ async function startServer() {
 
   // Background initialization
   (async () => {
+    startupPhase = 'validating_config';
+
 
     async function waitForDatabase(maxRetries = 10, initialDelay = 2000) {
       let retries = 0;
@@ -575,9 +622,13 @@ async function startServer() {
           const delay = initialDelay * Math.pow(1.5, retries - 1);
           console.warn(`⏳ [Attempt ${retries}/${maxRetries}] Database not ready: ${error.message}`);
           if (retries < maxRetries) {
+            if (retries === 5 && error.message.includes('postgres.railway.internal')) {
+              console.warn('💡 [Tip] If your database service is named "database", try setting DATABASE_URL to use "database.railway.internal" instead of "postgres.railway.internal".');
+            }
             console.log(`   Retrying in ${Math.round(delay)}ms...`);
             await new Promise(resolve => setTimeout(resolve, delay));
           }
+
         }
       }
       return false;
@@ -597,28 +648,29 @@ async function startServer() {
         if (!process.env.JWT_SECRET) missing.push('JWT_SECRET');
 
         if (missing.length > 0) {
-          console.error('❌ CRITICAL CONFIGURATION ERROR');
-          console.error('   The following environment variables are missing in production:');
-          missing.forEach(m => console.error(`   - ${m}`));
-          console.error('   The server will remain in startup state and 503 all requests until these are set.');
-          // We STAY in startup mode (isStartingUp = true) so health check passes but app is non-functional
+          startupError = `Missing environment variables: ${missing.join(', ')}`;
+          console.error(`❌ [Config] ${startupError}`);
           return;
         }
       }
 
+      // ============================================
+      // WAIT FOR DATABASE
+      // ============================================
+      startupPhase = 'connecting_db';
 
-      // ============================================
-      // WAIT FOR DATABASE (Critical for Railway)
-      // ============================================
       const dbReady = await waitForDatabase();
       if (!dbReady) {
-        console.error('❌ FATAL: Database could not be reached after multiple retries.');
-        process.exit(1);
+        startupError = 'Database connection timed out after multiple retries';
+        console.error(`❌ [Database] ${startupError}`);
+        return;
       }
 
       // ============================================
-      // SCHEMA MIGRATION (Background)
+      // SCHEMA MIGRATION
       // ============================================
+      startupPhase = 'migrating_schema';
+
       console.log('📦 Running database schema migrations...');
       const execAsync = promisify(exec);
 
@@ -627,7 +679,8 @@ async function startServer() {
         if (stdout) console.log(stdout.split('\n').filter(Boolean).map(l => `   ${l}`).join('\n'));
         console.log('✅ Schema migrations applied successfully');
       } catch (migrateError: any) {
-        console.warn('⚠️  Prisma migrate deploy failed, attempting db push fallback...');
+        startupPhase = 'migrating_schema_fallback';
+
         const errorMsg = migrateError.stdout || migrateError.message || '';
         console.warn(`   Info: ${errorMsg.substring(0, 200)}...`);
 
@@ -660,11 +713,13 @@ async function startServer() {
       const migrationStatus = await checkMigrationStatus();
 
       if (migrationStatus.error) {
-        console.error('❌ Database connection failed during data check!');
-        console.error(`   Error: ${migrationStatus.error}`);
-        console.log('⏳ Server will remain in startup mode and wait for database to recover...');
-        return; // Stop initialization but keep server running
+        startupError = `Database seeding check failed: ${migrationStatus.error}`;
+        console.error(`❌ [Seeding] ${startupError}`);
+        return;
       }
+
+      startupPhase = 'seeding_data';
+
 
       if (migrationStatus.completed) {
         console.log('✅ Data seeding already completed');
@@ -687,16 +742,21 @@ async function startServer() {
 
 
       // Run admin sync
+      startupPhase = 'syncing_admin';
       await ensureAdminAccount();
 
+      startupPhase = 'operational';
       isStartingUp = false;
       console.log('✅ [System] Fully operational');
     } catch (error: any) {
+      startupError = error.message;
+      startupPhase = 'failed';
+      isStartingUp = false; // Transition out of starting mode even on failure
       console.error('❌ [System] Initialization failed:', error.message);
-      // Stay in starting mode but keep listening
     }
   })();
 }
+
 
 // Global Exception Handlers
 process.on('uncaughtException', (err) => {
