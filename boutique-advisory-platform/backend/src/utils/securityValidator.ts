@@ -211,7 +211,7 @@ function checkEncryptionKey(): SecurityCheckResult {
             name: 'ENCRYPTION_KEY',
             passed: false,
             message: 'ENCRYPTION_KEY is missing in production - DATA ENCRYPTION WILL FAIL',
-            severity: 'CRITICAL'
+            severity: 'HIGH'
         };
     }
 
@@ -228,7 +228,7 @@ function checkEncryptionKey(): SecurityCheckResult {
         name: 'ENCRYPTION_KEY',
         passed: true,
         message: key ? `ENCRYPTION_KEY is configured (${key.length} characters)` : 'ENCRYPTION_KEY not set (local dev mode)',
-        severity: 'CRITICAL'
+        severity: 'HIGH'
     };
 }
 

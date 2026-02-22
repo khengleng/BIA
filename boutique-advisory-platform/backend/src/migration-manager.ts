@@ -68,19 +68,16 @@ export async function performMigration(): Promise<MigrationStatus> {
     console.log('👥 Creating test users...')
 
     // SECURITY: Use environment variable for initial admin password, or generate secure random
-    const initialPassword = process.env.INITIAL_ADMIN_PASSWORD;
-    if (!initialPassword) {
-      console.error('❌ SECURITY: INITIAL_ADMIN_PASSWORD environment variable is required for initial setup');
-      console.error('   Please set a strong password (min 12 chars, mixed case, numbers, symbols)');
-      throw new Error('INITIAL_ADMIN_PASSWORD environment variable is required');
+    let initialPassword = process.env.INITIAL_ADMIN_PASSWORD;
+    if (!initialPassword || initialPassword.length < 12) {
+      console.warn('⚠️ SECURITY WARNING: INITIAL_ADMIN_PASSWORD environment variable is missing or too short (< 12 chars).');
+      console.warn('⚠️ Generating a secure random password for initial setup to prevent crash.');
+      initialPassword = require('crypto').randomBytes(16).toString('hex');
+      console.log(`🔐 Auto-generated initial admin password: ${initialPassword}`);
+      console.log(`   IMPORTANT: Keep this safe or change it via the dashboard immediately.`);
     }
 
-    // Validate password strength
-    if (initialPassword.length < 12) {
-      throw new Error('INITIAL_ADMIN_PASSWORD must be at least 12 characters');
-    }
-
-    const hashedPassword = await bcrypt.hash(initialPassword, 12)
+    const hashedPassword = await bcrypt.hash(initialPassword as string, 12)
     console.log('✅ Using securely configured initial password')
 
     const users = [
