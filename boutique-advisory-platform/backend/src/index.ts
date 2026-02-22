@@ -139,34 +139,35 @@ async function ensureAdminAccount() {
     if (user) {
       // SECURITY: Don't automatically rewrite password/role on every boot in production
       // Only ensure account is ACTIVE. Admin password changes should happen via UI/Recovery.
-      if (user.status !== 'ACTIVE') {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { status: 'ACTIVE' }
-        });
-        console.log(`✅ Admin account status restored to ACTIVE`);
-      } else {
-        console.log(`✅ Admin account verified (active)`);
-      }
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          status: 'ACTIVE',
+          isEmailVerified: true // Ensure admin can log in
+        }
+      });
+      console.log(`✅ Admin account synced (ACTIVE & Verified)`);
     } else {
       const hashedPassword = await bcrypt.hash(adminPassword, 12);
       await prisma.user.create({
         data: {
           email: adminEmail,
           password: hashedPassword,
-          role: 'SUPER_ADMIN', // Ensure initial admin is SUPER_ADMIN
+          role: 'SUPER_ADMIN',
           firstName: 'System',
           lastName: 'Administrator',
           tenantId: 'default',
-          status: 'ACTIVE'
+          status: 'ACTIVE',
+          isEmailVerified: true
         }
       });
-      console.log(`✅ Initial SUPER_ADMIN account created successfully`);
+      console.log(`✅ Initial SUPER_ADMIN created successfully`);
     }
   } catch (error: any) {
     console.error('❌ FATAL: Could not initialize admin account:', error.message);
   }
 }
+
 
 // Extend Express Request interface
 declare global {
@@ -276,26 +277,31 @@ app.use(cookieParser(cookieSecret));
 app.use((req, res, next) => {
   cors({
     origin: (origin, callback) => {
-      // In production, strictly match the FRONTEND_URL
+      if (!origin) return callback(null, true);
+
       const frontendUrl = process.env.FRONTEND_URL || '';
-      const allowedOrigins = [frontendUrl, frontendUrl.replace(/\/$/, '')];
+      const baseHost = frontendUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
-      if (!origin) {
-        // Requests without an Origin header can be legitimate (same-origin navigations,
-        // server-to-server calls, health checks). CORS only needs to gate explicit cross-origin.
-        return callback(null, true);
-      }
+      // Build a robust list of allowed hosts
+      const allowedHosts = [
+        baseHost,
+        baseHost.startsWith('www.') ? baseHost.replace('www.', '') : `www.${baseHost}`,
+        'cambobia.com',
+        'www.cambobia.com'
+      ].filter(Boolean);
 
-      if (allowedOrigins.includes(origin)) {
+      const originHost = origin.replace(/^https?:\/\//, '').replace(/\/$/, '');
+
+      if (allowedHosts.some(host => originHost === host)) {
         callback(null, true);
-      } else if (!isProduction && (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:'))) {
-        // In development, allow localhost/127.0.0.1 with exact match to prevent attacker.com spoofing
+      } else if (!isProduction && (originHost === 'localhost' || originHost === '127.0.0.1')) {
         callback(null, true);
       } else {
-        console.warn(`Blocked by CORS: origin ${origin} not in ${allowedOrigins}`);
+        console.warn(`Blocked by CORS: origin ${origin} (host: ${originHost}) not in ${allowedHosts}`);
         callback(new Error('Not allowed by CORS'));
       }
     },
+
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'X-CSRF-Token', 'x-csrf-token'],
@@ -448,8 +454,9 @@ const { invalidCsrfTokenError, generateCsrfToken, doubleCsrfProtection } = doubl
     sameSite: 'lax',
     path: '/',
     secure: process.env.NODE_ENV === 'production',
-    signed: true // Required since we provide a secret to cookieParser
+    signed: false // SECURITY: Cookie secret is signed, but we let double-csrf handle raw cookie lookup to prevent middleware mismatches
   },
+
 
 
   size: 64,
