@@ -372,9 +372,25 @@ const { invalidCsrfTokenError, generateCsrfToken, doubleCsrfProtection } = doubl
 
 // CSRF Token Endpoint
 app.get('/api/csrf-token', (req: express.Request, res: express.Response) => {
-  const csrfToken = generateCsrfToken(req, res);
-  res.json({ csrfToken });
+  try {
+    if (isStartingUp) {
+      return res.status(503).json({
+        error: 'Service starting up',
+        message: 'The server is currently performing background migrations. Please try again in a few seconds.'
+      });
+    }
+    const csrfToken = generateCsrfToken(req, res);
+    return res.json({ csrfToken });
+  } catch (error: any) {
+    console.error('❌ CSRF Token Generation Error:', error.message);
+    return res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to generate CSRF token',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
 });
+
 
 // Apply CSRF protection to API routes (excluding webhooks and token endpoint)
 app.use('/api', (req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -608,23 +624,29 @@ async function startServer() {
     if (migrationStatus.error) {
       console.error('❌ Database connection failed during data check!');
       console.error(`   Error: ${migrationStatus.error}`);
-      throw new Error('Database connection required - cannot start without database');
+      console.log('⏳ Server will remain in startup mode and wait for database to recover...');
+      return; // Stop initialization but keep server running
     }
 
     if (migrationStatus.completed) {
       console.log('✅ Data seeding already completed');
     } else {
       console.log('📋 Database is empty, performing automatic data seeding...');
-      const migrationResult = await performMigration();
+      try {
+        const migrationResult = await performMigration();
 
-      if (migrationResult.completed) {
-        console.log('✅ Automatic data seeding completed successfully');
-      } else {
-        console.error('❌ Automatic data seeding failed!');
-        console.error(`   Error: ${migrationResult.error}`);
-        throw new Error('Data seeding failed');
+        if (migrationResult.completed) {
+          console.log('✅ Automatic data seeding completed successfully');
+        } else {
+          console.error('❌ Automatic data seeding failed!');
+          console.error(`   Error: ${migrationResult.error}`);
+          // Don't throw, just allow retry later
+        }
+      } catch (seedError: any) {
+        console.error('❌ Error during data seeding:', seedError.message);
       }
     }
+
 
     // Run admin sync
     await ensureAdminAccount();
