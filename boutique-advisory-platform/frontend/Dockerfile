@@ -46,8 +46,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 USER nextjs
 
-EXPOSE 3000
-
 # Explicitly bypass node's docker-entrypoint.sh which can sometimes cause issues in Railway
 ENTRYPOINT ["/bin/sh", "-c"]
 CMD ["node server.js"]
