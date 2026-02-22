@@ -560,7 +560,7 @@ async function startServer() {
     initSocket(httpServer);
 
     // Start server
-    httpServer.listen(PORT, () => {
+    httpServer.listen(Number(PORT), '0.0.0.0', () => {
       console.log(`🚀 Boutique Advisory Platform API running on port ${PORT}`);
       console.log(`📡 Real-time WebSockets enabled`);
       console.log(`📊 Health check available at http://localhost:${PORT}/health`);
