@@ -241,15 +241,11 @@ app.use(express.json({
 }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-const cookieSecret = process.env.COOKIE_SECRET;
-if (isProduction && !cookieSecret) {
-  console.error('❌ FATAL ERROR: COOKIE_SECRET environment variable is missing!');
-  console.error('👉 Please add a long random string to your Railway environment variables:');
-  console.error('   Key: COOKIE_SECRET');
-  process.exit(1);
-}
+// Note: In production, COOKIE_SECRET is validated inside startServer() 
+// to ensure the health check can respond even if config is missing.
+const cookieSecret = process.env.COOKIE_SECRET || 'dev-cookie-secret';
+app.use(cookieParser(cookieSecret));
 
-app.use(cookieParser(cookieSecret || 'dev-cookie-secret'));
 
 // CORS configuration - strict in production
 app.use((req, res, next) => {
@@ -366,14 +362,9 @@ const authLimiter = rateLimit({
 
 });
 
-const csrfSecret = process.env.CSRF_SECRET;
-if (isProduction && !csrfSecret) {
-  console.error('❌ FATAL ERROR: CSRF_SECRET environment variable is missing!');
-  console.error('👉 Please add a long random string to your Railway environment variables:');
-  console.error('   Key: CSRF_SECRET');
-  console.error('   Value: (e.g., openssl rand -base64 32)');
-  process.exit(1);
-}
+// CSRF Secret - Detailed validation moved to startServer()
+const csrfSecret = process.env.CSRF_SECRET || 'dev-csrf-secret';
+
 
 
 // CSRF Protection Setup
@@ -598,6 +589,26 @@ async function startServer() {
 
   try {
     console.log('🚀 Finalizing system startup...');
+
+    // ============================================
+    // CRITICAL CONFIGURATION VALIDATION
+    // ============================================
+    if (isProduction) {
+      const missing = [];
+      if (!process.env.COOKIE_SECRET) missing.push('COOKIE_SECRET');
+      if (!process.env.CSRF_SECRET) missing.push('CSRF_SECRET');
+      if (!process.env.JWT_SECRET) missing.push('JWT_SECRET');
+
+      if (missing.length > 0) {
+        console.error('❌ CRITICAL CONFIGURATION ERROR');
+        console.error('   The following environment variables are missing in production:');
+        missing.forEach(m => console.error(`   - ${m}`));
+        console.error('   The server will remain in startup state and 503 all requests until these are set.');
+        // We STAY in startup mode (isStartingUp = true) so health check passes but app is non-functional
+        return;
+      }
+    }
+
 
     // ============================================
     // WAIT FOR DATABASE (Critical for Railway)
