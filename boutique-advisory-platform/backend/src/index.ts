@@ -189,45 +189,46 @@ app.use(helmet({
 
 let isStartingUp = true;
 
-app.get('/health', async (req, res) => {
-  try {
-    if (isStartingUp) {
-      return res.status(200).json({
-        status: 'starting',
-        timestamp: new Date(),
-        message: 'Server is booting up and running migrations'
-      });
-    }
+// 1. Core Health Check (Liveness/Startup) 
+// This MUST return 200 for Railway to mark the deploy as successful.
+app.get('/health', (req, res) => {
+  const redisStatus = redis.status === 'ready' ? 'connected' : (redis as any).status || 'starting';
 
-    // 1. Check Database
-    await prisma.$queryRaw`SELECT 1`;
-
-    // 2. Check Redis
-    let redisStatus = 'connected';
-    try {
-      if (redis.status !== 'ready') {
-        redisStatus = redis.status;
-      }
-    } catch (e) {
-      redisStatus = 'error';
-    }
-
-    return res.json({
-      status: 'ok',
+  // During startup, we return 200 but indicate it's starting.
+  // We do NOT check the database here because it might take a while to connect 
+  // on first deploy, and we don't want the health check to fail and kill the process.
+  if (isStartingUp) {
+    return res.status(200).json({
+      status: 'starting',
       timestamp: new Date(),
-      environment: process.env.NODE_ENV,
-      database: 'connected',
-      redis: redisStatus
+      redis: redisStatus,
+      message: 'Server is booting up, running migrations and connecting to database'
     });
+  }
+
+  // Once started, a simple liveness check
+  return res.json({
+    status: 'ok',
+    timestamp: new Date(),
+    environment: process.env.NODE_ENV,
+    redis: redisStatus
+  });
+});
+
+// 2. Readiness Check (Optional, for deep inspection)
+app.get('/health/ready', async (req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return res.json({ status: 'ready', database: 'connected' });
   } catch (error) {
     return res.status(503).json({
-      status: 'degraded',
-      timestamp: new Date(),
-      error: 'Core dependency failure',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      status: 'failing',
+      database: 'disconnected',
+      error: error instanceof Error ? error.message : 'Unknown'
     });
   }
 });
+
 
 // Logging - reduced in production
 app.use(morgan(isProduction ? 'combined' : 'dev'));

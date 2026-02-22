@@ -105,7 +105,9 @@ const nextConfig: NextConfig = {
     // 1. If NEXT_PUBLIC_API_URL is set (e.g. to a public URL), use that.
     // 2. Otherwise use Railway Internal DNS (http://backend.railway.internal:8080)
     // IMPORTANT: If you renamed your backend service in Railway, you MUST set NEXT_PUBLIC_API_URL.
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://backend.railway.internal:8080';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || 'http://backend.railway.internal:8080';
+    console.log(`📡 [Proxy Configuration] Target: ${apiUrl}`);
+
 
     return [
       {

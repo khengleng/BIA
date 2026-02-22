@@ -42,55 +42,10 @@ if [ "$NODE_ENV" = "production" ]; then
     done
 fi
 
-# Ensure SSL mode for external PostgreSQL in production.
-if [ "$NODE_ENV" = "production" ]; then
-    case "$DATABASE_URL" in
-        *".railway.internal"*)
-            # Railway private network connection; no sslmode mutation needed.
-            # But let's verify which hostname is actually active (auto-discovery)
-            CURR_HOST=$(echo "$DATABASE_URL" | awk -F@ '{print $2}' | awk -F[:/] '{print $1}')
-            echo "🔍 Testing database connectivity: $CURR_HOST:5432"
-            
-            if ! nc -z -w 3 "$CURR_HOST" 5432 2>/dev/null; then
-                echo "⚠️  Primary hostname $CURR_HOST unreachable. Scanning alternatives..."
-                FOUND=0
-                for ALT in "database" "db" "postgresql" "postgres"; do
-                    ALT_HOST="$ALT.railway.internal"
-                    if [ "$ALT_HOST" = "$CURR_HOST" ]; then continue; fi
-                    
-                    echo "🔍 Testing $ALT_HOST..."
-                    if nc -z -w 3 "$ALT_HOST" 5432 2>/dev/null; then
-                        echo "✅ Found working hostname: $ALT_HOST"
-                        # Safely replace the hostname in the URL
-                        # Handles formats like postgresql://user:pass@host:port/db
-                        export DATABASE_URL=$(echo "$DATABASE_URL" | sed "s/@$CURR_HOST/@$ALT_HOST/")
-                        echo "📡 Updated DATABASE_URL to use working internal hostname."
-                        FOUND=1
-                        break
-                    fi
-                done
-                
-                if [ "$FOUND" -eq 0 ]; then
-                    echo "❌ No responding database host found on internal network."
-                    echo "   Please check your Railway service names and ensures the DB is running."
-                    # Don't exit here, let the Node app try its own retry logic
-                fi
-            else
-                echo "✅ Database hostname $CURR_HOST is reachable."
-            fi
-            ;;
-        *"sslmode=require"*)
-            ;;
-        *)
-            if printf '%s' "$DATABASE_URL" | grep -q '?'; then
-                export DATABASE_URL="${DATABASE_URL}&sslmode=require"
-            else
-                export DATABASE_URL="${DATABASE_URL}?sslmode=require"
-            fi
-            echo "🔐 Appended sslmode=require to DATABASE_URL for production startup."
-            ;;
-    esac
-fi
+# Note: Detailed database discovery and connectivity checks are now handled 
+# inside the Node.js application to ensure the health check can respond immediately.
+echo "📡 Handing over database connection management to Node.js..."
+
 
 
 # Note: Database migrations are now handled inside the Node.js application 
