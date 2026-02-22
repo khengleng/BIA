@@ -545,9 +545,10 @@ router.post('/login', async (req: Request, res: Response, next: NextFunction) =>
       success: false,
       errorMessage: error instanceof Error ? error.message : 'Unknown error'
     });
-    next(error);
+    return next(error);
   }
 });
+
 
 
 // Refresh Token Endpoint
