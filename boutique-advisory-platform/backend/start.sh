@@ -47,6 +47,27 @@ if [ "$NODE_ENV" = "production" ]; then
     case "$DATABASE_URL" in
         *".railway.internal"*)
             # Railway private network connection; no sslmode mutation needed.
+            # But let's verify which hostname is actually active (auto-discovery)
+            CURR_HOST=$(echo "$DATABASE_URL" | awk -F@ '{print $2}' | awk -F[:/] '{print $1}')
+            echo "🔍 Testing database connectivity: $CURR_HOST:5432"
+            
+            if ! nc -z -w 2 "$CURR_HOST" 5432 2>/dev/null; then
+                echo "⚠️  Primary hostname $CURR_HOST unreachable. Scanning alternatives..."
+                for ALT in "database" "db" "postgresql" "postgres"; do
+                    ALT_HOST="$ALT.railway.internal"
+                    if [ "$ALT_HOST" = "$CURR_HOST" ]; then continue; fi
+                    
+                    echo "🔍 Testing $ALT_HOST..."
+                    if nc -z -w 2 "$ALT_HOST" 5432 2>/dev/null; then
+                        echo "✅ Found working hostname: $ALT_HOST"
+                        export DATABASE_URL=$(echo "$DATABASE_URL" | sed "s/$CURR_HOST/$ALT_HOST/")
+                        echo "📡 Updated DATABASE_URL to use working internal hostname."
+                        break
+                    fi
+                done
+            else
+                echo "✅ Database hostname $CURR_HOST is reachable."
+            fi
             ;;
         *"sslmode=require"*)
             ;;
@@ -60,6 +81,7 @@ if [ "$NODE_ENV" = "production" ]; then
             ;;
     esac
 fi
+
 
 # Note: Database migrations are now handled inside the Node.js application 
 # to allow the server to start listening immediately on $PORT.
