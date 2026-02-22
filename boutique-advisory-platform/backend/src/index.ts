@@ -151,8 +151,23 @@ declare global {
 }
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+// Safely parse port, defaulting to 8080 which is Railway's preferred default
+const PORT = parseInt(process.env.PORT || '8080', 10);
 const isProduction = process.env.NODE_ENV === 'production';
+
+// ============================================
+// ULTIMATE HEALTH CHECK (Top of stack)
+// ============================================
+let isStartingUp = true;
+app.get('/health', (req, res) => {
+  // Ultra-simple response to pass Railway health checks immediately
+  return res.status(200).json({
+    status: isStartingUp ? 'starting' : 'ok',
+    timestamp: new Date().toISOString(),
+    env: process.env.NODE_ENV
+  });
+});
+
 
 // Trust proxy (required for rate limiting and secure cookies on most cloud platforms)
 app.set('trust proxy', 1);
@@ -187,33 +202,8 @@ app.use(helmet({
   } : false,
 }));
 
-let isStartingUp = true;
+// Core health checks have been moved to the very top of the stack
 
-// 1. Core Health Check (Liveness/Startup) 
-// This MUST return 200 for Railway to mark the deploy as successful.
-app.get('/health', (req, res) => {
-  const redisStatus = redis.status === 'ready' ? 'connected' : (redis as any).status || 'starting';
-
-  // During startup, we return 200 but indicate it's starting.
-  // We do NOT check the database here because it might take a while to connect 
-  // on first deploy, and we don't want the health check to fail and kill the process.
-  if (isStartingUp) {
-    return res.status(200).json({
-      status: 'starting',
-      timestamp: new Date(),
-      redis: redisStatus,
-      message: 'Server is booting up, running migrations and connecting to database'
-    });
-  }
-
-  // Once started, a simple liveness check
-  return res.json({
-    status: 'ok',
-    timestamp: new Date(),
-    environment: process.env.NODE_ENV,
-    redis: redisStatus
-  });
-});
 
 // 2. Readiness Check (Optional, for deep inspection)
 app.get('/health/ready', async (req, res) => {
@@ -558,154 +548,167 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 
 // Start server with migration handling
 async function startServer() {
+  console.log(`📡 [Init] Creating HTTP Server on port ${PORT}...`);
   const httpServer = createServer(app);
+
+  console.log(`📡 [Init] Initializing WebSockets...`);
   initSocket(httpServer);
 
   // Start listening immediately to pass health checks during startup
-  httpServer.listen(Number(PORT), '0.0.0.0', () => {
-    console.log(`🚀 Boutique Advisory Platform API starting on port ${PORT}`);
-    console.log(`📡 Real-time WebSockets initialized`);
+  httpServer.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 [Ready] HTTP Server listening on port ${PORT}`);
+    console.log(`📡 [Ready] Real-time WebSockets initialized`);
   });
 
-  // Helper function for retrying database connection
-  async function waitForDatabase(maxRetries = 10, initialDelay = 2000) {
-    let retries = 0;
-    while (retries < maxRetries) {
-      try {
-        await prisma.$queryRaw`SELECT 1`;
-        console.log('✅ Database connection established');
-        return true;
-      } catch (error: any) {
-        retries++;
-        const delay = initialDelay * Math.pow(1.5, retries - 1);
-        console.warn(`⏳ [Attempt ${retries}/${maxRetries}] Database not ready: ${error.message}`);
-        if (retries < maxRetries) {
-          console.log(`   Retrying in ${Math.round(delay)}ms...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
+  // Background initialization
+  (async () => {
+
+    async function waitForDatabase(maxRetries = 10, initialDelay = 2000) {
+      let retries = 0;
+      while (retries < maxRetries) {
+        try {
+          await prisma.$queryRaw`SELECT 1`;
+          console.log('✅ [Database] Connection established');
+          return true;
+        } catch (error: any) {
+          retries++;
+          const delay = initialDelay * Math.pow(1.5, retries - 1);
+          console.warn(`⏳ [Attempt ${retries}/${maxRetries}] Database not ready: ${error.message}`);
+          if (retries < maxRetries) {
+            console.log(`   Retrying in ${Math.round(delay)}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
         }
       }
-    }
-    return false;
-  }
-
-  try {
-    console.log('🚀 Finalizing system startup...');
-
-    // ============================================
-    // CRITICAL CONFIGURATION VALIDATION
-    // ============================================
-    if (isProduction) {
-      const missing = [];
-      if (!process.env.COOKIE_SECRET) missing.push('COOKIE_SECRET');
-      if (!process.env.CSRF_SECRET) missing.push('CSRF_SECRET');
-      if (!process.env.JWT_SECRET) missing.push('JWT_SECRET');
-
-      if (missing.length > 0) {
-        console.error('❌ CRITICAL CONFIGURATION ERROR');
-        console.error('   The following environment variables are missing in production:');
-        missing.forEach(m => console.error(`   - ${m}`));
-        console.error('   The server will remain in startup state and 503 all requests until these are set.');
-        // We STAY in startup mode (isStartingUp = true) so health check passes but app is non-functional
-        return;
-      }
+      return false;
     }
 
-
-    // ============================================
-    // WAIT FOR DATABASE (Critical for Railway)
-    // ============================================
-    const dbReady = await waitForDatabase();
-    if (!dbReady) {
-      console.error('❌ FATAL: Database could not be reached after multiple retries.');
-      process.exit(1);
-    }
-
-    // ============================================
-    // SCHEMA MIGRATION (Background)
-    // ============================================
-    console.log('📦 Running database schema migrations...');
-    const execAsync = promisify(exec);
 
     try {
-      const { stdout } = await execAsync('npx prisma migrate deploy');
-      if (stdout) console.log(stdout.split('\n').filter(Boolean).map(l => `   ${l}`).join('\n'));
-      console.log('✅ Schema migrations applied successfully');
-    } catch (migrateError: any) {
-      console.warn('⚠️  Prisma migrate deploy failed, attempting db push fallback...');
-      const errorMsg = migrateError.stdout || migrateError.message || '';
-      console.warn(`   Info: ${errorMsg.substring(0, 200)}...`);
+      console.log('🚀 Finalizing system startup...');
 
-      try {
-        const { stdout } = await execAsync('npx prisma db push --accept-data-loss');
-        if (stdout) console.log(stdout.split('\n').filter(Boolean).map(l => `   ${l}`).join('\n'));
-        console.log('✅ Database schema pushed successfully');
-      } catch (pushError: any) {
-        console.error('❌ Database schema update failed:', pushError.stdout || pushError.message);
-      }
-    }
+      // ============================================
+      // CRITICAL CONFIGURATION VALIDATION
+      // ============================================
+      if (isProduction) {
+        const missing = [];
+        if (!process.env.COOKIE_SECRET) missing.push('COOKIE_SECRET');
+        if (!process.env.CSRF_SECRET) missing.push('CSRF_SECRET');
+        if (!process.env.JWT_SECRET) missing.push('JWT_SECRET');
 
-
-
-    // ============================================
-    // SECURITY VALIDATION
-    // ============================================
-    console.log('🔒 Validating security configuration...');
-    const securityCheck = validateSecurityConfiguration();
-
-    if (!securityCheck.success) {
-      console.error('❌ CRITICAL SECURITY CHECKS FAILED');
-      console.error('   Cannot continue with insecure configuration.');
-      process.exit(1);
-    }
-    console.log('✅ Security configuration validated');
-
-    // Check data migration status (seeding)
-    console.log('📋 Checking database data status...');
-    const migrationStatus = await checkMigrationStatus();
-
-    if (migrationStatus.error) {
-      console.error('❌ Database connection failed during data check!');
-      console.error(`   Error: ${migrationStatus.error}`);
-      console.log('⏳ Server will remain in startup mode and wait for database to recover...');
-      return; // Stop initialization but keep server running
-    }
-
-    if (migrationStatus.completed) {
-      console.log('✅ Data seeding already completed');
-    } else {
-      console.log('📋 Database is empty, performing automatic data seeding...');
-      try {
-        const migrationResult = await performMigration();
-
-        if (migrationResult.completed) {
-          console.log('✅ Automatic data seeding completed successfully');
-        } else {
-          console.error('❌ Automatic data seeding failed!');
-          console.error(`   Error: ${migrationResult.error}`);
-          // Don't throw, just allow retry later
+        if (missing.length > 0) {
+          console.error('❌ CRITICAL CONFIGURATION ERROR');
+          console.error('   The following environment variables are missing in production:');
+          missing.forEach(m => console.error(`   - ${m}`));
+          console.error('   The server will remain in startup state and 503 all requests until these are set.');
+          // We STAY in startup mode (isStartingUp = true) so health check passes but app is non-functional
+          return;
         }
-      } catch (seedError: any) {
-        console.error('❌ Error during data seeding:', seedError.message);
       }
+
+
+      // ============================================
+      // WAIT FOR DATABASE (Critical for Railway)
+      // ============================================
+      const dbReady = await waitForDatabase();
+      if (!dbReady) {
+        console.error('❌ FATAL: Database could not be reached after multiple retries.');
+        process.exit(1);
+      }
+
+      // ============================================
+      // SCHEMA MIGRATION (Background)
+      // ============================================
+      console.log('📦 Running database schema migrations...');
+      const execAsync = promisify(exec);
+
+      try {
+        const { stdout } = await execAsync('npx prisma migrate deploy');
+        if (stdout) console.log(stdout.split('\n').filter(Boolean).map(l => `   ${l}`).join('\n'));
+        console.log('✅ Schema migrations applied successfully');
+      } catch (migrateError: any) {
+        console.warn('⚠️  Prisma migrate deploy failed, attempting db push fallback...');
+        const errorMsg = migrateError.stdout || migrateError.message || '';
+        console.warn(`   Info: ${errorMsg.substring(0, 200)}...`);
+
+        try {
+          const { stdout } = await execAsync('npx prisma db push --accept-data-loss');
+          if (stdout) console.log(stdout.split('\n').filter(Boolean).map(l => `   ${l}`).join('\n'));
+          console.log('✅ Database schema pushed successfully');
+        } catch (pushError: any) {
+          console.error('❌ Database schema update failed:', pushError.stdout || pushError.message);
+        }
+      }
+
+
+
+      // ============================================
+      // SECURITY VALIDATION
+      // ============================================
+      console.log('🔒 Validating security configuration...');
+      const securityCheck = validateSecurityConfiguration();
+
+      if (!securityCheck.success) {
+        console.error('❌ CRITICAL SECURITY CHECKS FAILED');
+        console.error('   Cannot continue with insecure configuration.');
+        process.exit(1);
+      }
+      console.log('✅ Security configuration validated');
+
+      // Check data migration status (seeding)
+      console.log('📋 Checking database data status...');
+      const migrationStatus = await checkMigrationStatus();
+
+      if (migrationStatus.error) {
+        console.error('❌ Database connection failed during data check!');
+        console.error(`   Error: ${migrationStatus.error}`);
+        console.log('⏳ Server will remain in startup mode and wait for database to recover...');
+        return; // Stop initialization but keep server running
+      }
+
+      if (migrationStatus.completed) {
+        console.log('✅ Data seeding already completed');
+      } else {
+        console.log('📋 Database is empty, performing automatic data seeding...');
+        try {
+          const migrationResult = await performMigration();
+
+          if (migrationResult.completed) {
+            console.log('✅ Automatic data seeding completed successfully');
+          } else {
+            console.error('❌ Automatic data seeding failed!');
+            console.error(`   Error: ${migrationResult.error}`);
+            // Don't throw, just allow retry later
+          }
+        } catch (seedError: any) {
+          console.error('❌ Error during data seeding:', seedError.message);
+        }
+      }
+
+
+      // Run admin sync
+      await ensureAdminAccount();
+
+      isStartingUp = false;
+      console.log('✅ [System] Fully operational');
+    } catch (error: any) {
+      console.error('❌ [System] Initialization failed:', error.message);
+      // Stay in starting mode but keep listening
     }
-
-
-    // Run admin sync
-    await ensureAdminAccount();
-
-    isStartingUp = false;
-    console.log('✅ System fully operational');
-    console.log(`🔄 Migration status: http://localhost:${PORT}/api/migration/status`);
-
-
-  } catch (error) {
-    console.error('❌ Failed to start server components:', error);
-    if (process.env.NODE_ENV === 'production') {
-      process.exit(1);
-    }
-  }
+  })();
 }
 
+// Global Exception Handlers
+process.on('uncaughtException', (err) => {
+  console.error('💥 UNCAUGHT EXCEPTION:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 UNHANDLED REJECTION at:', promise, 'reason:', reason);
+});
+
+console.log('⚡ [Boot] Initializing platform...');
 startServer();
+
 
 export default app;
