@@ -20,29 +20,41 @@ async function ensureCsrfToken(): Promise<void> {
         return;
     }
 
-    csrfTokenPromise = fetch(`${API_URL}/api/csrf-token`, { credentials: 'include' })
+    const fetchUrl = `${API_URL}/api/csrf-token?t=${Date.now()}`;
+    console.log(`📡 Fetching CSRF token from: ${fetchUrl}`);
+
+
+    csrfTokenPromise = fetch(fetchUrl, { credentials: 'include' })
         .then(async res => {
-            const contentType = res.headers.get('content-type');
-            if (!res.ok || !contentType?.includes('application/json')) {
+            const contentType = res.headers.get('content-type') || '';
+            console.log(`📨 CSRF Response: ${res.status} (${contentType})`);
+
+            if (!res.ok || !contentType.includes('application/json')) {
                 const text = await res.text();
-                console.error(`❌ CSRF Fetch Failed (${res.status}):`, text.substring(0, 100));
-                throw new Error(`API Error ${res.status}: ${text.includes('Internal Server Error') ? 'Backend unreachable or crashed' : 'Invalid response'}`);
+                const preview = text.substring(0, 100).replace(/\n/g, ' ');
+                console.error(`❌ CSRF Fetch Failed (${res.status}): ${preview}`);
+                throw new Error(`API Error ${res.status}: ${text.includes('Internal Server Error') ? 'Backend unreachable' : 'Invalid response'}`);
             }
-            return res.json();
-        })
-        .then(data => {
-            csrfToken = data.csrfToken;
-            return csrfToken;
+
+            try {
+                const data = await res.json();
+                csrfToken = data.csrfToken;
+                console.log('✅ CSRF token acquired');
+                return csrfToken;
+            } catch (parseError) {
+                console.error('❌ Failed to parse CSRF JSON:', parseError);
+                throw new Error('Invalid JSON received from CSRF endpoint');
+            }
         })
         .catch(err => {
-            console.error('Failed to fetch CSRF token', err.message);
+            console.error('⚠️ CSRF Token Error:', err.message);
             return null;
         });
-
 
     await csrfTokenPromise;
     csrfTokenPromise = null;
 }
+
 
 /**
  * Helper to safely parse JSON or throw a descriptive error if the response is HTML/Text

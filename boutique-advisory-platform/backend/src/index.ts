@@ -242,9 +242,12 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 const cookieSecret = process.env.COOKIE_SECRET;
 if (isProduction && !cookieSecret) {
-  console.error('FATAL: COOKIE_SECRET environment variable is not set!');
+  console.error('❌ FATAL ERROR: COOKIE_SECRET environment variable is missing!');
+  console.error('👉 Please add a long random string to your Railway environment variables:');
+  console.error('   Key: COOKIE_SECRET');
   process.exit(1);
 }
+
 app.use(cookieParser(cookieSecret || 'dev-cookie-secret'));
 
 // CORS configuration - strict in production
@@ -347,9 +350,13 @@ const authLimiter = rateLimit({
 
 const csrfSecret = process.env.CSRF_SECRET;
 if (isProduction && !csrfSecret) {
-  console.error('FATAL: CSRF_SECRET environment variable is not set!');
+  console.error('❌ FATAL ERROR: CSRF_SECRET environment variable is missing!');
+  console.error('👉 Please add a long random string to your Railway environment variables:');
+  console.error('   Key: CSRF_SECRET');
+  console.error('   Value: (e.g., openssl rand -base64 32)');
   process.exit(1);
 }
+
 
 // CSRF Protection Setup
 const { invalidCsrfTokenError, generateCsrfToken, doubleCsrfProtection } = doubleCsrf({

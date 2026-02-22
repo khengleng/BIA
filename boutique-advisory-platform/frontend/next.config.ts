@@ -102,8 +102,10 @@ const nextConfig: NextConfig = {
   },
   async rewrites() {
     // In production, ensure we have a valid API URL. 
-    // Default to the internal Railway service name 'backend' if not specified.
+    // Fallback order: Explicit ENV > Internal Railway Service 'backend' > Port 8080 (Railway Default)
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://backend.railway.internal:8080';
+
+    console.log(`📡 Backend Proxy Destination: ${apiUrl}`);
 
     return [
       {
