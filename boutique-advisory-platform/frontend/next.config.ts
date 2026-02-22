@@ -101,11 +101,11 @@ const nextConfig: NextConfig = {
     ];
   },
   async rewrites() {
-    // In production, ensure we have a valid API URL. 
-    // Fallback order: Explicit ENV > Internal Railway Service 'backend' > Port 8080 (Railway Default)
+    // In production, Next.js will proxy requests to the backend.
+    // 1. If NEXT_PUBLIC_API_URL is set (e.g. to a public URL), use that.
+    // 2. Otherwise use Railway Internal DNS (http://backend.railway.internal:8080)
+    // IMPORTANT: If you renamed your backend service in Railway, you MUST set NEXT_PUBLIC_API_URL.
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://backend.railway.internal:8080';
-
-    console.log(`📡 Backend Proxy Destination: ${apiUrl}`);
 
     return [
       {
@@ -114,6 +114,7 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+
 
 };
 

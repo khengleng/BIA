@@ -383,16 +383,17 @@ const { invalidCsrfTokenError, generateCsrfToken, doubleCsrfProtection } = doubl
     // Use user-agent only to avoid instability from proxy/load balancer IP changes
     return String(req.headers['user-agent'] || 'unknown');
   },
-  // __Host- prefix requires path: '/', secure: true, and NO domain attribute
+  // Simply naming for diagnostics
   cookieName: (process.env.NODE_ENV === 'production' && !process.env.DISABLE_STRICT_CSRF)
-    ? '__Host-psifi.x-csrf-token'
+    ? 'psifi.x-csrf-token'
     : 'x-csrf-token',
   cookieOptions: {
     httpOnly: true,
-    sameSite: 'strict',
+    sameSite: 'lax',
     path: '/',
     secure: process.env.NODE_ENV === 'production'
   },
+
   size: 64,
   ignoredMethods: ['GET', 'HEAD', 'OPTIONS'],
   getCsrfTokenFromRequest: (req: express.Request) => req.headers['x-csrf-token'] as string

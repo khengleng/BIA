@@ -55,9 +55,10 @@ export async function issueTokensAndSetCookies(res: Response, user: any, req: Re
     // Refresh Token
     res.cookie('refreshToken', refreshToken, {
         ...COOKIE_OPTIONS,
-        path: '/api', // Scope to all API calls for middleware auto-refresh
+        path: '/', // Changed from /api to / to ensure proxy compatibility
         maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
+
 
     // Set 'token' cookie for backward compatibility with existing middleware/FE
     res.cookie('token', accessToken, {
