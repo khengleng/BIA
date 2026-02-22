@@ -328,6 +328,29 @@ app.use(xssMiddleware);
 // ============================================
 
 
+app.get('/api/csrf-token', (req: express.Request, res: express.Response) => {
+  try {
+    if (isStartingUp) {
+      return res.status(503).json({
+        error: 'Service starting up',
+        message: 'The server is currently performing background migrations or connecting to the database.',
+        phase: startupPhase,
+        details: startupError
+      });
+    }
+
+    const csrfToken = generateCsrfToken(req, res);
+    return res.json({ csrfToken });
+  } catch (error: any) {
+    console.error('❌ CSRF Token Generation Error:', error.message);
+    return res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to generate CSRF token',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
 // Rate limiting - shared via Redis for multi-instance support
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -339,6 +362,14 @@ const limiter = rateLimit({
     // SECURITY: Use the built-in helper for IPv6 support to avoid ERR_ERL_KEY_GEN_IPV6
     return (limiter as any).ipKeyGenerator(req, res);
   },
+  skip: (req) => {
+    // Skip for known endpoints and when Redis is down
+    const path = req.originalUrl || req.path;
+    return path.includes('/health') ||
+      path.includes('/csrf-token') ||
+      !redis ||
+      redis.status !== 'ready';
+  },
   store: (redis && redis.status === 'ready') ? new RedisStore({
     sendCommand: async (...args: string[]) => {
       try {
@@ -346,14 +377,13 @@ const limiter = rateLimit({
         return await (redis as any).call(args[0], ...args.slice(1));
       } catch (err) {
         console.warn('⚠️ Redis rate limit failure (limiter):', err);
-        throw err; // Let it fallback to error handling or fail-open logic
+        // Returning a valid Lua script response for rate-limit-redis (count, reset_time)
+        return [0, Date.now() + 60000];
       }
     },
+
     prefix: 'bia:rl:main:',
-  } as any) : undefined, // Fallback to memory store if Redis is down
-
-
-
+  } as any) : undefined,
 });
 app.use('/api/', limiter);
 
@@ -377,23 +407,25 @@ const authLimiter = rateLimit({
     return `auth:${ip}`;
   },
   // CSRF token endpoint should stay available even during auth throttling.
-  skip: (req) => req.path === '/csrf-token' || req.path === '/api/csrf-token',
+  skip: (req) => {
+    const path = req.originalUrl || req.path;
+    return path.includes('/csrf-token') || !redis || redis.status !== 'ready';
+  },
   store: (redis && redis.status === 'ready') ? new RedisStore({
     sendCommand: async (...args: string[]) => {
       try {
-        if (!redis || redis.status !== 'ready') throw new Error('Redis not ready');
+        if (!redis || redis.status !== 'ready') return [0, Date.now() + 60000];
         return await (redis as any).call(args[0], ...args.slice(1));
       } catch (err) {
         console.warn('⚠️ Redis rate limit failure (authLimiter):', err);
-        throw err;
+        return [0, Date.now() + 60000];
       }
     },
+
     prefix: 'bia:rl:auth:',
   } as any) : undefined, // Fallback to memory store
-
-
-
 });
+
 
 // CSRF Secret - Detailed validation moved to startServer()
 const csrfSecret = process.env.CSRF_SECRET || 'dev-csrf-secret';
@@ -415,8 +447,10 @@ const { invalidCsrfTokenError, generateCsrfToken, doubleCsrfProtection } = doubl
     httpOnly: true,
     sameSite: 'lax',
     path: '/',
-    secure: process.env.NODE_ENV === 'production'
+    secure: process.env.NODE_ENV === 'production',
+    signed: true // Required since we provide a secret to cookieParser
   },
+
 
   size: 64,
   ignoredMethods: ['GET', 'HEAD', 'OPTIONS'],
@@ -424,29 +458,7 @@ const { invalidCsrfTokenError, generateCsrfToken, doubleCsrfProtection } = doubl
 } as any) as any;
 
 
-// CSRF Token Endpoint
-app.get('/api/csrf-token', (req: express.Request, res: express.Response) => {
-  try {
-    if (isStartingUp) {
-      return res.status(503).json({
-        error: 'Service starting up',
-        message: 'The server is currently performing background migrations or connecting to the database.',
-        phase: startupPhase,
-        details: startupError
-      });
-    }
 
-    const csrfToken = generateCsrfToken(req, res);
-    return res.json({ csrfToken });
-  } catch (error: any) {
-    console.error('❌ CSRF Token Generation Error:', error.message);
-    return res.status(500).json({
-      error: 'Internal Server Error',
-      message: 'Failed to generate CSRF token',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-});
 
 
 // Apply CSRF protection to API routes (excluding webhooks and token endpoint)
@@ -584,12 +596,35 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
     });
   }
 
+  // Handle CORS errors specifically
+  if (err.message === 'Not allowed by CORS') {
+    console.error(`❌ CORS Blocking: ${req.headers.origin} is not allowed. (FRONTEND_URL: ${process.env.FRONTEND_URL})`);
+    return res.status(403).json({
+      error: 'Access Denied',
+      message: 'Cross-Origin request blocked. Check configuration.'
+    });
+  }
+
   console.error('Unhandled error:', err);
+
+  // Provide more context in error response if it's a known internal error
+  let message = 'Something went wrong';
+  if (process.env.NODE_ENV === 'development') {
+    message = err.message;
+  } else {
+    if (err.name === 'PrismaClientKnownRequestError') message = 'Database request failed';
+    if (err.name === 'PrismaClientInitializationError') message = 'Database connection failure';
+    if (err.name === 'PrismaClientValidationError') message = 'Data validation error';
+  }
+
   return res.status(500).json({
     error: 'Internal server error',
-    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+    type: err.name,
+    message
   });
 });
+
+
 
 // Start server with migration handling
 async function startServer() {
@@ -650,8 +685,10 @@ async function startServer() {
         if (missing.length > 0) {
           startupError = `Missing environment variables: ${missing.join(', ')}`;
           console.error(`❌ [Config] ${startupError}`);
+          isStartingUp = false; // Allow app to respond even on failure
           return;
         }
+
       }
 
       // ============================================
@@ -663,8 +700,10 @@ async function startServer() {
       if (!dbReady) {
         startupError = 'Database connection timed out after multiple retries';
         console.error(`❌ [Database] ${startupError}`);
+        isStartingUp = false; // Allow diagnostic access
         return;
       }
+
 
       // ============================================
       // SCHEMA MIGRATION
@@ -715,8 +754,10 @@ async function startServer() {
       if (migrationStatus.error) {
         startupError = `Database seeding check failed: ${migrationStatus.error}`;
         console.error(`❌ [Seeding] ${startupError}`);
+        isStartingUp = false;
         return;
       }
+
 
       startupPhase = 'seeding_data';
 
