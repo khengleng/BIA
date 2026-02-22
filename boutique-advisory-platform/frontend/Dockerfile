@@ -46,6 +46,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 USER nextjs
 
-# Explicitly bypass node's docker-entrypoint.sh which can sometimes cause issues in Railway
+# Start the application using a shell to bypass any missing entrypoint scripts
 ENTRYPOINT ["/bin/sh", "-c"]
 CMD ["node server.js"]
+
+
