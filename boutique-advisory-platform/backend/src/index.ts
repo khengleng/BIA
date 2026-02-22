@@ -531,7 +531,32 @@ async function startServer() {
     console.log('🚀 Finalizing system startup...');
 
     // ============================================
-    // SECURITY VALIDATION (First step)
+    // SCHEMA MIGRATION (Background)
+    // ============================================
+    console.log('📦 Running database schema migrations...');
+    const { exec } = require('child_process');
+    const { promisify } = require('util');
+    const execAsync = promisify(exec);
+
+    try {
+      const { stdout } = await execAsync('npx prisma migrate deploy');
+      console.log(stdout);
+      console.log('✅ Schema migrations applied successfully');
+    } catch (migrateError: any) {
+      console.warn('⚠️  Prisma migrate deploy failed, attempting db push fallback...');
+      console.warn(migrateError.stdout || migrateError.message);
+      try {
+        const { stdout } = await execAsync('npx prisma db push --accept-data-loss');
+        console.log(stdout);
+        console.log('✅ Database schema pushed successfully');
+      } catch (pushError: any) {
+        console.error('❌ Database schema update failed:', pushError.stdout || pushError.message);
+      }
+    }
+
+
+    // ============================================
+    // SECURITY VALIDATION
     // ============================================
     console.log('🔒 Validating security configuration...');
     const securityCheck = validateSecurityConfiguration();
@@ -543,28 +568,28 @@ async function startServer() {
     }
     console.log('✅ Security configuration validated');
 
-    // Check migration status on startup
-    console.log('📋 Checking database connection and migration status...');
+    // Check data migration status (seeding)
+    console.log('📋 Checking database data status...');
     const migrationStatus = await checkMigrationStatus();
 
     if (migrationStatus.error) {
-      console.error('❌ Database connection failed!');
+      console.error('❌ Database connection failed during data check!');
       console.error(`   Error: ${migrationStatus.error}`);
       throw new Error('Database connection required - cannot start without database');
     }
 
     if (migrationStatus.completed) {
-      console.log('✅ Database migration already completed');
+      console.log('✅ Data seeding already completed');
     } else {
-      console.log('📋 Database is empty, performing automatic migration...');
+      console.log('📋 Database is empty, performing automatic data seeding...');
       const migrationResult = await performMigration();
 
       if (migrationResult.completed) {
-        console.log('✅ Automatic migration completed successfully');
+        console.log('✅ Automatic data seeding completed successfully');
       } else {
-        console.error('❌ Automatic migration failed!');
+        console.error('❌ Automatic data seeding failed!');
         console.error(`   Error: ${migrationResult.error}`);
-        throw new Error('Database migration failed');
+        throw new Error('Data seeding failed');
       }
     }
 
@@ -574,6 +599,7 @@ async function startServer() {
     isStartingUp = false;
     console.log('✅ System fully operational');
     console.log(`🔄 Migration status: http://localhost:${PORT}/api/migration/status`);
+
 
   } catch (error) {
     console.error('❌ Failed to start server components:', error);

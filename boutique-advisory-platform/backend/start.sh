@@ -61,23 +61,9 @@ if [ "$NODE_ENV" = "production" ]; then
     esac
 fi
 
-# Run database migrations
-# Run database migrations
-echo "📦 Running database migrations..."
+# Note: Database migrations are now handled inside the Node.js application 
+# to allow the server to start listening immediately on $PORT.
 
-# Temporarily disable exit-on-error for migration check
-set +e
-npx prisma migrate deploy
-MIGRATION_EXIT_CODE=$?
-set -e
-
-if [ $MIGRATION_EXIT_CODE -ne 0 ]; then
-    echo "❌ Migration failed (Exit code: $MIGRATION_EXIT_CODE). Likely due to non-empty DB."
-    echo "⚠️  Falling back to prisma db push..."
-    npx prisma db push --accept-data-loss
-fi
-
-echo "✅ Database ready"
 
 # Start the application
 echo "🚀 Starting Node.js server..."
