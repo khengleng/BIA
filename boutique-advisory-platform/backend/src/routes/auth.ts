@@ -1,4 +1,5 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
+
 import bcrypt from 'bcryptjs';
 
 import { COOKIE_OPTIONS, issueTokensAndSetCookies } from '../utils/auth-utils';
@@ -323,7 +324,8 @@ router.post('/resend-verification', async (req: Request, res: Response) => {
 });
 
 // Login endpoint
-router.post('/login', async (req: Request, res: Response) => {
+router.post('/login', async (req: Request, res: Response, next: NextFunction) => {
+
   const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
 
   try {
@@ -533,6 +535,7 @@ router.post('/login', async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
+
     console.error('Login error:', error);
     await logAuditEvent({
       userId: 'unknown',
@@ -542,9 +545,10 @@ router.post('/login', async (req: Request, res: Response) => {
       success: false,
       errorMessage: error instanceof Error ? error.message : 'Unknown error'
     });
-    return res.status(500).json({ error: 'Internal server error' });
+    next(error);
   }
 });
+
 
 // Refresh Token Endpoint
 router.post('/refresh', async (req: Request, res: Response) => {

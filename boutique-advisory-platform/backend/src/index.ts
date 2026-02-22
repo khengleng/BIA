@@ -627,9 +627,12 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   return res.status(500).json({
     error: 'Internal server error',
     type: err.name,
-    message
+    message: err.message,
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+    details: err
   });
 });
+
 
 
 
