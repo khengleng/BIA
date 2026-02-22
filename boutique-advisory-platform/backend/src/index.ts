@@ -38,7 +38,8 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import path from 'path';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
+
 
 import RedisStore from 'rate-limit-redis';
 import redis from './redis';
@@ -180,9 +181,13 @@ declare global {
 }
 
 const app = express();
+// Trust the first proxy hop (Railway's load balancer) so req.ip is correct
+// Using 1 (not true) prevents ERR_ERL_PERMISSIVE_TRUST_PROXY validation error
+app.set('trust proxy', 1);
 // Safely parse port, defaulting to 8080 which is Railway's preferred default
 const PORT = parseInt(process.env.PORT || '8080', 10);
 const isProduction = process.env.NODE_ENV === 'production';
+
 
 // ============================================
 // STARTUP STATE TRACKING
@@ -364,10 +369,10 @@ const limiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests, please try again later.' },
-  keyGenerator: (req, res) => {
-    // SECURITY: Use the built-in helper for IPv6 support to avoid ERR_ERL_KEY_GEN_IPV6
-    return (limiter as any).ipKeyGenerator(req, res);
+  keyGenerator: (req, _res) => {
+    return ipKeyGenerator(req.ip ?? '127.0.0.1');
   },
+
   skip: (req) => {
     // Skip for known endpoints and when Redis is down
     const path = req.originalUrl || req.path;
@@ -402,9 +407,10 @@ const authLimiter = rateLimit({
   message: { error: 'Too many login attempts, please try again later.' },
   skipSuccessfulRequests: true,
   // Prevent one user's failed attempts from locking out all users on the same IP.
-  keyGenerator: (req, res) => {
-    const ip = (authLimiter as any).ipKeyGenerator(req, res);
+  keyGenerator: (req, _res) => {
+    const ip = ipKeyGenerator(req.ip ?? '127.0.0.1');
     if (req.path === '/login' && req.method === 'POST') {
+
       const email = typeof (req as any).body?.email === 'string'
         ? (req as any).body.email.trim().toLowerCase()
         : 'unknown-email';
