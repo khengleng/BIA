@@ -2,7 +2,7 @@
 # Node.js + Express + Prisma API Server
 
 FROM node:20-alpine AS base
-RUN apk add --no-cache openssl wget
+RUN apk add --no-cache openssl wget netcat-openbsd
 
 # Dependencies stage
 FROM base AS deps

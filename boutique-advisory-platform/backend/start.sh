@@ -51,20 +51,30 @@ if [ "$NODE_ENV" = "production" ]; then
             CURR_HOST=$(echo "$DATABASE_URL" | awk -F@ '{print $2}' | awk -F[:/] '{print $1}')
             echo "🔍 Testing database connectivity: $CURR_HOST:5432"
             
-            if ! nc -z -w 2 "$CURR_HOST" 5432 2>/dev/null; then
+            if ! nc -z -w 3 "$CURR_HOST" 5432 2>/dev/null; then
                 echo "⚠️  Primary hostname $CURR_HOST unreachable. Scanning alternatives..."
+                FOUND=0
                 for ALT in "database" "db" "postgresql" "postgres"; do
                     ALT_HOST="$ALT.railway.internal"
                     if [ "$ALT_HOST" = "$CURR_HOST" ]; then continue; fi
                     
                     echo "🔍 Testing $ALT_HOST..."
-                    if nc -z -w 2 "$ALT_HOST" 5432 2>/dev/null; then
+                    if nc -z -w 3 "$ALT_HOST" 5432 2>/dev/null; then
                         echo "✅ Found working hostname: $ALT_HOST"
-                        export DATABASE_URL=$(echo "$DATABASE_URL" | sed "s/$CURR_HOST/$ALT_HOST/")
+                        # Safely replace the hostname in the URL
+                        # Handles formats like postgresql://user:pass@host:port/db
+                        export DATABASE_URL=$(echo "$DATABASE_URL" | sed "s/@$CURR_HOST/@$ALT_HOST/")
                         echo "📡 Updated DATABASE_URL to use working internal hostname."
+                        FOUND=1
                         break
                     fi
                 done
+                
+                if [ "$FOUND" -eq 0 ]; then
+                    echo "❌ No responding database host found on internal network."
+                    echo "   Please check your Railway service names and ensures the DB is running."
+                    # Don't exit here, let the Node app try its own retry logic
+                fi
             else
                 echo "✅ Database hostname $CURR_HOST is reachable."
             fi
