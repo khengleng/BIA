@@ -16,8 +16,11 @@ import redis from './redis';
 import cookieParser from 'cookie-parser';
 import { CookieOptions } from 'express';
 import { createServer } from 'http';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import { initSocket } from './socket';
 import { prisma, connectDatabase } from './database';
+
 import { doubleCsrf } from 'csrf-csrf';
 import {
   checkMigrationStatus,
@@ -534,8 +537,6 @@ async function startServer() {
     // SCHEMA MIGRATION (Background)
     // ============================================
     console.log('📦 Running database schema migrations...');
-    const { exec } = require('child_process');
-    const { promisify } = require('util');
     const execAsync = promisify(exec);
 
     try {
