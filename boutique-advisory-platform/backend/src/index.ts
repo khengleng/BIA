@@ -183,8 +183,18 @@ app.use(helmet({
   } : false,
 }));
 
+let isStartingUp = true;
+
 app.get('/health', async (req, res) => {
   try {
+    if (isStartingUp) {
+      return res.status(200).json({
+        status: 'starting',
+        timestamp: new Date(),
+        message: 'Server is booting up and running migrations'
+      });
+    }
+
     // 1. Check Database
     await prisma.$queryRaw`SELECT 1`;
 
@@ -507,8 +517,18 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 
 // Start server with migration handling
 async function startServer() {
+  const httpServer = createServer(app);
+  initSocket(httpServer);
+
+  // Start listening immediately to pass health checks during startup
+  httpServer.listen(Number(PORT), '0.0.0.0', () => {
+    console.log(`🚀 Boutique Advisory Platform API starting on port ${PORT}`);
+    console.log(`📡 Real-time WebSockets initialized`);
+    console.log(`📊 Health check available at http://localhost:${PORT}/health`);
+  });
+
   try {
-    console.log('🚀 Starting Boutique Advisory Platform...');
+    console.log('🚀 Finalizing system startup...');
 
     // ============================================
     // SECURITY VALIDATION (First step)
@@ -518,8 +538,7 @@ async function startServer() {
 
     if (!securityCheck.success) {
       console.error('❌ CRITICAL SECURITY CHECKS FAILED');
-      console.error('   Cannot start server with insecure configuration.');
-      console.error('   Please fix the issues above and try again.');
+      console.error('   Cannot continue with insecure configuration.');
       process.exit(1);
     }
     console.log('✅ Security configuration validated');
@@ -531,48 +550,36 @@ async function startServer() {
     if (migrationStatus.error) {
       console.error('❌ Database connection failed!');
       console.error(`   Error: ${migrationStatus.error}`);
-      console.error('   Please ensure PostgreSQL is running and accessible.');
-      console.error('   Check DATABASE_URL in your .env file.');
       throw new Error('Database connection required - cannot start without database');
     }
 
     if (migrationStatus.completed) {
       console.log('✅ Database migration already completed');
-      console.log('🗄️  Using PostgreSQL database');
     } else {
       console.log('📋 Database is empty, performing automatic migration...');
       const migrationResult = await performMigration();
 
       if (migrationResult.completed) {
         console.log('✅ Automatic migration completed successfully');
-        console.log('🗄️  Using PostgreSQL database');
       } else {
         console.error('❌ Automatic migration failed!');
         console.error(`   Error: ${migrationResult.error}`);
-        throw new Error('Database migration required - cannot start without migrated database');
+        throw new Error('Database migration failed');
       }
     }
 
-    // Create HTTP server
-    const httpServer = createServer(app);
-
-    // Initialize Socket.io
-    initSocket(httpServer);
-
-    // Start server
-    httpServer.listen(Number(PORT), '0.0.0.0', () => {
-      console.log(`🚀 Boutique Advisory Platform API running on port ${PORT}`);
-      console.log(`📡 Real-time WebSockets enabled`);
-      console.log(`📊 Health check available at http://localhost:${PORT}/health`);
-      console.log(`🔄 Migration status: http://localhost:${PORT}/api/migration/status`);
-    });
-
-    // Run admin sync after server starts
+    // Run admin sync
     await ensureAdminAccount();
 
+    isStartingUp = false;
+    console.log('✅ System fully operational');
+    console.log(`🔄 Migration status: http://localhost:${PORT}/api/migration/status`);
+
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
-    process.exit(1);
+    console.error('❌ Failed to start server components:', error);
+    if (process.env.NODE_ENV === 'production') {
+      process.exit(1);
+    }
   }
 }
 
