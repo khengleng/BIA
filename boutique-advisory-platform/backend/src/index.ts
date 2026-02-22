@@ -527,11 +527,40 @@ async function startServer() {
   httpServer.listen(Number(PORT), '0.0.0.0', () => {
     console.log(`🚀 Boutique Advisory Platform API starting on port ${PORT}`);
     console.log(`📡 Real-time WebSockets initialized`);
-    console.log(`📊 Health check available at http://localhost:${PORT}/health`);
   });
+
+  // Helper function for retrying database connection
+  async function waitForDatabase(maxRetries = 10, initialDelay = 2000) {
+    let retries = 0;
+    while (retries < maxRetries) {
+      try {
+        await prisma.$queryRaw`SELECT 1`;
+        console.log('✅ Database connection established');
+        return true;
+      } catch (error: any) {
+        retries++;
+        const delay = initialDelay * Math.pow(1.5, retries - 1);
+        console.warn(`⏳ [Attempt ${retries}/${maxRetries}] Database not ready: ${error.message}`);
+        if (retries < maxRetries) {
+          console.log(`   Retrying in ${Math.round(delay)}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+    return false;
+  }
 
   try {
     console.log('🚀 Finalizing system startup...');
+
+    // ============================================
+    // WAIT FOR DATABASE (Critical for Railway)
+    // ============================================
+    const dbReady = await waitForDatabase();
+    if (!dbReady) {
+      console.error('❌ FATAL: Database could not be reached after multiple retries.');
+      process.exit(1);
+    }
 
     // ============================================
     // SCHEMA MIGRATION (Background)
@@ -541,19 +570,22 @@ async function startServer() {
 
     try {
       const { stdout } = await execAsync('npx prisma migrate deploy');
-      console.log(stdout);
+      if (stdout) console.log(stdout.split('\n').filter(Boolean).map(l => `   ${l}`).join('\n'));
       console.log('✅ Schema migrations applied successfully');
     } catch (migrateError: any) {
       console.warn('⚠️  Prisma migrate deploy failed, attempting db push fallback...');
-      console.warn(migrateError.stdout || migrateError.message);
+      const errorMsg = migrateError.stdout || migrateError.message || '';
+      console.warn(`   Info: ${errorMsg.substring(0, 200)}...`);
+
       try {
         const { stdout } = await execAsync('npx prisma db push --accept-data-loss');
-        console.log(stdout);
+        if (stdout) console.log(stdout.split('\n').filter(Boolean).map(l => `   ${l}`).join('\n'));
         console.log('✅ Database schema pushed successfully');
       } catch (pushError: any) {
         console.error('❌ Database schema update failed:', pushError.stdout || pushError.message);
       }
     }
+
 
 
     // ============================================
