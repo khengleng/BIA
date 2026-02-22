@@ -48,4 +48,6 @@ USER nextjs
 
 EXPOSE 3000
 
-CMD ["node", "server.js"]
+# Explicitly bypass node's docker-entrypoint.sh which can sometimes cause issues in Railway
+ENTRYPOINT ["/bin/sh", "-c"]
+CMD ["node server.js"]

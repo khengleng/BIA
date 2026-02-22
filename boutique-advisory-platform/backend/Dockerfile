@@ -45,5 +45,6 @@ USER expressjs
 
 EXPOSE 3000
 
-# Start command with better error handling
+# Explicitly bypass node's docker-entrypoint.sh which can sometimes cause issues in Railway
+ENTRYPOINT ["/bin/sh"]
 CMD ["./start.sh"]
