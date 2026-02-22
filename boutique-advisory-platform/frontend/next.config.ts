@@ -101,13 +101,18 @@ const nextConfig: NextConfig = {
     ];
   },
   async rewrites() {
+    // In production, ensure we have a valid API URL. 
+    // Default to the internal Railway service name 'backend' if not specified.
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://backend.railway.internal:8080';
+
     return [
       {
         source: '/api-proxy/:path*',
-        destination: `${process.env.NEXT_PUBLIC_API_URL || ''}/:path*`,
+        destination: `${apiUrl}/:path*`,
       },
     ];
   },
+
 };
 
 export default withSerwist(nextConfig);

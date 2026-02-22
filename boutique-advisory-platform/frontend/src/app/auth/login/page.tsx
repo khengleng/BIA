@@ -55,7 +55,7 @@ export default function LoginPage() {
         body: JSON.stringify({ email: formData.email })
       })
 
-      const data = await response.json()
+      const data = await response.safeJson()
 
       if (response.ok) {
         setResendStatus('Verification email sent! Please check your inbox.')
@@ -64,8 +64,8 @@ export default function LoginPage() {
       } else {
         setErrors({ general: data.error || 'Failed to send email' })
       }
-    } catch (error) {
-      setErrors({ general: 'Network error' })
+    } catch (error: any) {
+      setErrors({ general: error.message || 'Network error' })
     } finally {
       setIsLoading(false)
     }
@@ -112,16 +112,16 @@ export default function LoginPage() {
       })
 
       if (response.ok) {
-        const data = await response.json()
+        const data = await response.safeJson()
         // localStorage.setItem('token', data.token)
         localStorage.setItem('user', JSON.stringify(data.user))
         router.push('/dashboard')
       } else {
-        const errorData = await response.json()
+        const errorData = await response.safeJson()
         setErrors({ general: errorData.error || 'Invalid code' })
       }
-    } catch (error) {
-      setErrors({ general: 'Network error' })
+    } catch (error: any) {
+      setErrors({ general: error.message || 'Network error' })
     } finally {
       setIsLoading(false)
     }
@@ -144,9 +144,10 @@ export default function LoginPage() {
         }),
       })
 
-      const data = await response.json()
+      const data = await response.safeJson()
 
       if (response.ok) {
+
         if (data.require2fa) {
           setTempToken(data.tempToken)
           setStep('2fa')
