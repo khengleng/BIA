@@ -92,10 +92,7 @@ router.post('/register', async (req: Request, res: Response) => {
     const usersToPurge = await prisma.user.findMany({
       where: {
         tenantId,
-        OR: [
-          { email: { equals: sanitizedEmail, mode: 'insensitive' } },
-          { email: { contains: sanitizedEmail, mode: 'insensitive' } }
-        ]
+        email: { equals: sanitizedEmail, mode: 'insensitive' }
       }
     });
 
