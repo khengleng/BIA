@@ -126,6 +126,7 @@ function cleanupExpiredCsrfTokens(): void {
 
 export interface AuditLogEntry {
     userId: string;
+    tenantId?: string;
     action: string;
     resource: string;
     resourceId?: string;
@@ -155,14 +156,32 @@ export async function logAuditEvent(entry: AuditLogEntry): Promise<void> {
 
     // SECURITY: Persist to Database for auditing and anomaly detection
     try {
-        // Need to find the tenantId for the user if not provided in details or entry
-        // For simplicity, we assume 'default' or provided in details
-        const tenantId = (entry.details?.tenantId as string) || 'default';
+        const resolvedUserId = (entry.userId === 'unknown' || entry.userId === 'anonymous' || entry.userId === 'system' || !entry.userId)
+            ? undefined
+            : entry.userId;
+
+        let tenantId = entry.tenantId || (entry.details?.tenantId as string | undefined);
+
+        if (!tenantId && resolvedUserId) {
+            const user = await prisma.user.findUnique({
+                where: { id: resolvedUserId },
+                select: { tenantId: true }
+            });
+            tenantId = user?.tenantId;
+        }
+
+        if (!tenantId) {
+            console.warn('AUDIT_LOG_SKIPPED: tenantId missing', {
+                action: entry.action,
+                userId: resolvedUserId
+            });
+            return;
+        }
 
         await prisma.activityLog.create({
             data: {
                 tenantId,
-                userId: (entry.userId === 'unknown' || entry.userId === 'anonymous' || entry.userId === 'system' || !entry.userId) ? undefined : entry.userId,
+                userId: resolvedUserId,
                 action: entry.action,
                 entityId: entry.resourceId || 'system',
                 entityType: entry.resource,
@@ -317,11 +336,17 @@ export function getSecurityHeaders(): Record<string, string> {
 // DATA ENCRYPTION
 // ============================================
 
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'dummy_encryption_key_for_build_only_32_chars';
-if (!process.env.ENCRYPTION_KEY) {
-    console.warn('⚠️  CRITICAL: ENCRYPTION_KEY is not set! Using a dummy key. PII decryption will fail.');
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
+
+if (!ENCRYPTION_KEY && process.env.NODE_ENV === 'production') {
+    throw new Error('ENCRYPTION_KEY is required in production');
 }
 
+function getEncryptionKey(): string {
+    if (ENCRYPTION_KEY) return ENCRYPTION_KEY;
+    // Test-only fallback to preserve local/unit-test ergonomics.
+    return 'test_encryption_key_for_local_tests_only';
+}
 
 /**
  * Encrypt sensitive data using AES-256-GCM
@@ -329,7 +354,7 @@ if (!process.env.ENCRYPTION_KEY) {
 export function encryptData(text: string): string {
     const iv = crypto.randomBytes(16);
     const salt = 'bia-platform-salt';
-    const key = crypto.scryptSync(ENCRYPTION_KEY, salt, 32);
+    const key = crypto.scryptSync(getEncryptionKey(), salt, 32);
     const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
 
     let encrypted = cipher.update(text, 'utf8', 'hex');
@@ -353,7 +378,7 @@ export function decryptData(encryptedText: string): string {
         const iv = Buffer.from(ivHex, 'hex');
         const authTag = Buffer.from(authTagHex, 'hex');
         const salt = 'bia-platform-salt';
-        const key = crypto.scryptSync(ENCRYPTION_KEY, salt, 32);
+        const key = crypto.scryptSync(getEncryptionKey(), salt, 32);
 
         const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
         decipher.setAuthTag(authTag);

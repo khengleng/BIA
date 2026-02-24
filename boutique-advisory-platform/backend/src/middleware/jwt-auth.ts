@@ -2,6 +2,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../database';
+import { getTenantId } from '../utils/tenant-utils';
 
 // Extend Express Request interface locally to avoid conflicts if not globally set yet
 export interface AuthenticatedRequest extends Request {
@@ -10,6 +11,12 @@ export interface AuthenticatedRequest extends Request {
 
 import { hashToken } from '../utils/security';
 import { issueTokensAndSetCookies } from '../utils/auth-utils';
+
+interface JwtPayload {
+    userId: string;
+    tenantId?: string;
+    isPreAuth?: boolean;
+}
 
 export const authenticateToken = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     // 1. Try to get Access Token
@@ -27,7 +34,7 @@ export const authenticateToken = async (req: AuthenticatedRequest, res: Response
     try {
         if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET missing');
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET) as any;
+        const decoded = jwt.verify(token, process.env.JWT_SECRET) as JwtPayload;
 
         if (decoded.isPreAuth) {
             res.status(401).json({ error: 'Two-factor authentication required', code: '2FA_REQUIRED' });
@@ -38,6 +45,17 @@ export const authenticateToken = async (req: AuthenticatedRequest, res: Response
 
         if (!user || user.status === 'DELETED') {
             res.status(401).json({ error: 'User not found or account deleted' });
+            return;
+        }
+
+        if (!decoded.tenantId || decoded.tenantId !== user.tenantId) {
+            res.status(401).json({ error: 'Invalid token tenant context' });
+            return;
+        }
+
+        const requestTenantId = getTenantId(req);
+        if (requestTenantId !== 'default' && requestTenantId !== user.tenantId) {
+            res.status(403).json({ error: 'Tenant access denied' });
             return;
         }
 
@@ -74,6 +92,12 @@ async function handleRefresh(req: AuthenticatedRequest, res: Response, next: Nex
         if (!storedToken || storedToken.revoked || storedToken.expiresAt < new Date()) {
             if (storedToken) await prisma.refreshToken.delete({ where: { id: storedToken.id } });
             res.status(401).json({ error: 'Invalid or expired session' });
+            return;
+        }
+
+        const requestTenantId = getTenantId(req);
+        if (requestTenantId !== 'default' && requestTenantId !== storedToken.user.tenantId) {
+            res.status(403).json({ error: 'Tenant access denied' });
             return;
         }
 
