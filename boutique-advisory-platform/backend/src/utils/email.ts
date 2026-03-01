@@ -270,7 +270,7 @@ export async function sendBookingConfirmation(
 
 // Email Verification
 export async function sendVerificationEmail(to: string, verificationToken: string) {
-  const verificationUrl = `${FRONTEND_URL}/auth/verify-email?token=${verificationToken}`;
+  const verificationUrl = `${FRONTEND_URL}/auth/verify-email?token=${encodeURIComponent(verificationToken)}&email=${encodeURIComponent(to)}`;
 
   try {
     const { data, error } = await resend.emails.send({
@@ -325,7 +325,7 @@ export async function sendVerificationEmail(to: string, verificationToken: strin
 
 // Password reset email
 export async function sendPasswordResetEmail(to: string, resetToken: string) {
-  const resetUrl = `${FRONTEND_URL}/auth/reset-password?token=${resetToken}`;
+  const resetUrl = `${FRONTEND_URL}/auth/reset-password?token=${encodeURIComponent(resetToken)}`;
 
   try {
     const { data, error } = await resend.emails.send({
