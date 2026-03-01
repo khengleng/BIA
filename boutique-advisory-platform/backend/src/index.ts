@@ -9,7 +9,18 @@ if (process.env.NODE_ENV === 'production' && process.env.DATABASE_URL) {
   let dbUrl = process.env.DATABASE_URL;
 
   // 1. Ensure SSL mode for external databases
-  if (!dbUrl.includes('sslmode=') && !dbUrl.includes('.railway.internal')) {
+  let shouldAppendSslMode = false;
+  try {
+    const parsedDbUrl = new URL(dbUrl);
+    const hostname = parsedDbUrl.hostname.toLowerCase();
+    const isRailwayInternal = hostname.endsWith('.railway.internal');
+    const isRailwayProxy = hostname.endsWith('.proxy.rlwy.net');
+    shouldAppendSslMode = !dbUrl.includes('sslmode=') && !isRailwayInternal && !isRailwayProxy;
+  } catch {
+    shouldAppendSslMode = !dbUrl.includes('sslmode=') && !dbUrl.includes('.railway.internal');
+  }
+
+  if (shouldAppendSslMode) {
     const separator = dbUrl.includes('?') ? '&' : '?';
     process.env.DATABASE_URL = `${dbUrl}${separator}sslmode=require`;
     console.log('🔐 [Config] Appended sslmode=require to DATABASE_URL');
