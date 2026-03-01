@@ -1,8 +1,10 @@
 # BIA Backend - Dockerfile
 # Node.js + Express + Prisma API Server
 
-FROM node:20-alpine AS base
-RUN apk add --no-cache openssl wget netcat-openbsd
+FROM node:20-bookworm-slim AS base
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openssl wget netcat-openbsd \
+    && rm -rf /var/lib/apt/lists/*
 
 # Dependencies stage
 FROM base AS deps
