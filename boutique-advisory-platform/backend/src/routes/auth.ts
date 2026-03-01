@@ -117,9 +117,9 @@ router.post('/register', async (req: Request, res: Response) => {
     // Hash password with strong hashing
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // SECURITY: Restrict roles for public registration to prevent privilege escalation
-    // Roles like ADVISOR, ADMIN, and SUPER_ADMIN have elevated permissions and must be manually assigned
-    const allowedPublicRoles = ['SME', 'INVESTOR'];
+    // SECURITY: Restrict roles for public registration to prevent privilege escalation.
+    // Administrative roles must still be manually assigned.
+    const allowedPublicRoles = ['SME', 'INVESTOR', 'ADVISOR'];
     if (!allowedPublicRoles.includes(role)) {
       await logAuditEvent({
         userId: 'anonymous',
