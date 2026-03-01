@@ -94,11 +94,29 @@ export async function apiRequest(
         }
     }
 
-    const response = await fetch(url, {
+    let response = await fetch(url, {
         ...options,
         headers,
         credentials: 'include',
     });
+
+    // Handle occasional CSRF cookie/token desynchronization behind proxies by retrying once.
+    if (response.status === 403 && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+        const bodyPreview = (await response.clone().text()).toLowerCase();
+        if (bodyPreview.includes('invalid csrf token')) {
+            csrfToken = null;
+            await ensureCsrfToken();
+
+            if (csrfToken) {
+                headers.set('x-csrf-token', csrfToken);
+                response = await fetch(url, {
+                    ...options,
+                    headers,
+                    credentials: 'include',
+                });
+            }
+        }
+    }
 
     // Attach a helper to the response object for easier safe parsing
     return Object.assign(response, {

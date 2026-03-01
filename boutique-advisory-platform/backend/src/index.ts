@@ -59,6 +59,7 @@ import { CookieOptions } from 'express';
 import { createServer } from 'http';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { randomBytes } from 'crypto';
 import { initSocket } from './socket';
 import { prisma, connectDatabase } from './database';
 
@@ -484,6 +485,34 @@ const authLimiter = rateLimit({
 
 // CSRF Secret - Detailed validation moved to startServer()
 const csrfSecret = process.env.CSRF_SECRET || 'dev-csrf-secret';
+const csrfSessionIdCookieName = (process.env.NODE_ENV === 'production' && !process.env.DISABLE_STRICT_CSRF)
+  ? 'psifi.csrf-session-id'
+  : 'csrf-session-id';
+
+const csrfSessionCookieOptions: CookieOptions = {
+  httpOnly: true,
+  sameSite: 'lax',
+  path: '/',
+  secure: process.env.NODE_ENV === 'production',
+  signed: false,
+  maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+};
+
+// Ensure each browser has a stable CSRF session identifier across proxied requests.
+app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const existingSessionId = req.cookies?.[csrfSessionIdCookieName];
+  if (typeof existingSessionId === 'string' && existingSessionId.length >= 16) {
+    return next();
+  }
+
+  const sessionId = randomBytes(24).toString('hex');
+  res.cookie(csrfSessionIdCookieName, sessionId, csrfSessionCookieOptions);
+  req.cookies = {
+    ...(req.cookies || {}),
+    [csrfSessionIdCookieName]: sessionId
+  };
+  return next();
+});
 
 
 
@@ -491,8 +520,11 @@ const csrfSecret = process.env.CSRF_SECRET || 'dev-csrf-secret';
 const { invalidCsrfTokenError, generateCsrfToken, doubleCsrfProtection } = doubleCsrf({
   getSecret: () => csrfSecret || 'dev-csrf-secret',
   getSessionIdentifier: (req: express.Request) => {
-    // Use user-agent only to avoid instability from proxy/load balancer IP changes
-    return String(req.headers['user-agent'] || 'unknown');
+    const sessionId = req.cookies?.[csrfSessionIdCookieName];
+    if (typeof sessionId === 'string' && sessionId.length >= 16) {
+      return sessionId;
+    }
+    return String(req.headers['user-agent'] || 'anonymous-session');
   },
   // Simply naming for diagnostics
   cookieName: (process.env.NODE_ENV === 'production' && !process.env.DISABLE_STRICT_CSRF)
@@ -510,7 +542,10 @@ const { invalidCsrfTokenError, generateCsrfToken, doubleCsrfProtection } = doubl
 
   size: 64,
   ignoredMethods: ['GET', 'HEAD', 'OPTIONS'],
-  getCsrfTokenFromRequest: (req: express.Request) => req.headers['x-csrf-token'] as string
+  getCsrfTokenFromRequest: (req: express.Request) => {
+    const token = req.headers['x-csrf-token'];
+    return Array.isArray(token) ? token[0] : token;
+  }
 } as any) as any;
 
 
