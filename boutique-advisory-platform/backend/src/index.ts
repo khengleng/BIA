@@ -284,27 +284,59 @@ app.use((req, res, next) => {
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
 
-      const frontendUrl = process.env.FRONTEND_URL || '';
-      const baseHost = frontendUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
-
-      // Build a robust list of allowed hosts
-      const allowedHosts = [
-        baseHost,
-        baseHost.startsWith('www.') ? baseHost.replace('www.', '') : `www.${baseHost}`,
-        'cambobia.com',
-        'www.cambobia.com'
-      ].filter(Boolean);
-
-      const originHost = origin.replace(/^https?:\/\//, '').replace(/\/$/, '');
-
-      if (allowedHosts.some(host => originHost === host)) {
-        callback(null, true);
-      } else if (!isProduction && (originHost === 'localhost' || originHost === '127.0.0.1')) {
-        callback(null, true);
-      } else {
-        console.warn(`Blocked by CORS: origin ${origin} (host: ${originHost}) not in ${allowedHosts}`);
-        callback(new Error('Not allowed by CORS'));
+      let parsedOrigin: URL;
+      try {
+        parsedOrigin = new URL(origin);
+      } catch {
+        console.warn(`Blocked by CORS: invalid origin ${origin}`);
+        return callback(new Error('Not allowed by CORS'));
       }
+
+      const frontendUrl = process.env.FRONTEND_URL || '';
+      const corsOriginsEnv = process.env.CORS_ORIGIN || '';
+      const allowedOrigins = new Set<string>();
+      const allowedHostnames = new Set<string>(['cambobia.com', 'www.cambobia.com']);
+
+      if (frontendUrl) {
+        try {
+          const parsedFrontend = new URL(frontendUrl);
+          allowedOrigins.add(parsedFrontend.origin);
+          allowedHostnames.add(parsedFrontend.hostname);
+        } catch {
+          // Ignore invalid FRONTEND_URL and rely on fallback hostnames.
+        }
+      }
+
+      if (corsOriginsEnv) {
+        const configuredOrigins = corsOriginsEnv
+          .split(',')
+          .map(v => v.trim())
+          .filter(Boolean);
+
+        for (const configured of configuredOrigins) {
+          try {
+            const parsedConfigured = new URL(configured);
+            allowedOrigins.add(parsedConfigured.origin);
+            allowedHostnames.add(parsedConfigured.hostname);
+          } catch {
+            // Allow host-only values in CORS_ORIGIN as a fallback.
+            allowedHostnames.add(configured.replace(/^https?:\/\//, '').replace(/\/$/, ''));
+          }
+        }
+      }
+
+      if (allowedOrigins.has(parsedOrigin.origin) || allowedHostnames.has(parsedOrigin.hostname)) {
+        return callback(null, true);
+      }
+
+      if (!isProduction && (parsedOrigin.hostname === 'localhost' || parsedOrigin.hostname === '127.0.0.1')) {
+        return callback(null, true);
+      }
+
+      console.warn(
+        `Blocked by CORS: origin ${origin} (origin=${parsedOrigin.origin}, host=${parsedOrigin.hostname})`
+      );
+      return callback(new Error('Not allowed by CORS'));
     },
 
     credentials: true,
