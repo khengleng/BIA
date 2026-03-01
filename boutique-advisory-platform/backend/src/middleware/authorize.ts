@@ -180,15 +180,25 @@ export function authorize(
 
         if (!checkResult.allowed) {
             // Fallback: check active temporary role grants (expiresAt enforced at query time).
-            const grantMatch = await prisma.temporaryRoleGrant.findMany({
-                where: {
-                    tenantId,
+            let grantMatch: Array<{ id: string; role: string; expiresAt: Date }> = [];
+            try {
+                grantMatch = await prisma.temporaryRoleGrant.findMany({
+                    where: {
+                        tenantId,
+                        userId,
+                        status: 'ACTIVE',
+                        expiresAt: { gt: new Date() }
+                    },
+                    select: { id: true, role: true, expiresAt: true }
+                });
+            } catch (error) {
+                // Fail closed if grant lookup is unavailable (e.g., partial migrations).
+                console.warn('[AUTHZ] Temporary role grant lookup failed; denying by default', {
                     userId,
-                    status: 'ACTIVE',
-                    expiresAt: { gt: new Date() }
-                },
-                select: { id: true, role: true, expiresAt: true }
-            });
+                    permission,
+                    error: error instanceof Error ? error.message : 'Unknown error'
+                });
+            }
 
             let granted = false;
             let grantedRole: UserRole | undefined;
