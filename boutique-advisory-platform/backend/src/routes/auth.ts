@@ -175,11 +175,6 @@ router.post('/register', async (req: Request, res: Response) => {
         language: 'EN'
       }
     });
-    const verificationLinkToken = createEmailVerificationToken({
-      id: user.id,
-      email: user.email,
-      tenantId: user.tenantId
-    });
 
     // Create role-specific profile
     if (role === 'SME') {
@@ -218,7 +213,7 @@ router.post('/register', async (req: Request, res: Response) => {
     }
 
     // Send Verification Email (don't block registration if email fails)
-    sendVerificationEmail(user.email, verificationLinkToken)
+    sendVerificationEmail(user.email, verificationToken)
       .catch(error => console.error('Failed to send verification email:', error));
 
     // Do NOT create an authenticated session before email verification.
@@ -367,11 +362,6 @@ router.post('/resend-verification', async (req: Request, res: Response) => {
     // Generate new token
     const verificationToken = generateSecureToken(32);
     const hashedVerificationToken = hashToken(verificationToken);
-    const verificationLinkToken = createEmailVerificationToken({
-      id: user.id,
-      email: user.email,
-      tenantId: user.tenantId
-    });
     const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
     await prisma.user.update({
@@ -383,7 +373,7 @@ router.post('/resend-verification', async (req: Request, res: Response) => {
     });
 
     // Send email
-    sendVerificationEmail(user.email, verificationLinkToken)
+    sendVerificationEmail(user.email, verificationToken)
       .catch(error => console.error('Failed to send verification email:', error));
 
     // Record attempt for rate limiting
