@@ -8,7 +8,14 @@ const router = Router();
 
 // Upload document to cloud storage
 // Upload document to cloud storage
-router.post('/upload', authorize('document.create'), upload.single('file'), async (req: AuthenticatedRequest, res: Response) => {
+router.post(
+    '/upload',
+    authorize('document.create', {
+        // Owner-scoped permission for SME uploads should resolve to current user.
+        getOwnerId: async (req) => req.user?.id
+    }),
+    upload.single('file'),
+    async (req: AuthenticatedRequest, res: Response) => {
     try {
         const { name, type, smeId, dealId } = req.body;
         const file = req.file;

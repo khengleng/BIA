@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { AuthenticatedRequest, authorize } from '../middleware/authorize';
 import { prisma } from '../database';
+import { isMissingSchemaError } from '../utils/prisma-errors';
 
 const router = Router();
 
@@ -43,6 +44,18 @@ router.get('/overview', authorize('reconciliation.read'), async (req: Authentica
       }
     });
   } catch (error) {
+    if (isMissingSchemaError(error)) {
+      return res.json({
+        overview: {
+          lastRun: null,
+          openExceptions: 0,
+          resolvedExceptions: 0,
+          criticalOpenExceptions: 0
+        },
+        unavailable: true,
+        reason: 'Pending database migration for reconciliation'
+      });
+    }
     console.error('Reconciliation overview error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

@@ -3,6 +3,7 @@ import { Prisma, UserRole, OnboardingTaskStatus } from '@prisma/client';
 import { AuthenticatedRequest, authorize } from '../middleware/authorize';
 import { prisma } from '../database';
 import { sendNotification } from '../services/notification.service';
+import { isMissingSchemaError } from '../utils/prisma-errors';
 
 const router = Router();
 
@@ -56,6 +57,13 @@ router.get('/templates', authorize('onboarding_template.list'), async (req: Auth
 
     return res.json({ templates });
   } catch (error) {
+    if (isMissingSchemaError(error)) {
+      return res.json({
+        templates: [],
+        unavailable: true,
+        reason: 'Pending database migration for onboarding templates'
+      });
+    }
     console.error('List onboarding templates error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

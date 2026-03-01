@@ -95,7 +95,22 @@ router.get('/', authorize('dataroom.list'), async (req: AuthenticatedRequest, re
 });
 
 // Upload document to dataroom
-router.post('/upload', authorize('dataroom.upload'), upload.single('file'), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/upload', authorize('dataroom.upload', {
+    getOwnerId: async (req) => {
+        const userRole = req.user?.role;
+        if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') {
+            return req.user?.id;
+        }
+
+        const dealId = String(req.body?.dealId || '');
+        if (!dealId) return undefined;
+        const deal = await (prisma as any).deal.findUnique({
+            where: { id: dealId },
+            include: { sme: { select: { userId: true } } }
+        });
+        return deal?.sme?.userId;
+    }
+}), upload.single('file'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const { dealId, name, type } = req.body;
         const file = req.file;
@@ -148,7 +163,7 @@ router.post('/upload', authorize('dataroom.upload'), upload.single('file'), asyn
 });
 
 // Get single dataroom details
-router.get('/:dealId', authorize('dataroom.view'), async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:dealId', authorize('dataroom.read'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const { dealId } = req.params;
         const userId = req.user?.id;
@@ -246,7 +261,22 @@ router.get('/:dealId', authorize('dataroom.view'), async (req: AuthenticatedRequ
 });
 
 // Delete document from dataroom
-router.delete('/:documentId', authorize('dataroom.delete'), async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/:documentId', authorize('dataroom.delete', {
+    getOwnerId: async (req) => {
+        const userRole = req.user?.role;
+        if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') {
+            return req.user?.id;
+        }
+
+        const documentId = String(req.params?.documentId || '');
+        if (!documentId) return undefined;
+        const doc = await (prisma as any).document.findUnique({
+            where: { id: documentId },
+            include: { deal: { include: { sme: { select: { userId: true } } } } }
+        });
+        return doc?.deal?.sme?.userId;
+    }
+}), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const { documentId } = req.params;
         const userId = req.user?.id;

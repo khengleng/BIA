@@ -3,6 +3,7 @@ import { AuthenticatedRequest, authorize } from '../middleware/authorize';
 import { prisma } from '../database';
 import { logAuditEvent } from '../utils/security';
 import { Prisma } from '@prisma/client';
+import { isMissingSchemaError } from '../utils/prisma-errors';
 
 const router = Router();
 
@@ -56,6 +57,13 @@ router.get('/stats', authorize('case.list'), async (req: AuthenticatedRequest, r
 
     return res.json({ stats: { open, inProgress, escalated, resolved } });
   } catch (error) {
+    if (isMissingSchemaError(error)) {
+      return res.json({
+        stats: { open: 0, inProgress: 0, escalated: 0, resolved: 0 },
+        unavailable: true,
+        reason: 'Pending database migration for cases module'
+      });
+    }
     console.error('Case stats error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

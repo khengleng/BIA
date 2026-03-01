@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { AuthenticatedRequest, authorize } from '../middleware/authorize';
 import { prisma } from '../database';
+import { isMissingSchemaError } from '../utils/prisma-errors';
 
 const router = Router();
 
@@ -86,6 +87,19 @@ router.get('/overview', authorize('advisor_ops.read'), async (req: Authenticated
       }
     });
   } catch (error) {
+    if (isMissingSchemaError(error)) {
+      return res.json({
+        overview: {
+          advisors: 0,
+          openAssignments: 0,
+          overdueAssignments: 0,
+          pendingConflicts: 0,
+          avgUtilizationPct: 0
+        },
+        unavailable: true,
+        reason: 'Pending database migration for advisor operations'
+      });
+    }
     console.error('Advisor ops overview error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

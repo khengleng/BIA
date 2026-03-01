@@ -3,6 +3,7 @@ import { UserRole } from '@prisma/client';
 import { AuthenticatedRequest, authorize } from '../middleware/authorize';
 import { prisma } from '../database';
 import { logAuditEvent } from '../utils/security';
+import { isMissingSchemaError } from '../utils/prisma-errors';
 
 const router = Router();
 
@@ -82,6 +83,13 @@ router.get('/requests', authorize('role_request.list'), async (req: Authenticate
 
     return res.json({ requests });
   } catch (error) {
+    if (isMissingSchemaError(error)) {
+      return res.json({
+        requests: [],
+        unavailable: true,
+        reason: 'Pending database migration for role lifecycle'
+      });
+    }
     console.error('List role requests error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

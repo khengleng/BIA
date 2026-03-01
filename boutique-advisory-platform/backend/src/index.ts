@@ -565,6 +565,19 @@ app.use('/api', (req: express.Request, res: express.Response, next: express.Next
   if (req.path === '/csrf-token' || req.path.startsWith('/webhooks')) {
     return next();
   }
+
+  // Pre-auth endpoints don't need CSRF and can fail behind proxy cookie desync.
+  // Keep CSRF for authenticated sessions and all non-auth API namespaces.
+  const isPreAuthRoute = req.path.startsWith('/auth/login')
+    || req.path.startsWith('/auth/register')
+    || req.path.startsWith('/auth/verify-email')
+    || req.path.startsWith('/auth/resend-verification')
+    || req.path.startsWith('/auth/forgot-password')
+    || req.path.startsWith('/auth/reset-password');
+  const hasAuthCookie = Boolean(req.cookies?.accessToken || req.cookies?.token || req.cookies?.refreshToken);
+  if (isPreAuthRoute && !hasAuthCookie) {
+    return next();
+  }
   doubleCsrfProtection(req, res, next);
 });
 

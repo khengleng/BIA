@@ -185,7 +185,9 @@ router.get('/', authorize('notification.list'), async (req: AuthenticatedRequest
 });
 
 // Mark notification as read
-router.put('/:id/read', authorize('notification.update'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.put('/:id/read', authorize('notification.update', {
+    getOwnerId: async (req) => req.user?.id
+}), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
             res.json({ success: true, message: 'Notification marked as read (mock)' });
@@ -213,7 +215,9 @@ router.put('/:id/read', authorize('notification.update'), async (req: Authentica
 });
 
 // Mark all as read
-router.put('/read-all', authorize('notification.update'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.put('/read-all', authorize('notification.update', {
+    getOwnerId: async (req) => req.user?.id
+}), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!shouldUseDatabase()) {
             res.json({ success: true, message: 'All notifications marked as read (mock)' });

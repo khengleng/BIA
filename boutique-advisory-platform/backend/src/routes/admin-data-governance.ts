@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { AuthenticatedRequest, authorize } from '../middleware/authorize';
 import { prisma } from '../database';
+import { isMissingSchemaError } from '../utils/prisma-errors';
 
 const router = Router();
 
@@ -59,6 +60,18 @@ router.get('/overview', authorize('data_governance.read'), async (req: Authentic
       generatedAt: new Date().toISOString()
     });
   } catch (error) {
+    if (isMissingSchemaError(error)) {
+      return res.json({
+        overview: {
+          activeRules: 0,
+          pausedRules: 0,
+          activeHolds: 0,
+          oldestActiveHold: null
+        },
+        unavailable: true,
+        reason: 'Pending database migration for data governance'
+      });
+    }
     console.error('Data governance overview error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
