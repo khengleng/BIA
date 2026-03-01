@@ -208,6 +208,14 @@ let isStartingUp = true;
 let startupPhase = 'initializing';
 let startupError: string | null = null;
 
+// Keep core security headers on early health endpoints before Helmet initializes.
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
+
 app.get('/health', (req, res) => {
   // Ultra-simple response to pass Railway health checks immediately
   return res.status(200).json({
@@ -437,7 +445,7 @@ app.get('/api/csrf-token', (req: express.Request, res: express.Response) => {
 // Rate limiting - shared via Redis for multi-instance support
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: isProduction ? 1000 : 1000,
+  max: isProduction ? 300 : 1000,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests, please try again later.' },
@@ -473,7 +481,7 @@ app.use('/api/', limiter);
 // Stricter rate limiting for authentication endpoints (prevent brute force)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: isProduction ? 100 : 2000,
+  max: isProduction ? 20 : 2000,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many login attempts, please try again later.' },
