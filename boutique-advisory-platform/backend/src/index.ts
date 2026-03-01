@@ -288,6 +288,34 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // to ensure the health check can respond even if config is missing.
 const cookieSecret = process.env.COOKIE_SECRET || 'dev-cookie-secret';
 app.use(cookieParser(cookieSecret));
+const csrfSessionIdCookieName = (process.env.NODE_ENV === 'production' && !process.env.DISABLE_STRICT_CSRF)
+  ? 'psifi.csrf-session-id'
+  : 'csrf-session-id';
+
+const csrfSessionCookieOptions: CookieOptions = {
+  httpOnly: true,
+  sameSite: 'lax',
+  path: '/',
+  secure: process.env.NODE_ENV === 'production',
+  signed: false,
+  maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+};
+
+// Ensure each browser has a stable CSRF session identifier across proxied requests.
+app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const existingSessionId = req.cookies?.[csrfSessionIdCookieName];
+  if (typeof existingSessionId === 'string' && existingSessionId.length >= 16) {
+    return next();
+  }
+
+  const sessionId = randomBytes(24).toString('hex');
+  res.cookie(csrfSessionIdCookieName, sessionId, csrfSessionCookieOptions);
+  req.cookies = {
+    ...(req.cookies || {}),
+    [csrfSessionIdCookieName]: sessionId
+  };
+  return next();
+});
 
 
 // CORS configuration - strict in production
@@ -485,34 +513,6 @@ const authLimiter = rateLimit({
 
 // CSRF Secret - Detailed validation moved to startServer()
 const csrfSecret = process.env.CSRF_SECRET || 'dev-csrf-secret';
-const csrfSessionIdCookieName = (process.env.NODE_ENV === 'production' && !process.env.DISABLE_STRICT_CSRF)
-  ? 'psifi.csrf-session-id'
-  : 'csrf-session-id';
-
-const csrfSessionCookieOptions: CookieOptions = {
-  httpOnly: true,
-  sameSite: 'lax',
-  path: '/',
-  secure: process.env.NODE_ENV === 'production',
-  signed: false,
-  maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-};
-
-// Ensure each browser has a stable CSRF session identifier across proxied requests.
-app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-  const existingSessionId = req.cookies?.[csrfSessionIdCookieName];
-  if (typeof existingSessionId === 'string' && existingSessionId.length >= 16) {
-    return next();
-  }
-
-  const sessionId = randomBytes(24).toString('hex');
-  res.cookie(csrfSessionIdCookieName, sessionId, csrfSessionCookieOptions);
-  req.cookies = {
-    ...(req.cookies || {}),
-    [csrfSessionIdCookieName]: sessionId
-  };
-  return next();
-});
 
 
 
