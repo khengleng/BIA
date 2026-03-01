@@ -28,26 +28,6 @@ import {
 } from '../middleware/jwt-auth';
 
 const router = Router();
-const EMAIL_VERIFY_TOKEN_TYPE = 'email_verification';
-
-function createEmailVerificationToken(user: { id: string; email: string; tenantId: string }): string {
-  if (!process.env.JWT_SECRET) {
-    throw new Error('JWT_SECRET not configured');
-  }
-
-  return jwt.sign(
-    {
-      type: EMAIL_VERIFY_TOKEN_TYPE,
-      email: user.email,
-      tenantId: user.tenantId
-    },
-    process.env.JWT_SECRET,
-    {
-      subject: user.id,
-      expiresIn: '24h'
-    }
-  );
-}
 
 // Register endpoint
 router.post('/register', async (req: Request, res: Response) => {
@@ -117,7 +97,7 @@ router.post('/register', async (req: Request, res: Response) => {
     });
 
     for (const u of usersToPurge) {
-      if (u.status === 'DELETED' || u.status === 'INACTIVE' || u.email.toLowerCase().includes('deleted_')) {
+      if (u.status === 'DELETED' || u.email.toLowerCase().includes('deleted_')) {
         console.log(`[AUTH] Archiving record ${u.id} (${u.status}) to allow re-registration for ${sanitizedEmail}`);
         try {
           const archivedEmail = `deleted_${Date.now()}_${u.id}_${u.email}`;
@@ -246,45 +226,9 @@ router.post('/register', async (req: Request, res: Response) => {
 // Verify Email Endpoint
 router.post('/verify-email', async (req: Request, res: Response) => {
   try {
-    const { token, email } = req.body;
+    const { token } = req.body;
     if (!token) return res.status(400).json({ error: 'Token required' });
 
-    if (!process.env.JWT_SECRET) {
-      return res.status(500).json({ error: 'Config error' });
-    }
-
-    // New verification flow: signed JWT token from email link.
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET) as any;
-      if (decoded?.type === EMAIL_VERIFY_TOKEN_TYPE && decoded?.sub && decoded?.email) {
-        const user = await prisma.user.findUnique({
-          where: { id: String(decoded.sub) }
-        });
-
-        if (!user || user.email.toLowerCase() !== String(decoded.email).toLowerCase()) {
-          return res.status(400).json({ error: 'Invalid or expired verification token' });
-        }
-
-        if (user.isEmailVerified) {
-          return res.json({ message: 'Email is already verified', success: true });
-        }
-
-        await prisma.user.update({
-          where: { id: user.id },
-          data: {
-            isEmailVerified: true,
-            verificationToken: null,
-            verificationTokenExpiry: null
-          }
-        });
-
-        return res.json({ message: 'Email verified successfully', success: true });
-      }
-    } catch {
-      // Fall back to legacy DB-backed token verification.
-    }
-
-    // Legacy verification flow for previously issued links.
     const hashedToken = hashToken(token);
 
     const user = await prisma.user.findFirst({
@@ -295,17 +239,6 @@ router.post('/verify-email', async (req: Request, res: Response) => {
     });
 
     if (!user) {
-      // Provide a clearer response for stale links when email is available.
-      const sanitizedEmail = typeof email === 'string' ? sanitizeEmail(email) : null;
-      if (sanitizedEmail) {
-        const userByEmail = await prisma.user.findFirst({
-          where: { email: sanitizedEmail }
-        });
-        if (userByEmail?.isEmailVerified) {
-          return res.json({ message: 'Email is already verified', success: true });
-        }
-      }
-
       return res.status(400).json({ error: 'Invalid or expired verification token' });
     }
 
@@ -350,13 +283,9 @@ router.post('/resend-verification', async (req: Request, res: Response) => {
       where: { email: sanitizedEmail, tenantId }
     });
 
-    if (!user) {
-      // Return success to avoid email enumeration
+    if (!user || user.isEmailVerified) {
+      // Return a generic success message to prevent account enumeration.
       return res.json({ message: 'If an account exists, a verification email has been sent.' });
-    }
-
-    if (user.isEmailVerified) {
-      return res.status(400).json({ error: 'Email is already verified' });
     }
 
     // Generate new token

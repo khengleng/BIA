@@ -270,7 +270,7 @@ export async function sendBookingConfirmation(
 
 // Email Verification
 export async function sendVerificationEmail(to: string, verificationToken: string) {
-  const verificationUrl = `${FRONTEND_URL}/auth/verify-email?token=${encodeURIComponent(verificationToken)}&email=${encodeURIComponent(to)}`;
+  const verificationUrl = `${FRONTEND_URL}/auth/verify-email?token=${encodeURIComponent(verificationToken)}`;
 
   try {
     const { data, error } = await resend.emails.send({

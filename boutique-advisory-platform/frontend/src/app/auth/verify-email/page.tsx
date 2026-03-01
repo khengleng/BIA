@@ -9,10 +9,8 @@ import { apiRequest } from '../../../lib/api'
 function VerifyEmailContent() {
     const searchParams = useSearchParams()
     const token = searchParams.get('token')
-    const email = searchParams.get('email')
     const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying')
     const [message, setMessage] = useState('')
-    const [resendMessage, setResendMessage] = useState('')
     const [countdown, setCountdown] = useState(5)
     const router = useRouter()
 
@@ -50,24 +48,6 @@ function VerifyEmailContent() {
 
                     return () => clearInterval(timer)
                 } else {
-                    // Stale/used links are common when users click an old email. Trigger resend automatically.
-                    if (
-                        email &&
-                        typeof data?.error === 'string' &&
-                        data.error.toLowerCase().includes('invalid or expired verification token')
-                    ) {
-                        const resendResponse = await apiRequest('/api/auth/resend-verification', {
-                            method: 'POST',
-                            body: JSON.stringify({ email }),
-                        })
-                        const resendData = await resendResponse.safeJson()
-                        if (resendResponse.ok) {
-                            setResendMessage('This link is no longer valid. A new verification email has been sent. Please open the latest email.')
-                        } else if (typeof resendData?.error === 'string') {
-                            setResendMessage(resendData.error)
-                        }
-                    }
-
                     setStatus('error')
                     setMessage(data.error || 'Failed to verify email. The token may be invalid or expired.')
                 }
@@ -119,9 +99,6 @@ function VerifyEmailContent() {
                             <>
                                 <XCircle className="h-16 w-16 text-red-500" />
                                 <p className="text-red-400 text-lg font-medium text-center">{message}</p>
-                                {resendMessage && (
-                                    <p className="text-yellow-300 text-sm text-center">{resendMessage}</p>
-                                )}
                                 <div className="mt-4 space-y-3 w-full">
                                     <Link
                                         href="/auth/login"
