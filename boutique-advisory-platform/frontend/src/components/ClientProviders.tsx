@@ -26,6 +26,21 @@ export default function ClientProviders({ children }: Props) {
                 });
             }
         }
+
+        // One-time SW reset on trading domain to clear stale auth/register UI caches.
+        if (typeof window !== 'undefined' && window.location.hostname === 'trade.cambobia.com') {
+            const resetKey = 'trade-sw-reset-v1';
+            const hasReset = window.localStorage.getItem(resetKey);
+            if (!hasReset && 'serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then((registrations) => {
+                    Promise.all(registrations.map((registration) => registration.unregister()))
+                        .finally(() => {
+                            window.localStorage.setItem(resetKey, '1');
+                            window.location.reload();
+                        });
+                });
+            }
+        }
     }, []);
 
     return (

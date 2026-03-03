@@ -1,7 +1,7 @@
 'use client'
 import { apiRequest } from '@/lib/api'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslations } from '../../../hooks/useTranslations'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -11,10 +11,11 @@ import { IS_TRADING_PLATFORM } from '@/lib/platform'
 export default function RegisterPage() {
   const { t } = useTranslations()
   const router = useRouter()
+  const isTradingRuntime = IS_TRADING_PLATFORM || (typeof window !== 'undefined' && window.location.hostname === 'trade.cambobia.com')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const defaultRole = IS_TRADING_PLATFORM ? 'INVESTOR' : 'SME'
+  const defaultRole = isTradingRuntime ? 'INVESTOR' : 'SME'
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -31,9 +32,14 @@ export default function RegisterPage() {
     { value: 'INVESTOR', label: 'Investor', icon: Users, description: 'Individual or institutional investor' },
     { value: 'ADVISOR', label: 'Advisor', icon: Handshake, description: 'Professional advisory services' }
   ]
-  const availableRoles = IS_TRADING_PLATFORM
+  const availableRoles = isTradingRuntime
     ? roles.filter((role) => role.value === 'INVESTOR')
     : roles
+
+  useEffect(() => {
+    if (!isTradingRuntime) return
+    setFormData((prev) => (prev.role === 'INVESTOR' ? prev : { ...prev, role: 'INVESTOR' }))
+  }, [isTradingRuntime])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
@@ -133,7 +139,7 @@ export default function RegisterPage() {
             {t('auth.register')}
           </h2>
           <p className="mt-2 text-center text-sm text-gray-300">
-            {IS_TRADING_PLATFORM
+            {isTradingRuntime
               ? 'Create your CamboBia Trading investor account'
               : 'Create your Boutique Advisory account'}
           </p>
@@ -184,7 +190,7 @@ export default function RegisterPage() {
                   </label>
                 ))}
               </div>
-              {IS_TRADING_PLATFORM && (
+              {isTradingRuntime && (
                 <p className="mt-2 text-xs text-gray-400">
                   Trading platform registrations are limited to investor accounts.
                 </p>
