@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, Mail, Lock, Building2 } from 'lucide-react'
 import { apiRequest } from '../../../lib/api'
-import { IS_TRADING_PLATFORM } from '@/lib/platform'
+import { CORE_FRONTEND_URL, IS_TRADING_PLATFORM } from '@/lib/platform'
 
 export default function LoginPage() {
   const { t } = useTranslations()
@@ -386,6 +386,17 @@ export default function LoginPage() {
               )}
             </button>
           </div>
+
+          {IS_TRADING_PLATFORM && (
+            <div>
+              <a
+                href={`${CORE_FRONTEND_URL}/auth/sso`}
+                className="group relative w-full flex justify-center py-3 px-4 border border-gray-500 text-sm font-medium rounded-lg text-gray-200 bg-gray-800/60 hover:bg-gray-700/70 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+              >
+                Continue with CamboBia Account (SSO)
+              </a>
+            </div>
+          )}
 
           <div className="text-center">
             <p className="text-sm text-gray-300">

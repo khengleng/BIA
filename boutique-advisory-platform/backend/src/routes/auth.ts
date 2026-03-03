@@ -26,8 +26,25 @@ import {
   authenticateToken,
   AuthenticatedRequest
 } from '../middleware/jwt-auth';
+import redis from '../redis';
 
 const router = Router();
+const serviceMode = (process.env.SERVICE_MODE || 'core').toLowerCase();
+const isTradingService = serviceMode === 'trading';
+const ssoTokenTtlSeconds = Number(process.env.SSO_TOKEN_TTL_SECONDS || 120);
+const ssoAllowedRoles = new Set(['INVESTOR', 'ADMIN', 'SUPER_ADMIN']);
+
+function getSsoSharedSecret(): string {
+  const secret = process.env.SSO_SHARED_SECRET || process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('SSO shared secret not configured');
+  }
+  return secret;
+}
+
+function getTradingFrontendBaseUrl(): string {
+  return (process.env.TRADING_FRONTEND_URL || 'https://trade.cambobia.com').replace(/\/+$/, '');
+}
 
 // Register endpoint
 router.post('/register', async (req: Request, res: Response) => {
@@ -539,6 +556,168 @@ router.post('/login', async (req: Request, res: Response, next: NextFunction) =>
       errorMessage: error instanceof Error ? error.message : 'Unknown error'
     });
     return next(error);
+  }
+});
+
+router.get('/sso/trading-link', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (isTradingService) {
+      return res.status(404).json({ error: 'Route not found in trading mode' });
+    }
+
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    if (user.status !== 'ACTIVE') {
+      return res.status(403).json({ error: 'Account is not active' });
+    }
+    if (!user.isEmailVerified && user.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ error: 'Email verification required for SSO' });
+    }
+    if (!ssoAllowedRoles.has(user.role)) {
+      return res.status(403).json({ error: 'Your account role is not allowed for trading SSO' });
+    }
+
+    const nonce = generateSecureToken(16);
+    const ssoToken = jwt.sign(
+      {
+        sub: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        status: user.status,
+        isEmailVerified: user.isEmailVerified,
+        nonce
+      },
+      getSsoSharedSecret(),
+      {
+        expiresIn: `${ssoTokenTtlSeconds}s`,
+        issuer: 'cambobia-core',
+        audience: 'cambobia-trading'
+      }
+    );
+
+    const redirectUrl = `${getTradingFrontendBaseUrl()}/auth/sso/callback?token=${encodeURIComponent(ssoToken)}`;
+    return res.json({ redirectUrl, expiresIn: ssoTokenTtlSeconds });
+  } catch (error) {
+    console.error('SSO trading-link error:', error);
+    return res.status(500).json({ error: 'Failed to initiate SSO' });
+  }
+});
+
+router.post('/sso/trading/exchange', async (req: Request, res: Response) => {
+  try {
+    if (!isTradingService) {
+      return res.status(404).json({ error: 'Route not found in core mode' });
+    }
+
+    const token = typeof req.body?.token === 'string' ? req.body.token : '';
+    if (!token) {
+      return res.status(400).json({ error: 'SSO token is required' });
+    }
+
+    const decoded = jwt.verify(token, getSsoSharedSecret(), {
+      issuer: 'cambobia-core',
+      audience: 'cambobia-trading'
+    }) as any;
+
+    const email = sanitizeEmail(decoded?.email);
+    const role = typeof decoded?.role === 'string' ? decoded.role : '';
+    const nonce = typeof decoded?.nonce === 'string' ? decoded.nonce : '';
+
+    if (!email || !nonce) {
+      return res.status(400).json({ error: 'Invalid SSO token payload' });
+    }
+    if (decoded?.status !== 'ACTIVE') {
+      return res.status(403).json({ error: 'Source account is not active' });
+    }
+    if (!decoded?.isEmailVerified && role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ error: 'Source account must be email-verified' });
+    }
+    if (!ssoAllowedRoles.has(role)) {
+      return res.status(403).json({ error: 'Your account role is not allowed for trading SSO' });
+    }
+
+    if (redis.status === 'ready') {
+      const replayKey = `sso:trading:nonce:${nonce}`;
+      const replayWindowSeconds = Math.max(60, ssoTokenTtlSeconds + 60);
+      const setResult = await redis.set(replayKey, '1', 'EX', replayWindowSeconds, 'NX');
+      if (setResult !== 'OK') {
+        return res.status(401).json({ error: 'SSO token has already been used' });
+      }
+    }
+
+    const tenantId = getTenantId(req);
+    let user = await prisma.user.findFirst({
+      where: {
+        tenantId,
+        email: { equals: email, mode: 'insensitive' },
+        status: { not: 'DELETED' }
+      }
+    });
+
+    if (!user) {
+      const randomPassword = await bcrypt.hash(generateSecureToken(32), 12);
+      user = await prisma.user.create({
+        data: {
+          email,
+          password: randomPassword,
+          firstName: decoded?.firstName || 'User',
+          lastName: decoded?.lastName || 'SSO',
+          role: role as any,
+          tenantId,
+          status: 'ACTIVE',
+          isEmailVerified: true,
+          language: 'EN'
+        }
+      });
+    } else {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          role: role as any,
+          firstName: decoded?.firstName || user.firstName,
+          lastName: decoded?.lastName || user.lastName,
+          isEmailVerified: true
+        }
+      });
+    }
+
+    if (role === 'INVESTOR') {
+      const investorProfile = await prisma.investor.findUnique({ where: { userId: user.id } });
+      if (!investorProfile) {
+        await prisma.investor.create({
+          data: {
+            userId: user.id,
+            tenantId,
+            name: `${user.firstName} ${user.lastName}`.trim(),
+            type: 'ANGEL',
+            kycStatus: 'PENDING'
+          }
+        });
+      }
+    }
+
+    await issueTokensAndSetCookies(res, user, req);
+
+    return res.status(200).json({
+      message: 'SSO login successful',
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        twoFactorEnabled: user.twoFactorEnabled
+      }
+    });
+  } catch (error: any) {
+    if (error?.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'SSO token expired. Please try again.' });
+    }
+    return res.status(401).json({ error: 'Invalid SSO token' });
   }
 });
 

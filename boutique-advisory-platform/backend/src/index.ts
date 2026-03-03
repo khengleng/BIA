@@ -587,7 +587,8 @@ app.use('/api', (req: express.Request, res: express.Response, next: express.Next
     || req.path.startsWith('/auth/verify-email')
     || req.path.startsWith('/auth/resend-verification')
     || req.path.startsWith('/auth/forgot-password')
-    || req.path.startsWith('/auth/reset-password');
+    || req.path.startsWith('/auth/reset-password')
+    || req.path.startsWith('/auth/sso/trading/exchange');
   if (isPreAuthRoute) {
     return next();
   }
