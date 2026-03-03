@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { prisma } from '../database';
 import * as crypto from 'crypto';
 import { KYCStatus } from '@prisma/client';
+import { settleSecondaryTrade } from '../services/secondary-trade-settlement';
 
 const router = Router();
 
@@ -171,6 +172,43 @@ router.post('/aba', async (req: Request, res: Response) => {
                         });
                     } else {
                         console.warn(`⚠️ DealInvestor ${payment.dealInvestorId} not found in tenant ${payment.tenantId}`);
+                    }
+                }
+
+                const metadata = (payment.metadata || {}) as Record<string, unknown>;
+                const secondaryTradeId = typeof metadata.secondaryTradeId === 'string'
+                    ? metadata.secondaryTradeId
+                    : null;
+
+                if (secondaryTradeId) {
+                    try {
+                        await db.$transaction(async (tx: any) => {
+                            await settleSecondaryTrade(tx, secondaryTradeId, payment.tenantId);
+                            await tx.payment.update({
+                                where: { id: payment.id },
+                                data: {
+                                    metadata: {
+                                        ...(metadata || {}),
+                                        settlementStatus: 'SETTLED',
+                                        settledAt: new Date().toISOString(),
+                                        settlementSource: 'ABA_WEBHOOK'
+                                    }
+                                }
+                            });
+                        });
+                    } catch (settlementError) {
+                        console.error('❌ Failed to settle secondary trade after ABA callback:', settlementError);
+                        await db.payment.update({
+                            where: { id: payment.id },
+                            data: {
+                                metadata: {
+                                    ...(metadata || {}),
+                                    settlementStatus: 'SETTLEMENT_ERROR',
+                                    settlementError: settlementError instanceof Error ? settlementError.message : 'Unknown settlement error',
+                                    settlementErrorAt: new Date().toISOString()
+                                }
+                            }
+                        });
                     }
                 }
             }

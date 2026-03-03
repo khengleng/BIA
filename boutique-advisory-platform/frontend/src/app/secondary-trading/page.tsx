@@ -145,6 +145,7 @@ export default function SecondaryTradingPage() {
     const { addToast } = useToast()
     const { isAdmin, isInvestor, user } = usePermissions()
     const router = useRouter()
+    const simulateSecondaryTrades = process.env.NEXT_PUBLIC_SIMULATE_SECONDARY_TRADES === 'true'
 
     const [listings, setListings] = useState<Listing[]>([])
     const [myTrades, setMyTrades] = useState<{ purchases: Trade[], sales: Trade[] }>({ purchases: [], sales: [] })
@@ -261,12 +262,17 @@ export default function SecondaryTradingPage() {
                 method: 'POST',
                 body: JSON.stringify({
                     shares: parseFloat(buyShares),
-                    simulate_payment: true // DEMO: Enable immediate execution
+                    simulate_payment: simulateSecondaryTrades
                 })
             })
 
             if (response.ok) {
-                addToast('success', 'Purchase initiated successfully!')
+                const payload = await response.json()
+                if (payload?.abaRequest) {
+                    addToast('success', 'Purchase created. Complete ABA payment to settle trade.')
+                } else {
+                    addToast('success', 'Purchase initiated successfully!')
+                }
                 setShowBuyModal(false)
                 fetchData()
             } else {

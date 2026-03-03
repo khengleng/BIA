@@ -763,4 +763,104 @@ router.post('/admin/transactions/:id/refund', authorize('billing.manage'), async
     }
 });
 
+router.get('/admin/fund-operations/overview', authorize('billing.read'), async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const tenantId = req.user?.tenantId || 'default';
+        const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
+        const scope = isSuperAdmin ? {} : { tenantId };
+
+        const [primaryInvestments, secondaryTrades, unresolvedTransferCases] = await Promise.all([
+            prisma.payment.aggregate({
+                where: {
+                    ...scope,
+                    dealInvestorId: { not: null }
+                },
+                _sum: { amount: true },
+                _count: true
+            }),
+            prisma.payment.findMany({
+                where: {
+                    ...scope,
+                    metadata: {
+                        path: ['category'],
+                        equals: 'SECONDARY_TRADE_BUY'
+                    }
+                },
+                select: {
+                    amount: true,
+                    status: true,
+                    metadata: true
+                },
+                take: 1000
+            }),
+            prisma.adminCase.count({
+                where: {
+                    ...scope,
+                    relatedEntityType: 'SECONDARY_TRADE',
+                    status: { in: ['OPEN', 'IN_PROGRESS', 'ESCALATED'] }
+                }
+            })
+        ]);
+
+        let operatorPending = 0;
+        let operatorSettled = 0;
+        let operatorFailed = 0;
+        for (const payment of secondaryTrades) {
+            const metadata = (payment.metadata as Record<string, unknown>) || {};
+            const settlementStatus = String(metadata.settlementStatus || '');
+            if (payment.status === 'FAILED' || settlementStatus === 'FAILED' || settlementStatus === 'SETTLEMENT_ERROR') {
+                operatorFailed += payment.amount;
+            } else if (settlementStatus === 'SETTLED') {
+                operatorSettled += payment.amount;
+            } else {
+                operatorPending += payment.amount;
+            }
+        }
+
+        return res.json({
+            investmentFund: {
+                totalPrimaryInvestmentAmount: primaryInvestments._sum.amount || 0,
+                primaryInvestmentCount: primaryInvestments._count || 0
+            },
+            operatorAccount: {
+                pendingClearingAmount: Number(operatorPending.toFixed(2)),
+                settledAmount: Number(operatorSettled.toFixed(2)),
+                failedOrExceptionAmount: Number(operatorFailed.toFixed(2))
+            },
+            customerOperations: {
+                unresolvedTransferCases
+            }
+        });
+    } catch (error) {
+        console.error('Fund operations overview error:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+router.get('/admin/fund-operations/transfer-issues', authorize('case.list'), async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const tenantId = req.user?.tenantId || 'default';
+        const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
+        const where: any = {
+            ...(isSuperAdmin ? {} : { tenantId }),
+            relatedEntityType: 'SECONDARY_TRADE'
+        };
+
+        const cases = await prisma.adminCase.findMany({
+            where,
+            include: {
+                requester: { select: { id: true, email: true, firstName: true, lastName: true } },
+                assignee: { select: { id: true, email: true, firstName: true, lastName: true } }
+            },
+            orderBy: [{ priority: 'desc' }, { createdAt: 'desc' }],
+            take: 200
+        });
+
+        return res.json({ cases });
+    } catch (error) {
+        console.error('Fund transfer issues listing error:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 export default router;
