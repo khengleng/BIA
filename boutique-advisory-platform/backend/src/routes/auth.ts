@@ -34,12 +34,30 @@ const isTradingService = serviceMode === 'trading';
 const ssoTokenTtlSeconds = Number(process.env.SSO_TOKEN_TTL_SECONDS || 120);
 const ssoAllowedRoles = new Set(['INVESTOR', 'ADMIN', 'SUPER_ADMIN']);
 
-function getSsoSharedSecret(): string {
-  const secret = process.env.SSO_SHARED_SECRET || process.env.JWT_SECRET;
-  if (!secret) {
-    throw new Error('SSO shared secret not configured');
+function getSsoInternalApiKey(): string {
+  const key = process.env.SSO_INTERNAL_API_KEY;
+  if (!key) {
+    throw new Error('SSO_INTERNAL_API_KEY not configured');
   }
-  return secret;
+  return key;
+}
+
+function getCoreSsoConsumeUrl(): string {
+  return process.env.CORE_SSO_CONSUME_URL || 'http://backend.railway.internal:8080/api/auth/sso/trading/consume';
+}
+
+async function consumeSsoCodeOnce(code: string): Promise<any | null> {
+  const redisKey = `sso:trading:code:${code}`;
+  const lua = `
+    local value = redis.call('GET', KEYS[1])
+    if value then
+      redis.call('DEL', KEYS[1])
+    end
+    return value
+  `;
+  const payload = await redis.eval(lua, 1, redisKey) as string | null;
+  if (!payload) return null;
+  return JSON.parse(payload);
 }
 
 function getTradingFrontendBaseUrl(): string {
@@ -564,6 +582,9 @@ router.get('/sso/trading-link', authenticateToken, async (req: AuthenticatedRequ
     if (isTradingService) {
       return res.status(404).json({ error: 'Route not found in trading mode' });
     }
+    if (redis.status !== 'ready') {
+      return res.status(503).json({ error: 'SSO temporarily unavailable. Please try again shortly.' });
+    }
 
     const user = req.user;
     if (!user) {
@@ -579,31 +600,62 @@ router.get('/sso/trading-link', authenticateToken, async (req: AuthenticatedRequ
       return res.status(403).json({ error: 'Your account role is not allowed for trading SSO' });
     }
 
-    const nonce = generateSecureToken(16);
-    const ssoToken = jwt.sign(
-      {
-        sub: user.id,
+    const ssoCode = generateSecureToken(24);
+    const setResult = await redis.set(
+      `sso:trading:code:${ssoCode}`,
+      JSON.stringify({
+        userId: user.id,
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
         status: user.status,
-        isEmailVerified: user.isEmailVerified,
-        nonce
-      },
-      getSsoSharedSecret(),
-      {
-        expiresIn: `${ssoTokenTtlSeconds}s`,
-        issuer: 'cambobia-core',
-        audience: 'cambobia-trading'
-      }
+        isEmailVerified: user.isEmailVerified
+      }),
+      'EX',
+      ssoTokenTtlSeconds,
+      'NX'
     );
+    if (setResult !== 'OK') {
+      return res.status(500).json({ error: 'Failed to create SSO session code' });
+    }
 
-    const redirectUrl = `${getTradingFrontendBaseUrl()}/auth/sso/callback?token=${encodeURIComponent(ssoToken)}`;
+    const redirectUrl = `${getTradingFrontendBaseUrl()}/auth/sso/callback?code=${encodeURIComponent(ssoCode)}`;
     return res.json({ redirectUrl, expiresIn: ssoTokenTtlSeconds });
   } catch (error) {
     console.error('SSO trading-link error:', error);
     return res.status(500).json({ error: 'Failed to initiate SSO' });
+  }
+});
+
+router.post('/sso/trading/consume', async (req: Request, res: Response) => {
+  try {
+    if (isTradingService) {
+      return res.status(404).json({ error: 'Route not found in trading mode' });
+    }
+    if (redis.status !== 'ready') {
+      return res.status(503).json({ error: 'SSO temporarily unavailable. Please try again shortly.' });
+    }
+
+    const suppliedKey = String(req.headers['x-sso-internal-key'] || '');
+    if (!suppliedKey || suppliedKey !== getSsoInternalApiKey()) {
+      return res.status(401).json({ error: 'Unauthorized SSO consume request' });
+    }
+
+    const code = typeof req.body?.code === 'string' ? req.body.code : '';
+    if (!code) {
+      return res.status(400).json({ error: 'SSO code is required' });
+    }
+
+    const claims = await consumeSsoCodeOnce(code);
+    if (!claims) {
+      return res.status(401).json({ error: 'Invalid or already-used SSO code' });
+    }
+
+    return res.status(200).json({ claims });
+  } catch (error) {
+    console.error('SSO consume error:', error);
+    return res.status(500).json({ error: 'Failed to consume SSO code' });
   }
 });
 
@@ -612,41 +664,43 @@ router.post('/sso/trading/exchange', async (req: Request, res: Response) => {
     if (!isTradingService) {
       return res.status(404).json({ error: 'Route not found in core mode' });
     }
-
-    const token = typeof req.body?.token === 'string' ? req.body.token : '';
-    if (!token) {
-      return res.status(400).json({ error: 'SSO token is required' });
+    if (redis.status !== 'ready') {
+      return res.status(503).json({ error: 'SSO temporarily unavailable. Please try again shortly.' });
     }
 
-    const decoded = jwt.verify(token, getSsoSharedSecret(), {
-      issuer: 'cambobia-core',
-      audience: 'cambobia-trading'
-    }) as any;
-
-    const email = sanitizeEmail(decoded?.email);
-    const role = typeof decoded?.role === 'string' ? decoded.role : '';
-    const nonce = typeof decoded?.nonce === 'string' ? decoded.nonce : '';
-
-    if (!email || !nonce) {
-      return res.status(400).json({ error: 'Invalid SSO token payload' });
+    const code = typeof req.body?.code === 'string' ? req.body.code : '';
+    if (!code) {
+      return res.status(400).json({ error: 'SSO code is required' });
     }
-    if (decoded?.status !== 'ACTIVE') {
+
+    const consumeResponse = await fetch(getCoreSsoConsumeUrl(), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-sso-internal-key': getSsoInternalApiKey()
+      },
+      body: JSON.stringify({ code })
+    });
+    const consumeData: any = await consumeResponse.json().catch(() => ({}));
+    if (!consumeResponse.ok) {
+      return res.status(consumeResponse.status).json({ error: consumeData?.error || 'Failed SSO code exchange' });
+    }
+
+    const claims = consumeData?.claims || {};
+    const email = sanitizeEmail(claims?.email);
+    const role = typeof claims?.role === 'string' ? claims.role : '';
+
+    if (!email) {
+      return res.status(400).json({ error: 'Invalid SSO claims payload' });
+    }
+    if (claims?.status !== 'ACTIVE') {
       return res.status(403).json({ error: 'Source account is not active' });
     }
-    if (!decoded?.isEmailVerified && role !== 'SUPER_ADMIN') {
+    if (!claims?.isEmailVerified && role !== 'SUPER_ADMIN') {
       return res.status(403).json({ error: 'Source account must be email-verified' });
     }
     if (!ssoAllowedRoles.has(role)) {
       return res.status(403).json({ error: 'Your account role is not allowed for trading SSO' });
-    }
-
-    if (redis.status === 'ready') {
-      const replayKey = `sso:trading:nonce:${nonce}`;
-      const replayWindowSeconds = Math.max(60, ssoTokenTtlSeconds + 60);
-      const setResult = await redis.set(replayKey, '1', 'EX', replayWindowSeconds, 'NX');
-      if (setResult !== 'OK') {
-        return res.status(401).json({ error: 'SSO token has already been used' });
-      }
     }
 
     const tenantId = getTenantId(req);
@@ -664,8 +718,8 @@ router.post('/sso/trading/exchange', async (req: Request, res: Response) => {
         data: {
           email,
           password: randomPassword,
-          firstName: decoded?.firstName || 'User',
-          lastName: decoded?.lastName || 'SSO',
+          firstName: claims?.firstName || 'User',
+          lastName: claims?.lastName || 'SSO',
           role: role as any,
           tenantId,
           status: 'ACTIVE',
@@ -678,8 +732,8 @@ router.post('/sso/trading/exchange', async (req: Request, res: Response) => {
         where: { id: user.id },
         data: {
           role: role as any,
-          firstName: decoded?.firstName || user.firstName,
-          lastName: decoded?.lastName || user.lastName,
+          firstName: claims?.firstName || user.firstName,
+          lastName: claims?.lastName || user.lastName,
           isEmailVerified: true
         }
       });
@@ -714,10 +768,8 @@ router.post('/sso/trading/exchange', async (req: Request, res: Response) => {
       }
     });
   } catch (error: any) {
-    if (error?.name === 'TokenExpiredError') {
-      return res.status(401).json({ error: 'SSO token expired. Please try again.' });
-    }
-    return res.status(401).json({ error: 'Invalid SSO token' });
+    console.error('SSO exchange error:', error);
+    return res.status(401).json({ error: 'Invalid SSO code exchange' });
   }
 });
 

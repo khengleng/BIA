@@ -19,9 +19,9 @@ function SsoCallbackContent() {
         return
       }
 
-      const token = searchParams.get('token')
-      if (!token) {
-        setError('Missing SSO token. Please start again from Cambobia.')
+      const code = searchParams.get('code')
+      if (!code) {
+        setError('Missing SSO code. Please start again from Cambobia.')
         return
       }
 
@@ -29,7 +29,7 @@ function SsoCallbackContent() {
         const response = await apiRequest('/api/auth/sso/trading/exchange', {
           method: 'POST',
           credentials: 'include',
-          body: JSON.stringify({ token }),
+          body: JSON.stringify({ code }),
         })
 
         const data = await response.safeJson()
