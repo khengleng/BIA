@@ -140,17 +140,20 @@ router.get('/aba/status/:id', authorize('payment.read'), async (req: Authenticat
     try {
         const { id } = req.params;
         const user = req.user!;
+        const tenantId = user.tenantId || 'default';
+        const isSuperAdmin = user.role === 'SUPER_ADMIN';
 
-        const payment = await (prisma as any).payment.findUnique({
-            where: { id }
+        const payment = await (prisma as any).payment.findFirst({
+            where: isSuperAdmin ? { id } : { id, tenantId }
         });
 
         if (!payment) {
             return res.status(404).json({ error: 'Payment not found' });
         }
 
-        // Ownership check
-        if (payment.userId !== user.id && user.role !== 'ADMIN') {
+        // Ownership check (tenant admin or super admin may view within scope)
+        const isTenantAdmin = user.role === 'ADMIN';
+        if (payment.userId !== user.id && !isTenantAdmin && !isSuperAdmin) {
             return res.status(403).json({ error: 'Unauthorized' });
         }
 

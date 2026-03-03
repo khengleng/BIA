@@ -30,26 +30,30 @@ Security Notes (${PLATFORM_UPDATE_DATE}):
 `;
 
 // Helper to get platform context
-async function getPlatformContext() {
+async function getPlatformContext(tenantId: string, isSuperAdmin: boolean) {
     try {
+        const scope = isSuperAdmin ? {} : { tenantId };
         const [investorCount, smeCount, advisorCount, dealCount] = await Promise.all([
-            prisma.investor.count(),
-            prisma.sME.count(),
-            prisma.advisor.count(),
-            prisma.deal.count()
+            prisma.investor.count({ where: scope }),
+            prisma.sME.count({ where: scope }),
+            prisma.advisor.count({ where: scope }),
+            prisma.deal.count({ where: scope })
         ]);
 
         // Fetch highlights
         const topInvestors = await prisma.investor.findMany({
             take: 3,
+            where: scope,
             select: { name: true, type: true }
         });
         const topSMEs = await prisma.sME.findMany({
             take: 3,
+            where: scope,
             select: { name: true, sector: true, stage: true }
         });
         const topAdvisors = await prisma.advisor.findMany({
             take: 3,
+            where: scope,
             select: { name: true, specialization: true }
         });
 
@@ -78,6 +82,8 @@ router.post('/chat', authorize('ai.chat'), async (req: AuthenticatedRequest, res
     try {
         const { message, language = 'en' } = req.body;
         if (!message) return res.status(400).json({ error: "Message required" });
+        const tenantId = req.user?.tenantId || 'default';
+        const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
 
         if (!anthropic) {
             const noAiMessage: { [key: string]: string } = {
@@ -90,7 +96,7 @@ router.post('/chat', authorize('ai.chat'), async (req: AuthenticatedRequest, res
             });
         }
 
-        const context = await getPlatformContext();
+        const context = await getPlatformContext(tenantId, isSuperAdmin);
 
         // Language-specific system prompt instructions
         const langInstructions: { [key: string]: string } = {
@@ -137,9 +143,11 @@ Instructions:
 router.post('/analyze/:dealId', authorize('deal.read'), async (req: AuthenticatedRequest, res: Response) => {
     try {
         const { dealId } = req.params;
+        const tenantId = req.user?.tenantId || 'default';
+        const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
 
-        const deal = await prisma.deal.findUnique({
-            where: { id: dealId },
+        const deal = await prisma.deal.findFirst({
+            where: isSuperAdmin ? { id: dealId } : { id: dealId, tenantId },
             include: { sme: true }
         });
 
@@ -177,9 +185,19 @@ router.post('/chat/:dealId', authorize('deal.read'), async (req: AuthenticatedRe
     try {
         const { dealId } = req.params;
         const { query } = req.body;
+        const tenantId = req.user?.tenantId || 'default';
+        const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
+
+        const deal = await prisma.deal.findFirst({
+            where: isSuperAdmin ? { id: dealId } : { id: dealId, tenantId },
+            select: { id: true, tenantId: true }
+        });
+        if (!deal) {
+            return res.status(404).json({ error: 'Deal not found' });
+        }
 
         const documents = await prisma.document.findMany({
-            where: { dealId }
+            where: isSuperAdmin ? { dealId } : { dealId, tenantId: deal.tenantId }
         });
 
         // Use Claude if available
