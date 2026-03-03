@@ -77,9 +77,45 @@ router.post('/aba/create-transaction', authorize('payment.create'), async (req: 
     try {
         const { amount, bookingId, dealInvestorId, items, returnUrl } = req.body;
         const user = req.user!;
+        const tenantId = user.tenantId || 'default';
+        const isSuperAdmin = user.role === 'SUPER_ADMIN';
+        const isTenantAdmin = user.role === 'ADMIN';
 
         if (!amount) {
             return res.status(400).json({ error: 'Amount is required' });
+        }
+        const parsedAmount = Number.parseFloat(String(amount));
+        if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+            return res.status(400).json({ error: 'Amount must be a positive number' });
+        }
+
+        const normalizedBookingId = typeof bookingId === 'string' && bookingId.trim() ? bookingId.trim() : null;
+        const normalizedDealInvestorId = typeof dealInvestorId === 'string' && dealInvestorId.trim() ? dealInvestorId.trim() : null;
+
+        if (normalizedBookingId) {
+            const booking = await prisma.booking.findFirst({
+                where: isSuperAdmin ? { id: normalizedBookingId } : { id: normalizedBookingId, tenantId },
+                select: { id: true, userId: true }
+            });
+            if (!booking) {
+                return res.status(404).json({ error: 'Booking not found' });
+            }
+            if (!isSuperAdmin && !isTenantAdmin && booking.userId !== user.id) {
+                return res.status(403).json({ error: 'You can only pay for your own booking' });
+            }
+        }
+
+        if (normalizedDealInvestorId) {
+            const investment = await prisma.dealInvestor.findFirst({
+                where: isSuperAdmin ? { id: normalizedDealInvestorId } : { id: normalizedDealInvestorId, deal: { tenantId } },
+                include: { investor: { select: { userId: true } } }
+            });
+            if (!investment) {
+                return res.status(404).json({ error: 'Investment not found' });
+            }
+            if (!isSuperAdmin && !isTenantAdmin && investment.investor.userId !== user.id) {
+                return res.status(403).json({ error: 'You can only pay for your own investment' });
+            }
         }
 
         // Generate Short Transaction ID for ABA (Max 20 chars, e.g. 19 chars)
@@ -88,16 +124,16 @@ router.post('/aba/create-transaction', authorize('payment.create'), async (req: 
         // Create Payment record
         const payment = await (prisma as any).payment.create({
             data: {
-                tenantId: user.tenantId,
+                tenantId,
                 userId: user.id,
-                amount: parseFloat(amount),
+                amount: parsedAmount,
                 currency: 'USD',
                 method: 'ABA_PAYWAY',
                 provider: 'ABA',
                 providerTxId: shortTranId, // Store ABA ID
                 status: 'PENDING',
-                bookingId: bookingId || null,
-                dealInvestorId: dealInvestorId || null,
+                bookingId: normalizedBookingId,
+                dealInvestorId: normalizedDealInvestorId,
                 description: `ABA Payment by ${user.email}`,
             }
         });
@@ -169,9 +205,45 @@ router.post('/aba/generate-qr', authorize('payment.create'), async (req: Authent
     try {
         const { amount, bookingId, dealInvestorId, items } = req.body;
         const user = req.user!;
+        const tenantId = user.tenantId || 'default';
+        const isSuperAdmin = user.role === 'SUPER_ADMIN';
+        const isTenantAdmin = user.role === 'ADMIN';
 
         if (!amount) {
             return res.status(400).json({ error: 'Amount is required' });
+        }
+        const parsedAmount = Number.parseFloat(String(amount));
+        if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+            return res.status(400).json({ error: 'Amount must be a positive number' });
+        }
+
+        const normalizedBookingId = typeof bookingId === 'string' && bookingId.trim() ? bookingId.trim() : null;
+        const normalizedDealInvestorId = typeof dealInvestorId === 'string' && dealInvestorId.trim() ? dealInvestorId.trim() : null;
+
+        if (normalizedBookingId) {
+            const booking = await prisma.booking.findFirst({
+                where: isSuperAdmin ? { id: normalizedBookingId } : { id: normalizedBookingId, tenantId },
+                select: { id: true, userId: true }
+            });
+            if (!booking) {
+                return res.status(404).json({ error: 'Booking not found' });
+            }
+            if (!isSuperAdmin && !isTenantAdmin && booking.userId !== user.id) {
+                return res.status(403).json({ error: 'You can only pay for your own booking' });
+            }
+        }
+
+        if (normalizedDealInvestorId) {
+            const investment = await prisma.dealInvestor.findFirst({
+                where: isSuperAdmin ? { id: normalizedDealInvestorId } : { id: normalizedDealInvestorId, deal: { tenantId } },
+                include: { investor: { select: { userId: true } } }
+            });
+            if (!investment) {
+                return res.status(404).json({ error: 'Investment not found' });
+            }
+            if (!isSuperAdmin && !isTenantAdmin && investment.investor.userId !== user.id) {
+                return res.status(403).json({ error: 'You can only pay for your own investment' });
+            }
         }
 
         // Generate Short Transaction ID
@@ -180,16 +252,16 @@ router.post('/aba/generate-qr', authorize('payment.create'), async (req: Authent
         // Create Payment record
         const payment = await (prisma as any).payment.create({
             data: {
-                tenantId: user.tenantId,
+                tenantId,
                 userId: user.id,
-                amount: parseFloat(amount),
+                amount: parsedAmount,
                 currency: 'USD',
                 method: 'KHQR',
                 provider: 'ABA',
                 providerTxId: shortTranId,
                 status: 'PENDING',
-                bookingId: bookingId || null,
-                dealInvestorId: dealInvestorId || null,
+                bookingId: normalizedBookingId,
+                dealInvestorId: normalizedDealInvestorId,
                 description: `ABA QR Payment by ${user.email}`,
             }
         });
@@ -198,7 +270,7 @@ router.post('/aba/generate-qr', authorize('payment.create'), async (req: Authent
         const userData = user as any;
         const qrResult = await generateAbaQr(
             shortTranId,
-            parseFloat(amount),
+            parsedAmount,
             {
                 firstName: userData.firstName || userData.email.split('@')[0],
                 lastName: userData.lastName || 'User',

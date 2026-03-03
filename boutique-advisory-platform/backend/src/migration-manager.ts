@@ -73,8 +73,8 @@ export async function performMigration(): Promise<MigrationStatus> {
       console.warn('⚠️ SECURITY WARNING: INITIAL_ADMIN_PASSWORD environment variable is missing or too short (< 12 chars).');
       console.warn('⚠️ Generating a secure random password for initial setup to prevent crash.');
       initialPassword = require('crypto').randomBytes(16).toString('hex');
-      console.log(`🔐 Auto-generated initial admin password: ${initialPassword}`);
-      console.log(`   IMPORTANT: Keep this safe or change it via the dashboard immediately.`);
+      console.log('🔐 Auto-generated initial admin password in memory (not logged).');
+      console.log('   IMPORTANT: Set INITIAL_ADMIN_PASSWORD explicitly and rotate credentials after bootstrap.');
     }
 
     const hashedPassword = await bcrypt.hash(initialPassword as string, 12)
@@ -382,4 +382,3 @@ export function fallbackToInMemory() {
 export function shouldUseDatabase(): boolean {
   return true  // Always use database for data persistence
 }
-

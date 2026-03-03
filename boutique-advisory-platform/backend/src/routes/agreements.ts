@@ -70,7 +70,11 @@ router.post('/:dealId', authorize('deal.update'), validateBody(createAgreementSc
 
         // Verify deal within tenant scope (unless super admin)
         const deal = await prisma.deal.findFirst({
-            where: isSuperAdmin ? { id: dealId } : { id: dealId, tenantId }
+            where: isSuperAdmin ? { id: dealId } : { id: dealId, tenantId },
+            include: {
+                sme: { select: { userId: true } },
+                investors: { include: { investor: { select: { userId: true } } } }
+            }
         });
         if (!deal) return res.status(404).json({ error: 'Deal not found' });
 
@@ -83,6 +87,17 @@ router.post('/:dealId', authorize('deal.update'), validateBody(createAgreementSc
         });
         if (signerUsers.length !== (signerIds as string[]).length) {
             return res.status(400).json({ error: 'One or more signerIds are invalid for this tenant' });
+        }
+
+        // Restrict signers to participants in this deal (SME owner, investors) plus agreement creator.
+        const allowedSignerIds = new Set<string>([
+            deal.sme.userId,
+            ...(deal.investors || []).map((entry: any) => entry.investor.userId),
+            ...(createdBy ? [createdBy] : [])
+        ]);
+        const invalidSigners = (signerIds as string[]).filter((id) => !allowedSignerIds.has(id));
+        if (invalidSigners.length > 0) {
+            return res.status(400).json({ error: 'Signer list includes users that are not participants in this deal' });
         }
 
         // Create Agreement

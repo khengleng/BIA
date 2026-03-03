@@ -110,30 +110,68 @@ router.post('/aba', async (req: Request, res: Response) => {
         // Using any cast to avoid TS errors if model update isn't refreshed in IDE
         const db = prisma as any;
 
-        // Find by providerTxId (shortTranId) since tran_id from ABA is the short one
-        const payment = await db.payment.findFirst({ where: { providerTxId: tran_id } });
+        // Find by providerTxId/provider and reject ambiguous matches.
+        const matchingPayments = await db.payment.findMany({
+            where: { provider: 'ABA', providerTxId: tran_id },
+            orderBy: { createdAt: 'desc' },
+            take: 2
+        });
+
+        if (matchingPayments.length > 1) {
+            console.error('❌ Ambiguous ABA callback: multiple payments found for providerTxId', tran_id);
+            return res.status(409).json({ status: 1, description: 'Ambiguous transaction reference' });
+        }
+
+        const payment = matchingPayments[0];
 
         if (payment) {
+            // Idempotency: do not re-apply terminal updates.
+            const mutableStatuses = new Set(['PENDING', 'PROCESSING']);
+            if (!mutableStatuses.has(payment.status)) {
+                console.log(`ℹ️ Ignoring ABA callback for terminal payment ${payment.id} (status=${payment.status})`);
+                return res.json({ status: 0, description: 'Already processed' });
+            }
+
             await db.payment.update({
                 where: { id: payment.id }, // Update by internal UUID
                 data: {
                     status: paymentStatus,
-                    metadata: req.body
+                    metadata: {
+                        ...(payment.metadata || {}),
+                        abaCallback: req.body,
+                        lastCallbackAt: new Date().toISOString()
+                    }
                 }
             });
 
             if (paymentStatus === 'COMPLETED') {
                 if (payment.bookingId) {
-                    await db.booking.update({
-                        where: { id: payment.bookingId },
-                        data: { status: 'CONFIRMED' }
+                    const booking = await db.booking.findFirst({
+                        where: { id: payment.bookingId, tenantId: payment.tenantId },
+                        select: { id: true }
                     });
+                    if (booking) {
+                        await db.booking.update({
+                            where: { id: booking.id },
+                            data: { status: 'CONFIRMED' }
+                        });
+                    } else {
+                        console.warn(`⚠️ Booking ${payment.bookingId} not found in tenant ${payment.tenantId}`);
+                    }
                 }
                 if (payment.dealInvestorId) {
-                    await db.dealInvestor.update({
-                        where: { id: payment.dealInvestorId },
-                        data: { status: 'COMPLETED' }
+                    const dealInvestor = await db.dealInvestor.findFirst({
+                        where: { id: payment.dealInvestorId, deal: { tenantId: payment.tenantId } },
+                        select: { id: true }
                     });
+                    if (dealInvestor) {
+                        await db.dealInvestor.update({
+                            where: { id: dealInvestor.id },
+                            data: { status: 'COMPLETED' }
+                        });
+                    } else {
+                        console.warn(`⚠️ DealInvestor ${payment.dealInvestorId} not found in tenant ${payment.tenantId}`);
+                    }
                 }
             }
         } else {
