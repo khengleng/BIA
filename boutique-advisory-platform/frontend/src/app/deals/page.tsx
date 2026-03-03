@@ -11,6 +11,7 @@ import {
   Edit,
   Trash2,
   X,
+  Coins,
 } from 'lucide-react'
 import DashboardLayout from '../../components/layout/DashboardLayout'
 import { useToast } from '../../contexts/ToastContext'
@@ -37,6 +38,26 @@ export default function DealsPage() {
   const [editingDeal, setEditingDeal] = useState<Deal | null>(null)
   const [deletingDeal, setDeletingDeal] = useState<Deal | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [showTokenizeModal, setShowTokenizeModal] = useState(false)
+  const [tokenizingDeal, setTokenizingDeal] = useState<Deal | null>(null)
+  const [isTokenizing, setIsTokenizing] = useState(false)
+  const [investors, setInvestors] = useState<Array<{ id: string; name: string }>>([])
+
+  const [tokenizeForm, setTokenizeForm] = useState({
+    syndicateName: '',
+    syndicateDescription: '',
+    leadInvestorId: '',
+    targetAmount: '',
+    minInvestment: '1000',
+    maxInvestment: '',
+    managementFee: '2',
+    carryFee: '20',
+    tokenName: '',
+    tokenSymbol: '',
+    pricePerToken: '',
+    totalTokens: '',
+    closingDate: ''
+  })
 
   const [editForm, setEditForm] = useState({
     title: '',
@@ -90,6 +111,17 @@ export default function DealsPage() {
           if (smesResponse.ok) {
             const data = await smesResponse.json()
             setSmes(data)
+          }
+
+          const investorsResponse = await authorizedRequest('/api/investors')
+          if (investorsResponse.ok) {
+            const data = await investorsResponse.json()
+            setInvestors(
+              data.map((inv: any) => ({
+                id: inv.id,
+                name: inv.name || `${inv.user?.firstName || ''} ${inv.user?.lastName || ''}`.trim() || 'Unnamed Investor'
+              }))
+            )
           }
         }
       } catch (error) {
@@ -200,6 +232,81 @@ export default function DealsPage() {
       ...prev,
       [name]: value
     }))
+  }
+
+  const canTokenizeDeal = (deal: Deal) =>
+    (user?.role === 'ADMIN' || user?.role === 'ADVISOR') && deal.status === 'CLOSED'
+
+  const openTokenizeModal = (deal: Deal) => {
+    setTokenizingDeal(deal)
+    const base = deal.amount || 0
+    setTokenizeForm({
+      syndicateName: `${deal.title} Tokenized Syndicate`,
+      syndicateDescription: `Tokenized syndicate generated from closed deal ${deal.title}.`,
+      leadInvestorId: '',
+      targetAmount: base > 0 ? String(base) : '',
+      minInvestment: '1000',
+      maxInvestment: '',
+      managementFee: '2',
+      carryFee: '20',
+      tokenName: `${deal.title} Token`,
+      tokenSymbol: 'CBT',
+      pricePerToken: '1',
+      totalTokens: base > 0 ? String(base) : '',
+      closingDate: ''
+    })
+    setShowTokenizeModal(true)
+  }
+
+  const handleTokenizeInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target
+    setTokenizeForm(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
+
+  const handleTokenizeDeal = async () => {
+    if (!tokenizingDeal) return
+    setIsTokenizing(true)
+
+    try {
+      const payload = {
+        syndicateName: tokenizeForm.syndicateName,
+        syndicateDescription: tokenizeForm.syndicateDescription || undefined,
+        leadInvestorId: tokenizeForm.leadInvestorId,
+        targetAmount: tokenizeForm.targetAmount ? parseFloat(tokenizeForm.targetAmount) : undefined,
+        minInvestment: tokenizeForm.minInvestment ? parseFloat(tokenizeForm.minInvestment) : undefined,
+        maxInvestment: tokenizeForm.maxInvestment ? parseFloat(tokenizeForm.maxInvestment) : undefined,
+        managementFee: tokenizeForm.managementFee ? parseFloat(tokenizeForm.managementFee) : undefined,
+        carryFee: tokenizeForm.carryFee ? parseFloat(tokenizeForm.carryFee) : undefined,
+        tokenName: tokenizeForm.tokenName,
+        tokenSymbol: tokenizeForm.tokenSymbol.toUpperCase(),
+        pricePerToken: parseFloat(tokenizeForm.pricePerToken),
+        totalTokens: parseFloat(tokenizeForm.totalTokens),
+        closingDate: tokenizeForm.closingDate || undefined
+      }
+
+      const response = await authorizedRequest(`/api/deals/${tokenizingDeal.id}/tokenize`, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        addToast('success', data.message || 'Deal tokenized successfully')
+        setShowTokenizeModal(false)
+        setTokenizingDeal(null)
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to tokenize deal' }))
+        addToast('error', errorData.error || 'Failed to tokenize deal')
+      }
+    } catch (error) {
+      console.error('Error tokenizing deal:', error)
+      addToast('error', 'An error occurred while tokenizing deal')
+    } finally {
+      setIsTokenizing(false)
+    }
   }
 
   const getStatusColor = (status: string) => {
@@ -330,6 +437,15 @@ export default function DealsPage() {
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
+                    {canTokenizeDeal(deal) && (
+                      <button
+                        onClick={() => openTokenizeModal(deal)}
+                        className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-sm flex items-center justify-center transition-colors"
+                        title="Tokenize closed deal"
+                      >
+                        <Coins className="w-4 h-4" />
+                      </button>
+                    )}
                   </>
                 )}
               </div>
@@ -495,6 +611,96 @@ export default function DealsPage() {
                 disabled={isSaving}
               >
                 {isSaving ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div> : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showTokenizeModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-700 shadow-xl">
+            <div className="flex justify-between items-center mb-6 border-b border-gray-700 pb-4">
+              <h3 className="text-xl font-semibold text-white">Tokenize Closed Deal</h3>
+              <button onClick={() => setShowTokenizeModal(false)} className="text-gray-400 hover:text-white transition-colors">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">Syndicate Name *</label>
+                <input name="syndicateName" value={tokenizeForm.syndicateName} onChange={handleTokenizeInputChange} className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white" />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">Syndicate Description</label>
+                <textarea name="syndicateDescription" value={tokenizeForm.syndicateDescription} onChange={handleTokenizeInputChange} rows={3} className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Lead Investor *</label>
+                <select name="leadInvestorId" value={tokenizeForm.leadInvestorId} onChange={handleTokenizeInputChange} className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white">
+                  <option value="">Select lead investor</option>
+                  {investors.map((inv) => (
+                    <option key={inv.id} value={inv.id}>{inv.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Target Amount</label>
+                <input type="number" min="0" name="targetAmount" value={tokenizeForm.targetAmount} onChange={handleTokenizeInputChange} className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Token Name *</label>
+                <input name="tokenName" value={tokenizeForm.tokenName} onChange={handleTokenizeInputChange} className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Token Symbol *</label>
+                <input name="tokenSymbol" value={tokenizeForm.tokenSymbol} onChange={handleTokenizeInputChange} maxLength={12} className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white uppercase" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Price Per Token *</label>
+                <input type="number" min="0.000001" step="any" name="pricePerToken" value={tokenizeForm.pricePerToken} onChange={handleTokenizeInputChange} className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Total Tokens *</label>
+                <input type="number" min="1" step="any" name="totalTokens" value={tokenizeForm.totalTokens} onChange={handleTokenizeInputChange} className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Min Investment</label>
+                <input type="number" min="0" name="minInvestment" value={tokenizeForm.minInvestment} onChange={handleTokenizeInputChange} className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Max Investment</label>
+                <input type="number" min="0" name="maxInvestment" value={tokenizeForm.maxInvestment} onChange={handleTokenizeInputChange} className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Management Fee (%)</label>
+                <input type="number" min="0" step="0.01" name="managementFee" value={tokenizeForm.managementFee} onChange={handleTokenizeInputChange} className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Carry Fee (%)</label>
+                <input type="number" min="0" step="0.01" name="carryFee" value={tokenizeForm.carryFee} onChange={handleTokenizeInputChange} className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white" />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">Closing Date</label>
+                <input type="date" name="closingDate" value={tokenizeForm.closingDate} onChange={handleTokenizeInputChange} className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white" />
+              </div>
+            </div>
+
+            <div className="flex space-x-3 mt-8">
+              <button
+                onClick={() => setShowTokenizeModal(false)}
+                className="flex-1 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2.5 rounded-lg transition-colors border border-gray-600"
+                disabled={isTokenizing}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleTokenizeDeal}
+                className="flex-1 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-lg transition-colors flex justify-center items-center"
+                disabled={isTokenizing}
+              >
+                {isTokenizing ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div> : 'Tokenize Deal'}
               </button>
             </div>
           </div>
