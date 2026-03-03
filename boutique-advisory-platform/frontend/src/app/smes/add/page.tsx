@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Building2, Save } from 'lucide-react'
+import { ArrowLeft, Save } from 'lucide-react'
 import DashboardLayout from '../../../components/layout/DashboardLayout'
 import { authorizedRequest } from '@/lib/api'
 
