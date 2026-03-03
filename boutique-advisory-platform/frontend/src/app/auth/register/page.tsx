@@ -6,6 +6,7 @@ import { useTranslations } from '../../../hooks/useTranslations'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, Mail, Lock, User, Building2, Users, Handshake } from 'lucide-react'
+import { IS_TRADING_PLATFORM } from '@/lib/platform'
 
 export default function RegisterPage() {
   const { t } = useTranslations()
@@ -13,13 +14,14 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const defaultRole = IS_TRADING_PLATFORM ? 'INVESTOR' : 'SME'
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'SME',
+    role: defaultRole,
     agreeToTerms: false
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -29,6 +31,9 @@ export default function RegisterPage() {
     { value: 'INVESTOR', label: 'Investor', icon: Users, description: 'Individual or institutional investor' },
     { value: 'ADVISOR', label: 'Advisor', icon: Handshake, description: 'Professional advisory services' }
   ]
+  const availableRoles = IS_TRADING_PLATFORM
+    ? roles.filter((role) => role.value === 'INVESTOR')
+    : roles
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
@@ -128,7 +133,9 @@ export default function RegisterPage() {
             {t('auth.register')}
           </h2>
           <p className="mt-2 text-center text-sm text-gray-300">
-            Create your Boutique Advisory account
+            {IS_TRADING_PLATFORM
+              ? 'Create your CamboBia Trading investor account'
+              : 'Create your Boutique Advisory account'}
           </p>
         </div>
 
@@ -146,7 +153,7 @@ export default function RegisterPage() {
                 I am a:
               </label>
               <div className="space-y-2">
-                {roles.map((role) => (
+                {availableRoles.map((role) => (
                   <label
                     key={role.value}
                     className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${formData.role === role.value
@@ -177,6 +184,11 @@ export default function RegisterPage() {
                   </label>
                 ))}
               </div>
+              {IS_TRADING_PLATFORM && (
+                <p className="mt-2 text-xs text-gray-400">
+                  Trading platform registrations are limited to investor accounts.
+                </p>
+              )}
             </div>
 
             {/* Name Fields */}

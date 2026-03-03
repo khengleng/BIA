@@ -42,6 +42,7 @@ import { useTranslations } from '../../hooks/useTranslations'
 import { User } from '../../types'
 import { API_URL, authorizedRequest } from '@/lib/api'
 import { hasPermission as hasUiPermission } from '@/lib/permissions'
+import { IS_TRADING_PLATFORM } from '@/lib/platform'
 import NotificationCenter from '../NotificationCenter'
 import LanguageSwitcher from '../LanguageSwitcher'
 import Chatbot from '../Chatbot'
@@ -140,7 +141,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         return pathname === path || pathname?.startsWith(`${path}/`)
     }
 
-    const navSections = [
+    const coreNavSections = [
         {
             label: 'Workspace',
             roles: ['ADMIN', 'SUPER_ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
@@ -214,6 +215,26 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         },
     ]
 
+    const tradingNavSections = [
+        {
+            label: 'Trading',
+            roles: ['ADMIN', 'SUPER_ADMIN', 'INVESTOR'],
+            items: [
+                { href: '/secondary-trading', label: 'Marketplace', icon: ArrowLeftRight, roles: ['INVESTOR', 'ADMIN', 'SUPER_ADMIN'] },
+                { href: '/investor/portfolio', label: 'My Portfolio', icon: Briefcase, roles: ['INVESTOR', 'ADMIN', 'SUPER_ADMIN'] },
+            ]
+        },
+        {
+            label: 'Security',
+            roles: ['ADMIN', 'SUPER_ADMIN', 'INVESTOR'],
+            items: [
+                { href: '/settings/sessions', label: 'Manage Sessions', icon: ShieldCheck, roles: ['ADMIN', 'SUPER_ADMIN', 'INVESTOR'] },
+            ]
+        },
+    ]
+
+    const navSections = IS_TRADING_PLATFORM ? tradingNavSections : coreNavSections;
+
     const filteredNavSections = navSections.map((section: any) => {
         if (!user) return null
         if (section.roles && !section.roles.includes(user.role)) return null
@@ -258,7 +279,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                         <Building2 className="w-5 h-5 text-white" />
                     </div>
-                    <span className="font-bold text-white text-lg tracking-tight">BIA Platform</span>
+                    <span className="font-bold text-white text-lg tracking-tight">{IS_TRADING_PLATFORM ? 'CamboBia Trading' : 'BIA Platform'}</span>
                 </div>
                 <div className="flex items-center space-x-3">
                     <LanguageSwitcher />
@@ -283,7 +304,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                         <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                             <Building2 className="w-6 h-6 text-white" />
                         </div>
-                        <h1 className="text-xl font-bold text-white">Boutique Advisory</h1>
+                        <h1 className="text-xl font-bold text-white">{IS_TRADING_PLATFORM ? 'CamboBia Trading' : 'Boutique Advisory'}</h1>
                     </div>
                     <LanguageSwitcher />
                 </div>
@@ -344,7 +365,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                             <p className="text-xs text-gray-400 capitalize truncate">
                                 {user?.role.toLowerCase()}
                             </p>
-                            {(user?.role === 'SME' || user?.role === 'INVESTOR') && (
+                            {!IS_TRADING_PLATFORM && (user?.role === 'SME' || user?.role === 'INVESTOR') && (
                                 <button
                                     onClick={handleSwitchRole}
                                     className="text-[10px] text-blue-400 hover:text-blue-300 mt-1 flex items-center gap-1 transition-colors"

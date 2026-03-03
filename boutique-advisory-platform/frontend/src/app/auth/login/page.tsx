@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, Mail, Lock, Building2 } from 'lucide-react'
 import { apiRequest } from '../../../lib/api'
+import { IS_TRADING_PLATFORM } from '@/lib/platform'
 
 export default function LoginPage() {
   const { t } = useTranslations()
@@ -24,6 +25,7 @@ export default function LoginPage() {
     rememberMe: false
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const postLoginPath = IS_TRADING_PLATFORM ? '/secondary-trading' : '/dashboard'
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -115,7 +117,7 @@ export default function LoginPage() {
         const data = await response.safeJson()
         // localStorage.setItem('token', data.token)
         localStorage.setItem('user', JSON.stringify(data.user))
-        router.push('/dashboard')
+        router.push(postLoginPath)
       } else {
         const errorData = await response.safeJson()
         setErrors({ general: errorData.error || 'Invalid code' })
@@ -155,7 +157,7 @@ export default function LoginPage() {
         } else {
           // localStorage.setItem('token', data.token) // Token is now in HttpOnly cookie
           localStorage.setItem('user', JSON.stringify(data.user))
-          router.push('/dashboard')
+          router.push(postLoginPath)
         }
       } else {
         const errorMsg = data.error || 'Login failed';
@@ -185,7 +187,7 @@ export default function LoginPage() {
         <p className="mt-2 text-center text-sm text-gray-300">
           {step === '2fa'
             ? 'Enter the 6-digit code from your authenticator app'
-            : 'Sign in to your Boutique Advisory account'}
+            : (IS_TRADING_PLATFORM ? 'Sign in to your CamboBia Trading account' : 'Sign in to your Boutique Advisory account')}
         </p>
       </div>
 

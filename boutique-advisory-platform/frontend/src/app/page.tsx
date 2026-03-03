@@ -4,9 +4,68 @@ import Link from 'next/link'
 import { Building2, Users, Handshake, Shield, TrendingUp } from 'lucide-react'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import { useTranslations } from '../hooks/useTranslations'
+import { IS_TRADING_PLATFORM } from '@/lib/platform'
 
 export default function HomePage() {
   const { t } = useTranslations()
+
+  if (IS_TRADING_PLATFORM) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+        <header className="bg-white/10 backdrop-blur-md border-b border-white/20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center py-4">
+              <div className="flex items-center space-x-4">
+                <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                  <Building2 className="w-6 h-6 text-white" />
+                </div>
+                <h1 className="text-2xl font-bold text-white">CamboBia Trading</h1>
+              </div>
+              <div className="flex items-center space-x-4">
+                <LanguageSwitcher />
+                <Link
+                  href="/auth/login"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                >
+                  {t('auth.login', 'Login')}
+                </Link>
+                <Link
+                  href="/auth/register"
+                  className="bg-white/10 hover:bg-white/20 text-white px-6 py-2 rounded-lg font-medium border border-white/20 transition-colors"
+                >
+                  {t('auth.register', 'Register')}
+                </Link>
+              </div>
+            </div>
+          </div>
+        </header>
+        <section className="py-20 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-4xl mx-auto text-center">
+            <h1 className="text-5xl md:text-6xl font-bold text-white mb-6">
+              CamboBia Token <span className="text-blue-400">Trading</span>
+            </h1>
+            <p className="text-xl text-gray-300 mb-8">
+              A separate marketplace for investors to buy and sell eligible tokenized positions.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link
+                href="/secondary-trading"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-medium text-lg transition-colors"
+              >
+                Open Marketplace
+              </Link>
+              <Link
+                href="/auth/register"
+                className="bg-white/10 hover:bg-white/20 text-white px-8 py-3 rounded-lg font-medium text-lg border border-white/20 transition-colors"
+              >
+                Create Investor Account
+              </Link>
+            </div>
+          </div>
+        </section>
+      </div>
+    )
+  }
 
   const features = [
     {
