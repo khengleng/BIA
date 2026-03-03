@@ -32,6 +32,7 @@ export function validateSecurityConfiguration(): { success: boolean; results: Se
 
     // Check ENCRYPTION_KEY
     results.push(checkEncryptionKey());
+    results.push(checkServiceModeConfiguration());
 
     // ============================================
     // HIGH PRIORITY CHECKS
@@ -42,6 +43,7 @@ export function validateSecurityConfiguration(): { success: boolean; results: Se
 
     // Check CORS configuration
     results.push(checkCorsConfiguration());
+    results.push(checkPlatformBoundaryConfiguration());
 
     // Check rate limiting
     results.push(checkRateLimiting());
@@ -255,9 +257,11 @@ function checkCookieSettings(): SecurityCheckResult {
 
 function checkCorsConfiguration(): SecurityCheckResult {
     const frontendUrl = process.env.FRONTEND_URL;
+    const tradingFrontendUrl = process.env.TRADING_FRONTEND_URL;
+    const serviceMode = (process.env.SERVICE_MODE || 'core').toLowerCase();
     const isProduction = process.env.NODE_ENV === 'production';
 
-    if (isProduction && !frontendUrl) {
+    if (isProduction && !frontendUrl && serviceMode !== 'trading') {
         return {
             name: 'CORS Configuration',
             passed: false,
@@ -265,12 +269,20 @@ function checkCorsConfiguration(): SecurityCheckResult {
             severity: 'HIGH'
         };
     }
-
-    if (frontendUrl?.includes('*')) {
+    if (isProduction && !tradingFrontendUrl && serviceMode === 'trading') {
         return {
             name: 'CORS Configuration',
             passed: false,
-            message: 'FRONTEND_URL contains wildcard - not recommended for production',
+            message: 'TRADING_FRONTEND_URL not set for trading mode',
+            severity: 'HIGH'
+        };
+    }
+
+    if (frontendUrl?.includes('*') || tradingFrontendUrl?.includes('*')) {
+        return {
+            name: 'CORS Configuration',
+            passed: false,
+            message: 'FRONTEND_URL/TRADING_FRONTEND_URL contains wildcard - not recommended for production',
             severity: 'HIGH'
         };
     }
@@ -279,6 +291,125 @@ function checkCorsConfiguration(): SecurityCheckResult {
         name: 'CORS Configuration',
         passed: true,
         message: frontendUrl ? `CORS configured for: ${frontendUrl}` : 'CORS will allow localhost in development',
+        severity: 'HIGH'
+    };
+}
+
+function checkServiceModeConfiguration(): SecurityCheckResult {
+    const mode = (process.env.SERVICE_MODE || 'core').toLowerCase();
+    if (mode !== 'core' && mode !== 'trading') {
+        return {
+            name: 'SERVICE_MODE',
+            passed: false,
+            message: `Invalid SERVICE_MODE "${mode}". Allowed values: core, trading`,
+            severity: 'CRITICAL'
+        };
+    }
+
+    return {
+        name: 'SERVICE_MODE',
+        passed: true,
+        message: `SERVICE_MODE is "${mode}"`,
+        severity: 'CRITICAL'
+    };
+}
+
+function checkPlatformBoundaryConfiguration(): SecurityCheckResult {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const mode = (process.env.SERVICE_MODE || 'core').toLowerCase();
+    const coreUrl = process.env.FRONTEND_URL || '';
+    const tradingUrl = process.env.TRADING_FRONTEND_URL || '';
+    const ssoInternalApiKey = process.env.SSO_INTERNAL_API_KEY || '';
+    const coreConsumeUrl = process.env.CORE_SSO_CONSUME_URL || '';
+
+    if (!isProduction) {
+        return {
+            name: 'Platform Boundary',
+            passed: true,
+            message: 'Development mode - strict platform boundary checks relaxed',
+            severity: 'HIGH'
+        };
+    }
+
+    if (!ssoInternalApiKey || ssoInternalApiKey.length < 32) {
+        return {
+            name: 'Platform Boundary',
+            passed: false,
+            message: 'SSO_INTERNAL_API_KEY is missing or too short (min 32 chars)',
+            severity: 'CRITICAL'
+        };
+    }
+
+    if (mode === 'core' && !coreUrl) {
+        return {
+            name: 'Platform Boundary',
+            passed: false,
+            message: 'FRONTEND_URL is required in core mode',
+            severity: 'HIGH'
+        };
+    }
+
+    if (mode === 'trading') {
+        if (!tradingUrl) {
+            return {
+                name: 'Platform Boundary',
+                passed: false,
+                message: 'TRADING_FRONTEND_URL is required in trading mode',
+                severity: 'HIGH'
+            };
+        }
+        if (!coreConsumeUrl) {
+            return {
+                name: 'Platform Boundary',
+                passed: false,
+                message: 'CORE_SSO_CONSUME_URL is required in trading mode for secure SSO exchange',
+                severity: 'HIGH'
+            };
+        }
+    }
+
+    try {
+        if (coreUrl && !coreUrl.startsWith('https://')) {
+            return {
+                name: 'Platform Boundary',
+                passed: false,
+                message: 'FRONTEND_URL must use https:// in production',
+                severity: 'HIGH'
+            };
+        }
+        if (tradingUrl && !tradingUrl.startsWith('https://')) {
+            return {
+                name: 'Platform Boundary',
+                passed: false,
+                message: 'TRADING_FRONTEND_URL must use https:// in production',
+                severity: 'HIGH'
+            };
+        }
+        if (coreUrl && tradingUrl) {
+            const coreHost = new URL(coreUrl).hostname;
+            const tradingHost = new URL(tradingUrl).hostname;
+            if (coreHost === tradingHost) {
+                return {
+                    name: 'Platform Boundary',
+                    passed: false,
+                    message: 'Core and trading frontend hostnames must be different for compliance separation',
+                    severity: 'HIGH'
+                };
+            }
+        }
+    } catch {
+        return {
+            name: 'Platform Boundary',
+            passed: false,
+            message: 'FRONTEND_URL/TRADING_FRONTEND_URL format is invalid',
+            severity: 'HIGH'
+        };
+    }
+
+    return {
+        name: 'Platform Boundary',
+        passed: true,
+        message: 'Platform boundary and SSO isolation settings are configured',
         severity: 'HIGH'
     };
 }

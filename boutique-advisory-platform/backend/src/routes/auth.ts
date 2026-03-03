@@ -43,6 +43,9 @@ function getSsoInternalApiKey(): string {
 }
 
 function getCoreSsoConsumeUrl(): string {
+  if (process.env.NODE_ENV === 'production' && !process.env.CORE_SSO_CONSUME_URL) {
+    throw new Error('CORE_SSO_CONSUME_URL not configured');
+  }
   return process.env.CORE_SSO_CONSUME_URL || 'http://backend.railway.internal:8080/api/auth/sso/trading/consume';
 }
 
@@ -61,6 +64,9 @@ async function consumeSsoCodeOnce(code: string): Promise<any | null> {
 }
 
 function getTradingFrontendBaseUrl(): string {
+  if (process.env.NODE_ENV === 'production' && !process.env.TRADING_FRONTEND_URL) {
+    throw new Error('TRADING_FRONTEND_URL not configured');
+  }
   return (process.env.TRADING_FRONTEND_URL || 'https://trade.cambobia.com').replace(/\/+$/, '');
 }
 

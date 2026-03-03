@@ -350,6 +350,7 @@ app.use((req: express.Request, res: express.Response, next: express.NextFunction
 
 // CORS configuration - strict in production
 app.use((req, res, next) => {
+  res.setHeader('X-Platform-Mode', serviceMode);
   cors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
@@ -365,10 +366,15 @@ app.use((req, res, next) => {
       const frontendUrl = process.env.FRONTEND_URL || '';
       const tradingFrontendUrl = process.env.TRADING_FRONTEND_URL || '';
       const corsOriginsEnv = process.env.CORS_ORIGIN || '';
+      const allowCrossPlatformCors = process.env.ALLOW_CROSS_PLATFORM_CORS === 'true';
       const allowedOrigins = new Set<string>();
-      const allowedHostnames = new Set<string>(['cambobia.com', 'www.cambobia.com', 'trade.cambobia.com']);
+      const allowedHostnames = new Set<string>(
+        isTradingService
+          ? ['trade.cambobia.com']
+          : ['cambobia.com', 'www.cambobia.com']
+      );
 
-      if (frontendUrl) {
+      if (!isTradingService && frontendUrl) {
         try {
           const parsedFrontend = new URL(frontendUrl);
           allowedOrigins.add(parsedFrontend.origin);
@@ -378,13 +384,35 @@ app.use((req, res, next) => {
         }
       }
 
-      if (tradingFrontendUrl) {
+      if (isTradingService && tradingFrontendUrl) {
         try {
           const parsedTrading = new URL(tradingFrontendUrl);
           allowedOrigins.add(parsedTrading.origin);
           allowedHostnames.add(parsedTrading.hostname);
         } catch {
           // Ignore invalid TRADING_FRONTEND_URL and rely on fallback hostnames.
+        }
+      }
+
+      // Temporary migration override for cross-platform access. Keep disabled in production by default.
+      if (allowCrossPlatformCors) {
+        if (frontendUrl) {
+          try {
+            const parsedFrontend = new URL(frontendUrl);
+            allowedOrigins.add(parsedFrontend.origin);
+            allowedHostnames.add(parsedFrontend.hostname);
+          } catch {
+            // no-op
+          }
+        }
+        if (tradingFrontendUrl) {
+          try {
+            const parsedTrading = new URL(tradingFrontendUrl);
+            allowedOrigins.add(parsedTrading.origin);
+            allowedHostnames.add(parsedTrading.hostname);
+          } catch {
+            // no-op
+          }
         }
       }
 
