@@ -181,6 +181,25 @@ async function ensureAdminAccount() {
   }
 }
 
+async function ensureDefaultTenant() {
+  try {
+    await prisma.tenant.upsert({
+      where: { id: 'default' },
+      update: {},
+      create: {
+        id: 'default',
+        name: 'Boutique Advisory',
+        domain: 'cambobia.com',
+        settings: {}
+      }
+    });
+    console.log('✅ Default tenant ensured');
+  } catch (error: any) {
+    console.error('❌ Failed to ensure default tenant:', error.message);
+    throw error;
+  }
+}
+
 
 // Extend Express Request interface
 declare global {
@@ -922,6 +941,7 @@ async function startServer() {
 
       // Run admin sync
       startupPhase = 'syncing_admin';
+      await ensureDefaultTenant();
       await ensureAdminAccount();
 
       startupPhase = 'operational';

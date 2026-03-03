@@ -11,7 +11,7 @@ import { IS_TRADING_PLATFORM } from '@/lib/platform'
 export default function RegisterPage() {
   const { t } = useTranslations()
   const router = useRouter()
-  const isTradingRuntime = IS_TRADING_PLATFORM || (typeof window !== 'undefined' && window.location.hostname === 'trade.cambobia.com')
+  const [isTradingRuntime, setIsTradingRuntime] = useState(IS_TRADING_PLATFORM)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -35,6 +35,11 @@ export default function RegisterPage() {
   const availableRoles = isTradingRuntime
     ? roles.filter((role) => role.value === 'INVESTOR')
     : roles
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    setIsTradingRuntime(IS_TRADING_PLATFORM || window.location.hostname === 'trade.cambobia.com')
+  }, [])
 
   useEffect(() => {
     if (!isTradingRuntime) return

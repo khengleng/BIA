@@ -5,6 +5,11 @@ import { Request } from 'express';
  * In production, only hostname-derived tenanting is trusted.
  */
 export function getTenantId(req: Request): string {
+  const serviceMode = (process.env.SERVICE_MODE || 'core').toLowerCase();
+  if (serviceMode === 'trading') {
+    return process.env.TRADING_TENANT_ID || 'default';
+  }
+
   const isProduction = process.env.NODE_ENV === 'production';
 
   // Use Express-trusted hostname only (avoid direct trust in forwarded headers).
