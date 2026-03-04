@@ -349,9 +349,16 @@ export default function DataRoomPage() {
                 body: JSON.stringify({ action: 'DOWNLOADED' })
             })
 
+            if (!doc.url) {
+                addToast('error', 'File URL is not available for this document')
+                return
+            }
+
+            window.open(doc.url, '_blank', 'noopener,noreferrer')
             addToast('success', `Downloading: ${doc.name}`)
         } catch (error) {
             console.error('Error logging download:', error)
+            addToast('error', 'Failed to download document')
         }
     }
 

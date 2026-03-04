@@ -277,6 +277,81 @@ router.get('/:dealId', authorize('dataroom.read'), async (req: AuthenticatedRequ
     }
 });
 
+// Track document access (view/download)
+router.post('/:dealId/documents/:docId/access', authorize('dataroom.read'), async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const { dealId, docId } = req.params;
+        const action = String(req.body?.action || '').toUpperCase();
+        const userId = req.user?.id;
+        const userRole = req.user?.role;
+        const tenantId = req.user?.tenantId || 'default';
+        const isSuperAdmin = userRole === 'SUPER_ADMIN';
+
+        if (!userId) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+
+        if (!['VIEWED', 'DOWNLOADED'].includes(action)) {
+            return res.status(400).json({ error: 'Invalid access action' });
+        }
+
+        const deal = await (prisma as any).deal.findFirst({
+            where: isSuperAdmin ? { id: dealId } : { id: dealId, tenantId },
+            include: {
+                sme: true,
+                investors: {
+                    include: {
+                        investor: true
+                    }
+                }
+            }
+        });
+
+        if (!deal) {
+            return res.status(404).json({ error: 'Data room not found' });
+        }
+
+        const document = await (prisma as any).document.findFirst({
+            where: {
+                id: docId,
+                dealId: deal.id,
+                ...(isSuperAdmin ? {} : { tenantId })
+            }
+        });
+
+        if (!document) {
+            return res.status(404).json({ error: 'Document not found' });
+        }
+
+        const isInvestor = deal.investors.some((inv: any) => inv.investor.userId === userId);
+        const isOwner = deal.sme.userId === userId;
+        const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
+
+        if (!isInvestor && !isOwner && !isAdmin) {
+            return res.status(403).json({ error: 'Access denied to this document' });
+        }
+
+        await prisma.activityLog.create({
+            data: {
+                tenantId: deal.tenantId,
+                userId,
+                action: action === 'DOWNLOADED' ? 'DATAROOM_DOCUMENT_DOWNLOADED' : 'DATAROOM_DOCUMENT_VIEWED',
+                entityId: document.id,
+                entityType: 'DOCUMENT',
+                metadata: {
+                    dealId: deal.id,
+                    documentName: document.name
+                }
+            }
+        });
+
+        return res.json({ message: 'Access logged' });
+    } catch (error: any) {
+        console.error('Dataroom access logging error:', error);
+        return res.status(500).json({ error: 'Internal server error', details: error.message });
+    }
+});
+
 // Delete document from dataroom
 router.delete('/:documentId', authorize('dataroom.delete', {
     getOwnerId: async (req) => {
