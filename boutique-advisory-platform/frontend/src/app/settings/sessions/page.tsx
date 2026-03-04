@@ -76,19 +76,25 @@ export default function SessionsPage() {
         }
     }
 
-    const parseUserAgent = (ua: string) => {
-        if (ua.includes('iPhone')) return 'iPhone'
-        if (ua.includes('Android')) return 'Android Device'
-        if (ua.includes('Macintosh')) return 'Mac'
-        if (ua.includes('Windows')) return 'Windows PC'
+    const parseUserAgent = (uaRaw: string) => {
+        const ua = (uaRaw || '').toLowerCase()
+
+        // Prefer desktop signatures first to avoid false "Android" labels on mixed strings.
+        if (ua.includes('macintosh') || ua.includes('mac os x')) return 'Mac'
+        if (ua.includes('windows nt')) return 'Windows PC'
+        if (ua.includes('iphone')) return 'iPhone'
+        if (ua.includes('ipad')) return 'iPad'
+        if (ua.includes('android')) return 'Android Device'
+        if (ua.includes('linux')) return 'Linux Device'
         return 'Unknown Device'
     }
 
-    const parseBrowser = (ua: string) => {
-        if (ua.includes('Chrome')) return 'Chrome'
-        if (ua.includes('Firefox')) return 'Firefox'
-        if (ua.includes('Safari')) return 'Safari'
-        if (ua.includes('Edge')) return 'Edge'
+    const parseBrowser = (uaRaw: string) => {
+        const ua = (uaRaw || '').toLowerCase()
+        if (ua.includes('edg/')) return 'Edge'
+        if (ua.includes('firefox/')) return 'Firefox'
+        if (ua.includes('chrome/')) return 'Chrome'
+        if (ua.includes('safari/')) return 'Safari'
         return 'Web Browser'
     }
 
