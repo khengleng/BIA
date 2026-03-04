@@ -94,6 +94,8 @@ router.get('/profile', async (req: any, res: Response) => {
 router.get('/portfolio/stats', authorize('investor.read', { getOwnerId: (req) => req.user?.id }), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user?.id;
+    const userRole = req.user?.role;
+    const tenantId = req.user?.tenantId || 'default';
 
     // Get investor profile
     let investor = await prisma.investor.findUnique({
@@ -101,7 +103,104 @@ router.get('/portfolio/stats', authorize('investor.read', { getOwnerId: (req) =>
     });
 
     if (!investor) {
-      return res.status(404).json({ error: 'Investor profile not found' });
+      const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
+      if (!isAdmin) {
+        return res.status(404).json({ error: 'Investor profile not found' });
+      }
+
+      // Admin/Super Admin fallback: return tenant-wide aggregate portfolio.
+      const [dealInvestments, syndicateInvestments] = await Promise.all([
+        prisma.dealInvestor.findMany({
+          where: {
+            deal: { tenantId },
+            status: { in: ['COMPLETED', 'APPROVED'] }
+          },
+          include: {
+            deal: {
+              include: {
+                sme: true
+              }
+            }
+          }
+        }),
+        prisma.syndicateMember.findMany({
+          where: {
+            syndicate: { deal: { tenantId } },
+            status: 'APPROVED'
+          },
+          include: {
+            syndicate: {
+              include: {
+                deal: {
+                  include: {
+                    sme: true
+                  }
+                }
+              }
+            }
+          }
+        })
+      ]);
+
+      const dealAum = dealInvestments.reduce((sum, inv) => sum + (inv.amount || 0), 0);
+      const syndicateAum = syndicateInvestments.reduce((sum, inv) => sum + (inv.amount || 0), 0);
+      const totalAum = dealAum + syndicateAum;
+
+      const allInvestments = [
+        ...dealInvestments.map(i => ({ date: i.createdAt, amount: i.amount, sector: i.deal?.sme?.sector })),
+        ...syndicateInvestments.map(i => ({ date: i.joinedAt, amount: i.amount, sector: i.syndicate?.deal?.sme?.sector || 'Syndicate' }))
+      ];
+
+      const startDate = allInvestments.length > 0
+        ? allInvestments.reduce((earliest, inv) => inv.date < earliest ? inv.date : earliest, new Date())
+        : new Date();
+
+      const sectorMap = new Map<string, number>();
+      allInvestments.forEach(inv => {
+        const sector = inv.sector || 'General';
+        const current = sectorMap.get(sector) || 0;
+        sectorMap.set(sector, current + (inv.amount || 0));
+      });
+
+      const sectors = Array.from(sectorMap.entries()).map(([sector, amount]) => {
+        const percentage = totalAum > 0 ? (amount / totalAum) * 100 : 0;
+        return {
+          sector,
+          allocation: parseFloat(percentage.toFixed(1)),
+          value: amount,
+          color: getColorForSector(sector)
+        };
+      }).sort((a, b) => b.value - a.value);
+
+      const topDeals = dealInvestments
+        .sort((a, b) => b.amount - a.amount)
+        .slice(0, 50)
+        .map(inv => ({
+          id: inv.dealId,
+          parentId: inv.dealId,
+          investmentId: inv.id,
+          type: 'DEAL' as const,
+          name: inv.deal?.sme?.name || inv.deal?.title || 'Unknown Company',
+          sector: inv.deal?.sme?.sector || 'General',
+          allocation: totalAum > 0 ? parseFloat(((inv.amount / totalAum) * 100).toFixed(1)) : 0,
+          value: inv.amount,
+          shares: inv.amount,
+          returns: 0,
+          color: getColorForSector(inv.deal?.sme?.sector || 'General')
+        }));
+
+      return res.json({
+        summary: {
+          totalAum,
+          activePositions: dealInvestments.length + syndicateInvestments.length,
+          realizedRoi: 0,
+          totalPerformance: 0,
+          startDate,
+          kycStatus: 'VERIFIED'
+        },
+        sectors,
+        items: topDeals
+      });
     }
 
     // 1. Get all completed/approved investments (Deals & Syndicates)
