@@ -24,6 +24,7 @@ export const useSocketContext = () => {
 
 export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     const socketRef = useRef<Socket | null>(null)
+    const intentionalDisconnectRef = useRef(false)
     const [isConnected, setIsConnected] = useState(false)
     const [lastNotification, setLastNotification] = useState<any>(null)
     const [user, setUser] = useState<any>(null)
@@ -61,12 +62,21 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
             ? window.location.origin
             : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003')
 
+        const isAuthRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/auth/')
+
         if (!user) {
             if (socketRef.current) {
+                intentionalDisconnectRef.current = true
+                socketRef.current.io.opts.reconnection = false
+                socketRef.current.removeAllListeners()
                 socketRef.current.disconnect()
                 socketRef.current = null
                 setIsConnected(false)
             }
+            return
+        }
+
+        if (isAuthRoute) {
             return
         }
 
@@ -76,6 +86,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
                 path: '/api-proxy/socket.io',
                 withCredentials: true,
                 transports: ['websocket', 'polling'],
+                autoConnect: false,
                 reconnection: true,
                 reconnectionAttempts: 5,
                 reconnectionDelay: 1000,
@@ -85,12 +96,21 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
 
             socket.on('connect', () => {
                 console.log('📡 Connected to WebSocket')
+                intentionalDisconnectRef.current = false
                 setIsConnected(true)
             })
 
             socket.on('disconnect', () => {
-                console.log('📡 Disconnected from WebSocket')
+                if (!intentionalDisconnectRef.current) {
+                    console.log('📡 Disconnected from WebSocket')
+                }
                 setIsConnected(false)
+            })
+
+            socket.on('connect_error', (error) => {
+                if (!intentionalDisconnectRef.current) {
+                    console.log('📡 WebSocket connect error:', error?.message || 'connection failed')
+                }
             })
 
             socket.on('notification', (notification) => {
@@ -101,6 +121,8 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
             socket.on('system_alert', (alert) => {
                 console.log('⚠️ System alert:', alert.message)
             })
+
+            socket.connect()
         }
 
         return () => {
