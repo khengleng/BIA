@@ -97,6 +97,17 @@ export default function SessionsPage() {
             ''
         ).toLowerCase()
         const ua = (navigator.userAgent || '').toLowerCase()
+        const isDesktopHardware = navigator.maxTouchPoints === 0 &&
+            typeof window.matchMedia === 'function' &&
+            window.matchMedia('(pointer:fine)').matches
+
+        // Prefer actual hardware capabilities over UA strings.
+        if (isDesktopHardware) {
+            if (platform.includes('mac') || ua.includes('macintosh') || ua.includes('mac os x')) return 'Mac'
+            if (platform.includes('win') || ua.includes('windows nt')) return 'Windows PC'
+            if (platform.includes('linux')) return 'Linux Desktop'
+            return 'Desktop Browser'
+        }
 
         if (platform.includes('mac')) return 'Mac'
         if (platform.includes('win')) return 'Windows PC'
