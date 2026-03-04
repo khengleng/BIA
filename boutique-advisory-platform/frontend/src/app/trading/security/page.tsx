@@ -63,8 +63,8 @@ export default function TradingSecurityPage() {
                     setCurrentSessionId(data.currentSessionId || null)
                 }
             } catch (error) {
-                console.error('Failed loading investor security data', error)
-                addToast('error', 'Failed to load investor security settings')
+                console.error('Failed loading account security data', error)
+                addToast('error', 'Failed to load account security settings')
             } finally {
                 setIsLoading(false)
             }

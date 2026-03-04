@@ -6,6 +6,7 @@ import { ArrowUpRight, Search, Star } from 'lucide-react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import { authorizedRequest } from '@/lib/api'
 import { useToast } from '@/contexts/ToastContext'
+import usePermissions from '@/hooks/usePermissions'
 
 interface Listing {
     id: string
@@ -29,27 +30,30 @@ interface Listing {
 
 export default function TradingMarketsPage() {
     const { addToast } = useToast()
+    const { user } = usePermissions()
     const [isLoading, setIsLoading] = useState(true)
     const [query, setQuery] = useState('')
     const [listings, setListings] = useState<Listing[]>([])
     const [watchlistIds, setWatchlistIds] = useState<string[]>([])
+    const role = String(user?.role || '').toUpperCase()
+    const isOperator = role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'SUPPORT'
 
     useEffect(() => {
         const load = async () => {
             try {
-                const [listingsRes, watchlistRes] = await Promise.all([
-                    authorizedRequest('/api/secondary-trading/listings'),
-                    authorizedRequest('/api/secondary-trading/watchlist')
-                ])
+                const listingsRes = await authorizedRequest('/api/secondary-trading/listings')
 
                 if (listingsRes.ok) {
                     const data = await listingsRes.json()
                     setListings(Array.isArray(data) ? data : [])
                 }
 
-                if (watchlistRes.ok) {
-                    const data = await watchlistRes.json()
-                    setWatchlistIds(Array.isArray(data.listingIds) ? data.listingIds : [])
+                if (!isOperator) {
+                    const watchlistRes = await authorizedRequest('/api/secondary-trading/watchlist')
+                    if (watchlistRes.ok) {
+                        const data = await watchlistRes.json()
+                        setWatchlistIds(Array.isArray(data.listingIds) ? data.listingIds : [])
+                    }
                 }
             } catch (error) {
                 console.error('Failed to load trading markets', error)
@@ -60,7 +64,7 @@ export default function TradingMarketsPage() {
         }
 
         load()
-    }, [addToast])
+    }, [addToast, isOperator])
 
     const filtered = useMemo(() => {
         const q = query.trim().toLowerCase()
@@ -83,15 +87,21 @@ export default function TradingMarketsPage() {
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div>
                         <h1 className="text-3xl font-bold text-white">Markets</h1>
-                        <p className="text-gray-400 mt-1">Browse tradable tokenized SME units with live liquidity snapshots.</p>
+                        <p className="text-gray-400 mt-1">
+                            {isOperator
+                                ? 'Monitor tokenized SME markets, liquidity, and listing health.'
+                                : 'Browse tradable tokenized SME units with live liquidity snapshots.'}
+                        </p>
                     </div>
-                    <Link
-                        href="/secondary-trading"
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-blue-500 text-blue-300 hover:bg-blue-500/10"
-                    >
-                        Open Marketplace
-                        <ArrowUpRight className="w-4 h-4" />
-                    </Link>
+                    {!isOperator && (
+                        <Link
+                            href="/secondary-trading"
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-blue-500 text-blue-300 hover:bg-blue-500/10"
+                        >
+                            Open Marketplace
+                            <ArrowUpRight className="w-4 h-4" />
+                        </Link>
+                    )}
                 </div>
 
                 <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
@@ -133,7 +143,7 @@ export default function TradingMarketsPage() {
                                             <td className="px-4 py-3">
                                                 <div className="flex items-center gap-2">
                                                     <p className="text-white font-medium">{listing.deal?.sme?.name || 'SME'}/USDT</p>
-                                                    {watchlistIds.includes(listing.id) && <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />}
+                                                    {!isOperator && watchlistIds.includes(listing.id) && <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />}
                                                 </div>
                                                 <p className="text-xs text-gray-400">{listing.deal?.sme?.sector || 'General'} • {listing.deal?.sme?.stage || 'Active'}</p>
                                             </td>
@@ -141,12 +151,18 @@ export default function TradingMarketsPage() {
                                             <td className="px-4 py-3 text-right text-gray-300">${(listing.sharesAvailable * listing.pricePerShare).toLocaleString()}</td>
                                             <td className="px-4 py-3 text-right text-gray-300">{Number(listing.minPurchase || 0).toLocaleString()}</td>
                                             <td className="px-4 py-3 text-right">
-                                                <Link
-                                                    href={`/trading/terminal/${listing.id}`}
-                                                    className="px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 text-white"
-                                                >
-                                                    Trade
-                                                </Link>
+                                                {isOperator ? (
+                                                    <span className="inline-flex px-3 py-1.5 rounded-md bg-gray-700 text-gray-200">
+                                                        Monitor
+                                                    </span>
+                                                ) : (
+                                                    <Link
+                                                        href={`/trading/terminal/${listing.id}`}
+                                                        className="px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 text-white"
+                                                    >
+                                                        Trade
+                                                    </Link>
+                                                )}
                                             </td>
                                         </tr>
                                     ))}
@@ -163,14 +179,24 @@ export default function TradingMarketsPage() {
                             {topVolume.length === 0 ? (
                                 <p className="text-gray-400 text-sm">No active listings.</p>
                             ) : topVolume.map((listing) => (
-                                <Link
-                                    key={listing.id}
-                                    href={`/trading/terminal/${listing.id}`}
-                                    className="block rounded-lg border border-gray-700 hover:border-gray-500 p-3"
-                                >
-                                    <p className="text-white font-medium">{listing.deal?.sme?.name || 'SME'}/USDT</p>
-                                    <p className="text-xs text-gray-400 mt-1">Depth ${(listing.sharesAvailable * listing.pricePerShare).toLocaleString()}</p>
-                                </Link>
+                                isOperator ? (
+                                    <div
+                                        key={listing.id}
+                                        className="block rounded-lg border border-gray-700 p-3"
+                                    >
+                                        <p className="text-white font-medium">{listing.deal?.sme?.name || 'SME'}/USDT</p>
+                                        <p className="text-xs text-gray-400 mt-1">Depth ${(listing.sharesAvailable * listing.pricePerShare).toLocaleString()}</p>
+                                    </div>
+                                ) : (
+                                    <Link
+                                        key={listing.id}
+                                        href={`/trading/terminal/${listing.id}`}
+                                        className="block rounded-lg border border-gray-700 hover:border-gray-500 p-3"
+                                    >
+                                        <p className="text-white font-medium">{listing.deal?.sme?.name || 'SME'}/USDT</p>
+                                        <p className="text-xs text-gray-400 mt-1">Depth ${(listing.sharesAvailable * listing.pricePerShare).toLocaleString()}</p>
+                                    </Link>
+                                )
                             ))}
                         </div>
                     </div>

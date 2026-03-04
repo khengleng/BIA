@@ -66,8 +66,17 @@ export function usePermissions(): PermissionHelpers & {
             }
         };
 
+        // Listen for same-tab auth changes dispatched after login/logout/SSO
+        const handleAuthChanged = () => {
+            loadUser();
+        };
+
         window.addEventListener('storage', handleStorageChange);
-        return () => window.removeEventListener('storage', handleStorageChange);
+        window.addEventListener('auth:changed', handleAuthChanged as EventListener);
+        return () => {
+            window.removeEventListener('storage', handleStorageChange);
+            window.removeEventListener('auth:changed', handleAuthChanged as EventListener);
+        };
     }, []);
 
     const helpers = useMemo(() => createPermissionHelpers(user), [user]);

@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import DashboardLayout from '../../../components/layout/DashboardLayout'
 import { authorizedRequest } from '../../../lib/api'
 import { useToast } from '../../../contexts/ToastContext'
@@ -49,7 +48,6 @@ const SECTOR_OPTIONS = [
 ]
 
 export default function TradingProfilePage() {
-    const router = useRouter()
     const { user, isLoading: isRoleLoading } = usePermissions()
     const { addToast } = useToast()
     const [profile, setProfile] = useState<TraderProfileResponse | null>(null)
@@ -59,15 +57,36 @@ export default function TradingProfilePage() {
     useEffect(() => {
         if (isRoleLoading) return
         const role = String(user?.role || '').toUpperCase()
-        if (role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'SUPPORT') {
-            router.replace('/trading/markets')
-            return
-        }
+        const isOperator = role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'SUPPORT'
 
         const fetchProfile = async () => {
             const response = await authorizedRequest('/api/secondary-trading/trader-profile')
             if (!response.ok) {
-                addToast('error', 'Failed to load investor profile')
+                if (isOperator) {
+                    setProfile({
+                        mode: 'OPERATOR',
+                        operator: {
+                            userId: user?.id,
+                            role,
+                            tenantId: user?.tenantId
+                        },
+                        profile: {
+                            riskLevel: 'MEDIUM',
+                            investmentHorizon: 'MID',
+                            strategy: 'VALUE',
+                            maxPositionSize: 10,
+                            preferredSectors: [],
+                            notifications: {
+                                priceAlerts: true,
+                                executionUpdates: true,
+                                marketAnnouncements: true
+                            },
+                            watchlistCount: 0
+                        }
+                    })
+                    return
+                }
+                addToast('error', 'Failed to load trader profile')
                 return
             }
 
@@ -76,7 +95,7 @@ export default function TradingProfilePage() {
         }
 
         fetchProfile()
-    }, [addToast, isRoleLoading, router, user?.role])
+    }, [addToast, isRoleLoading, user?.id, user?.role, user?.tenantId])
 
     const handleSave = async () => {
         if (!profile || isOperatorMode) return
@@ -102,7 +121,7 @@ export default function TradingProfilePage() {
     if (isRoleLoading || !profile) {
         return (
             <DashboardLayout>
-                <div className="text-gray-300">Loading investor profile...</div>
+                <div className="text-gray-300">Loading trader profile...</div>
             </DashboardLayout>
         )
     }

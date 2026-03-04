@@ -45,7 +45,9 @@ function SsoCallbackContent() {
           localStorage.setItem('user', JSON.stringify(data.user))
           window.dispatchEvent(new Event('auth:changed'))
         }
-        router.replace('/secondary-trading')
+        const role = String(data?.user?.role || '').toUpperCase()
+        const isOperator = role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'SUPPORT'
+        router.replace(isOperator ? '/trading/markets' : '/secondary-trading')
       } catch {
         setError('Unable to complete SSO login. Please try again.')
       }
