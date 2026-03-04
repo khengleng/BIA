@@ -46,7 +46,6 @@ import { IS_TRADING_PLATFORM } from '@/lib/platform'
 import NotificationCenter from '../NotificationCenter'
 import LanguageSwitcher from '../LanguageSwitcher'
 import Chatbot from '../Chatbot'
-import BottomNavigation from '../BottomNavigation'
 
 interface DashboardLayoutProps {
     children: React.ReactNode
@@ -225,18 +224,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
     const currentRole = String(user?.role ?? '')
     const isTradingOperator = ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'].includes(currentRole)
+    const showTradingWidgets = !IS_TRADING_PLATFORM
     const tradingNavSections = isTradingOperator
         ? [
             {
                 label: 'Operator',
                 roles: ['ADMIN', 'SUPER_ADMIN', 'SUPPORT'],
                 items: [
-                    { href: '/secondary-trading', label: 'Trading Operations', icon: ArrowLeftRight, roles: ['ADMIN', 'SUPER_ADMIN', 'SUPPORT'] },
                     { href: '/trading/markets', label: 'Market Monitor', icon: BarChart3, roles: ['ADMIN', 'SUPER_ADMIN', 'SUPPORT'] },
                     { href: '/admin/dashboard', label: 'Platform Dashboard', icon: LayoutDashboard, roles: ['ADMIN', 'SUPER_ADMIN'] },
                     { href: '/admin/deal-ops', label: 'Deal Operations', icon: Briefcase, roles: ['ADMIN', 'SUPER_ADMIN'] },
                     { href: '/admin/cases', label: 'Case Management', icon: ClipboardList, roles: ['ADMIN', 'SUPER_ADMIN', 'SUPPORT'] },
-                    { href: '/notifications', label: 'Notifications', icon: MessageSquare, roles: ['ADMIN', 'SUPER_ADMIN', 'SUPPORT'] },
                 ]
             },
             {
@@ -259,7 +257,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     { href: '/trading/watchlist', label: 'Watchlist', icon: Sparkles, roles: ['INVESTOR'] },
                     { href: '/trading/profile', label: 'Investor Profile', icon: UserCog, roles: ['INVESTOR'] },
                     { href: '/trading/security', label: 'Investor Security', icon: ShieldCheck, roles: ['INVESTOR'] },
-                    { href: '/notifications', label: 'Notifications', icon: MessageSquare, roles: ['INVESTOR'] },
                 ]
             },
             {
@@ -413,7 +410,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                                 </button>
                             )}
                         </div>
-                        <NotificationCenter />
+                        {showTradingWidgets && <NotificationCenter />}
                     </div>
                     <button
                         onClick={handleLogout}
@@ -441,7 +438,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </main>
 
             {/* AI Chatbot Widget */}
-            <Chatbot />
+            {showTradingWidgets && <Chatbot />}
         </div>
     )
 }

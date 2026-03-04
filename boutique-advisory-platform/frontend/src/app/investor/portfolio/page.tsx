@@ -1,9 +1,31 @@
 'use client'
 
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import DashboardLayout from '../../../components/layout/DashboardLayout'
 import PortfolioOverview from '../../../components/PortfolioOverview'
+import usePermissions from '../../../hooks/usePermissions'
 
 export default function InvestorPortfolioPage() {
+    const router = useRouter()
+    const { user, isLoading } = usePermissions()
+
+    useEffect(() => {
+        if (isLoading) return
+        const role = String(user?.role || '').toUpperCase()
+        if (role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'SUPPORT') {
+            router.replace('/trading/markets')
+        }
+    }, [isLoading, router, user?.role])
+
+    if (isLoading) {
+        return (
+            <DashboardLayout>
+                <div className="text-gray-300">Loading...</div>
+            </DashboardLayout>
+        )
+    }
+
     return (
         <DashboardLayout>
             <div className="space-y-8">

@@ -1,9 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import DashboardLayout from '../../../components/layout/DashboardLayout'
 import { authorizedRequest } from '../../../lib/api'
 import { useToast } from '../../../contexts/ToastContext'
+import usePermissions from '../../../hooks/usePermissions'
 
 interface TraderProfileResponse {
     mode?: 'TRADER' | 'OPERATOR'
@@ -47,12 +49,21 @@ const SECTOR_OPTIONS = [
 ]
 
 export default function TradingProfilePage() {
+    const router = useRouter()
+    const { user, isLoading: isRoleLoading } = usePermissions()
     const { addToast } = useToast()
     const [profile, setProfile] = useState<TraderProfileResponse | null>(null)
     const [isSaving, setIsSaving] = useState(false)
     const isOperatorMode = profile?.mode === 'OPERATOR'
 
     useEffect(() => {
+        if (isRoleLoading) return
+        const role = String(user?.role || '').toUpperCase()
+        if (role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'SUPPORT') {
+            router.replace('/trading/markets')
+            return
+        }
+
         const fetchProfile = async () => {
             const response = await authorizedRequest('/api/secondary-trading/trader-profile')
             if (!response.ok) {
@@ -65,7 +76,7 @@ export default function TradingProfilePage() {
         }
 
         fetchProfile()
-    }, [addToast])
+    }, [addToast, isRoleLoading, router, user?.role])
 
     const handleSave = async () => {
         if (!profile || isOperatorMode) return
@@ -88,7 +99,7 @@ export default function TradingProfilePage() {
         addToast('success', 'Investor profile updated')
     }
 
-    if (!profile) {
+    if (isRoleLoading || !profile) {
         return (
             <DashboardLayout>
                 <div className="text-gray-300">Loading investor profile...</div>

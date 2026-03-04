@@ -167,7 +167,7 @@ interface SyndicateTokenTrade {
 
 export default function SecondaryTradingPage() {
     const { addToast } = useToast()
-    const { isInvestor } = usePermissions()
+    const { isInvestor, user, isLoading: isRoleLoading } = usePermissions()
     const router = useRouter()
     const simulateSecondaryTrades = process.env.NEXT_PUBLIC_SIMULATE_SECONDARY_TRADES === 'true'
 
@@ -194,8 +194,22 @@ export default function SecondaryTradingPage() {
     const [buyTokens, setBuyTokens] = useState('')
     const [isBuyingTokens, setIsBuyingTokens] = useState(false)
     const [currentInvestorId, setCurrentInvestorId] = useState<string | null>(null)
+    const userRole = String(user?.role || '').toUpperCase()
+    const isTradingOperator = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN' || userRole === 'SUPPORT'
+
+    useEffect(() => {
+        if (isRoleLoading) return
+        if (isTradingOperator) {
+            router.replace('/trading/markets')
+        }
+    }, [isRoleLoading, isTradingOperator, router])
 
     const fetchData = useCallback(async () => {
+        if (isTradingOperator) {
+            setIsLoading(false)
+            return
+        }
+
         try {
             const meRes = await authorizedRequest('/api/auth/me')
             if (meRes.status === 401) {
@@ -284,11 +298,12 @@ export default function SecondaryTradingPage() {
         } finally {
             setIsLoading(false)
         }
-    }, [addToast, isInvestor, router])
+    }, [addToast, isInvestor, isTradingOperator, router])
 
     useEffect(() => {
+        if (isRoleLoading || isTradingOperator) return
         fetchData()
-    }, [fetchData])
+    }, [fetchData, isRoleLoading, isTradingOperator])
 
     const handleBuyClick = (listing: Listing) => {
         setSelectedListing(listing)

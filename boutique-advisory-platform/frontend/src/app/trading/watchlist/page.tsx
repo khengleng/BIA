@@ -1,11 +1,13 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import DashboardLayout from '../../../components/layout/DashboardLayout'
 import { authorizedRequest } from '../../../lib/api'
 import { useToast } from '../../../contexts/ToastContext'
 import { Star, ShoppingCart } from 'lucide-react'
 import Link from 'next/link'
+import usePermissions from '../../../hooks/usePermissions'
 
 interface WatchlistListing {
     id: string
@@ -27,6 +29,8 @@ interface WatchlistListing {
 }
 
 export default function TradingWatchlistPage() {
+    const router = useRouter()
+    const { user, isLoading: isRoleLoading } = usePermissions()
     const { addToast } = useToast()
     const [listings, setListings] = useState<WatchlistListing[]>([])
     const [isLoading, setIsLoading] = useState(true)
@@ -45,8 +49,22 @@ export default function TradingWatchlistPage() {
     }, [addToast])
 
     useEffect(() => {
+        if (isRoleLoading) return
+        const role = String(user?.role || '').toUpperCase()
+        if (role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'SUPPORT') {
+            router.replace('/trading/markets')
+            return
+        }
         load()
-    }, [load])
+    }, [isRoleLoading, load, router, user?.role])
+
+    if (isRoleLoading) {
+        return (
+            <DashboardLayout>
+                <div className="text-gray-300">Loading watchlist...</div>
+            </DashboardLayout>
+        )
+    }
 
     const removeFromWatchlist = async (id: string) => {
         const remaining = listings.filter(l => l.id !== id).map(l => l.id)

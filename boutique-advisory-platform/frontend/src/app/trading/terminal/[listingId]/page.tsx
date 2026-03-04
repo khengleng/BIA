@@ -7,6 +7,7 @@ import { ArrowLeft, TrendingUp } from 'lucide-react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import { authorizedRequest } from '@/lib/api'
 import { useToast } from '@/contexts/ToastContext'
+import usePermissions from '@/hooks/usePermissions'
 
 interface Listing {
     id: string
@@ -39,6 +40,7 @@ export default function TradeTerminalPage() {
     const params = useParams<{ listingId: string }>()
     const router = useRouter()
     const { addToast } = useToast()
+    const { user, isLoading: isRoleLoading } = usePermissions()
     const listingId = params?.listingId
 
     const [isLoading, setIsLoading] = useState(true)
@@ -49,6 +51,13 @@ export default function TradeTerminalPage() {
     const [quantity, setQuantity] = useState('')
 
     useEffect(() => {
+        if (isRoleLoading) return
+        const role = String(user?.role || '').toUpperCase()
+        if (role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'SUPPORT') {
+            router.replace('/trading/markets')
+            return
+        }
+
         const load = async () => {
             if (!listingId) return
 
@@ -86,7 +95,7 @@ export default function TradeTerminalPage() {
         }
 
         load()
-    }, [addToast, listingId, router])
+    }, [addToast, isRoleLoading, listingId, router, user?.role])
 
     const total = useMemo(() => {
         if (!listing) return 0
