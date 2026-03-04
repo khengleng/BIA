@@ -24,7 +24,14 @@ async function ensureCsrfToken(): Promise<void> {
     console.log(`📡 Fetching CSRF token from: ${fetchUrl}`);
 
 
-    csrfTokenPromise = fetch(fetchUrl, { credentials: 'include' })
+    csrfTokenPromise = fetch(fetchUrl, {
+        credentials: 'include',
+        cache: 'no-store',
+        headers: {
+            'Cache-Control': 'no-cache, no-store, max-age=0, must-revalidate',
+            Pragma: 'no-cache',
+        },
+    })
         .then(async res => {
             const contentType = res.headers.get('content-type') || '';
             console.log(`📨 CSRF Response: ${res.status} (${contentType})`);
@@ -78,6 +85,10 @@ export async function apiRequest(
     options: RequestInit = {}
 ): Promise<Response & { safeJson: () => Promise<any> }> {
     const url = `${API_URL}${endpoint}`;
+    const method = options.method?.toUpperCase() || 'GET';
+    const requestUrl = method === 'GET'
+        ? `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`
+        : url;
 
     // Add default headers
     const headers = new Headers(options.headers);
@@ -88,9 +99,10 @@ export async function apiRequest(
     if (!headers.has('Content-Type') && options.body && typeof options.body === 'string') {
         headers.set('Content-Type', 'application/json');
     }
+    headers.set('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate');
+    headers.set('Pragma', 'no-cache');
 
     // Add CSRF token for state-changing methods
-    const method = options.method?.toUpperCase() || 'GET';
     if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
         await ensureCsrfToken();
         if (csrfToken) {
@@ -98,9 +110,10 @@ export async function apiRequest(
         }
     }
 
-    let response = await fetch(url, {
+    let response = await fetch(requestUrl, {
         ...options,
         headers,
+        cache: 'no-store',
         credentials: 'include',
     });
 
@@ -113,9 +126,10 @@ export async function apiRequest(
 
             if (csrfToken) {
                 headers.set('x-csrf-token', csrfToken);
-                response = await fetch(url, {
+                response = await fetch(requestUrl, {
                     ...options,
                     headers,
+                    cache: 'no-store',
                     credentials: 'include',
                 });
             }

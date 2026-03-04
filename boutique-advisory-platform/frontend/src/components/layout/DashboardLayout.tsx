@@ -231,6 +231,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     ]
 
     const isTradingOperator = isTradingOperatorRole(normalizedRole)
+        || hasUiPermission(normalizedRole, 'admin.read')
+        || hasUiPermission(normalizedRole, 'billing.read')
     const showTradingWidgets = !isTradingRuntime
     const tradingNavSections = isTradingOperator
         ? [

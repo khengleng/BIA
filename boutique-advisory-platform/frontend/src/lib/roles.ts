@@ -10,8 +10,18 @@ export const TRADING_OPERATOR_ROLES = [
 
 export function normalizeRole(role: string | undefined | null): string {
   const normalized = String(role ?? '').trim().toUpperCase().replace(/[\s-]+/g, '_')
-  if (normalized === 'SUPERADMIN') return 'SUPER_ADMIN'
-  if (normalized === 'SUPER__ADMIN') return 'SUPER_ADMIN'
+  if (!normalized) return ''
+
+  // Be resilient to legacy/custom naming from upstream identity payloads.
+  if (normalized.includes('SUPER') && normalized.includes('ADMIN')) return 'SUPER_ADMIN'
+  if (normalized === 'SUPERADMIN' || normalized === 'SUPER__ADMIN') return 'SUPER_ADMIN'
+
+  if (normalized === 'ADMIN' || normalized.startsWith('ADMIN_') || normalized.endsWith('_ADMIN')) return 'ADMIN'
+  if (normalized === 'FIN_OPS' || normalized === 'FINANCE_OPS' || normalized === 'FINANCIAL_OPS') return 'FINOPS'
+  if (normalized === 'CUSTOMER_EXPERIENCE' || normalized === 'CUSTOMER_SUCCESS') return 'CX'
+  if (normalized === 'COMPLIANCE_OFFICER') return 'COMPLIANCE'
+  if (normalized === 'SUPPORT_AGENT') return 'SUPPORT'
+
   return normalized
 }
 
