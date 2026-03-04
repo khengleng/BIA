@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, Mail, Lock, Building2, CandlestickChart } from 'lucide-react'
 import { apiRequest } from '../../../lib/api'
 import { CORE_FRONTEND_URL, IS_TRADING_PLATFORM } from '@/lib/platform'
+import { isTradingOperatorRole, normalizeRole } from '@/lib/roles'
 
 export default function LoginPage() {
   const { t } = useTranslations()
@@ -27,7 +28,10 @@ export default function LoginPage() {
     rememberMe: false
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const postLoginPath = isTradingRuntime ? '/secondary-trading' : '/dashboard'
+  const getPostLoginPath = (role?: string) => {
+    if (!isTradingRuntime) return '/dashboard'
+    return isTradingOperatorRole(normalizeRole(role)) ? '/admin/dashboard' : '/secondary-trading'
+  }
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -129,7 +133,7 @@ export default function LoginPage() {
         localStorage.removeItem('user')
         localStorage.setItem('user', JSON.stringify(data.user))
         window.dispatchEvent(new Event('auth:changed'))
-        router.push(nextPath || postLoginPath)
+        router.push(nextPath || getPostLoginPath(data?.user?.role))
       } else {
         const errorData = await response.safeJson()
         setErrors({ general: errorData.error || 'Invalid code' })
@@ -171,7 +175,7 @@ export default function LoginPage() {
           localStorage.removeItem('user')
           localStorage.setItem('user', JSON.stringify(data.user))
           window.dispatchEvent(new Event('auth:changed'))
-          router.push(nextPath || postLoginPath)
+          router.push(nextPath || getPostLoginPath(data?.user?.role))
         }
       } else {
         const errorMsg = data.error || 'Login failed';

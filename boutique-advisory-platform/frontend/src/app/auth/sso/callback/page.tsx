@@ -48,7 +48,7 @@ function SsoCallbackContent() {
         }
         const role = normalizeRole(data?.user?.role)
         const isOperator = isTradingOperatorRole(role)
-        router.replace(isOperator ? '/trading/markets' : '/secondary-trading')
+        router.replace(isOperator ? '/admin/dashboard' : '/secondary-trading')
       } catch {
         setError('Unable to complete SSO login. Please try again.')
       }

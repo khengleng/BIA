@@ -653,13 +653,29 @@ app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/webhooks', webhookRoutes);
 
 if (isTradingService) {
-  // Trading platform service (trade.cambobia.com): isolated trading surface only.
+  // Trading platform service (trade.cambobia.com): trading + operator control plane.
   app.use('/api/investors', authenticateToken, investorRoutes);
   app.use('/api/syndicate-tokens', authenticateToken, syndicateTokenRoutes);
   app.use('/api/secondary-trading', authenticateToken, secondaryTradingRoutes);
   app.use('/api/ai', authenticateToken, aiRoutes);
   app.use('/api/notifications', authenticateToken, notificationRoutes);
   app.use('/api/push', authenticateToken, notificationRoutes); // Alias for push subscription endpoints
+  app.use('/api/dashboard', authenticateToken, dashboardRoutes);
+  app.use('/api/messages', authenticateToken, messagesRoutes);
+  app.use('/api/reports', authenticateToken, reportRoutes);
+  app.use('/api/audit', authenticateToken, auditRoutes);
+  app.use('/api/payments', authenticateToken, paymentRoutes);
+  app.use('/api/admin', authenticateToken, adminRoutes);
+  app.use('/api/admin/action-center', authenticateToken, adminActionCenterRoutes);
+  app.use('/api/operations', authenticateToken, operationsRoutes);
+  app.use('/api/admin/cases', authenticateToken, adminCasesRoutes);
+  app.use('/api/admin/onboarding', authenticateToken, adminOnboardingRoutes);
+  app.use('/api/admin/role-lifecycle', authenticateToken, adminRoleLifecycleRoutes);
+  app.use('/api/admin/deal-ops', authenticateToken, adminDealOpsRoutes);
+  app.use('/api/admin/advisor-ops', authenticateToken, adminAdvisorOpsRoutes);
+  app.use('/api/admin/investor-ops', authenticateToken, adminInvestorOpsRoutes);
+  app.use('/api/admin/data-governance', authenticateToken, adminDataGovernanceRoutes);
+  app.use('/api/admin/reconciliation', authenticateToken, adminReconciliationRoutes);
 } else {
   // Core endpoints - NOW PROTECTED (Fix #1)
   app.use('/api/smes', authenticateToken, smeRoutes);

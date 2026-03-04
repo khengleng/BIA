@@ -233,6 +233,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 roles: [...TRADING_OPERATOR_ROLES],
                 items: [
                     { href: '/trading/markets', label: 'Market Monitor', icon: BarChart3, roles: [...TRADING_OPERATOR_ROLES] },
+                    { href: '/admin/trading-ops', label: 'Listing Control', icon: ArrowLeftRight, roles: ['ADMIN', 'SUPER_ADMIN', 'COMPLIANCE', 'SUPPORT'] },
                     { href: '/admin/dashboard', label: 'Platform Dashboard', icon: LayoutDashboard, roles: ['ADMIN', 'SUPER_ADMIN', 'AUDITOR'] },
                     { href: '/admin/deal-ops', label: 'Deal Operations', icon: Briefcase, roles: ['ADMIN', 'SUPER_ADMIN', 'COMPLIANCE'] },
                     { href: '/admin/investor-ops', label: 'Investor eKYC', icon: UsersRound, roles: ['ADMIN', 'SUPER_ADMIN', 'COMPLIANCE', 'CX'] },

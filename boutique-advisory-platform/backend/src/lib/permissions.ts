@@ -194,7 +194,7 @@ export const PERMISSIONS: Record<string, string[]> = {
     'secondary_trading.list': ['SUPPORT', 'INVESTOR', 'SME', 'SUPER_ADMIN', 'ADMIN'],
     'secondary_trading.read': ['SUPPORT', 'INVESTOR', 'SME', 'SUPER_ADMIN', 'ADMIN'],
     'secondary_trading.create_listing': ['INVESTOR'],
-    'secondary_trading.update_listing': ['INVESTOR:owner'],
+    'secondary_trading.update_listing': ['INVESTOR:owner', 'SUPER_ADMIN', 'ADMIN', 'FINOPS', 'CX', 'AUDITOR', 'COMPLIANCE', 'SUPPORT'],
     'secondary_trading.buy': ['INVESTOR'],
     'secondary_trading.execute': ['SUPER_ADMIN'],
 
