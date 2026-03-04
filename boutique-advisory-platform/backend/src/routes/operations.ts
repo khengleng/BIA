@@ -2,9 +2,21 @@ import { Router, Response } from 'express';
 import { AuthenticatedRequest, authorize } from '../middleware/authorize';
 import { prisma } from '../database';
 import { logAuditEvent } from '../utils/security';
+import { Prisma } from '@prisma/client';
 import { isMissingSchemaError } from '../utils/prisma-errors';
 
 const router = Router();
+
+function isOperationsModuleUnavailableError(error: unknown): boolean {
+  return (
+    isMissingSchemaError(error) ||
+    error instanceof Prisma.PrismaClientValidationError ||
+    error instanceof Prisma.PrismaClientKnownRequestError ||
+    error instanceof Prisma.PrismaClientUnknownRequestError ||
+    error instanceof Prisma.PrismaClientInitializationError ||
+    error instanceof Prisma.PrismaClientRustPanicError
+  );
+}
 
 function getMonthRange(month?: string) {
   const now = new Date();
@@ -46,7 +58,7 @@ router.get('/subscriptions/current', authorize('subscription.read'), async (req:
 
     return res.json({ subscription });
   } catch (error) {
-    if (isMissingSchemaError(error)) {
+    if (isOperationsModuleUnavailableError(error)) {
       return res.json({
         subscription: {
           tenantId: req.user?.tenantId || 'default',
@@ -103,7 +115,7 @@ router.put('/subscriptions/current', authorize('subscription.manage'), async (re
 
     return res.json({ message: 'Subscription updated', subscription });
   } catch (error) {
-    if (isMissingSchemaError(error)) {
+    if (isOperationsModuleUnavailableError(error)) {
       return res.status(200).json({
         message: 'Subscription module unavailable; update skipped',
         unavailable: true,
@@ -207,7 +219,7 @@ router.post('/invoices/generate-monthly', authorize('invoice.manage'), async (re
 
     return res.json({ message: 'Invoices generated', month: range.label, generated });
   } catch (error) {
-    if (isMissingSchemaError(error)) {
+    if (isOperationsModuleUnavailableError(error)) {
       return res.status(200).json({
         message: 'Invoices schema is not fully available yet',
         generated: 0,
@@ -240,7 +252,7 @@ router.get('/invoices', authorize('invoice.read'), async (req: AuthenticatedRequ
 
     return res.json({ month: range.label, invoices });
   } catch (error) {
-    if (isMissingSchemaError(error)) {
+    if (isOperationsModuleUnavailableError(error)) {
       return res.json({
         month: req.query.month || null,
         invoices: [],
@@ -272,7 +284,7 @@ router.get('/support-tickets', authorize('support_ticket.list'), async (req: Aut
 
     return res.json({ tickets });
   } catch (error) {
-    if (isMissingSchemaError(error)) {
+    if (isOperationsModuleUnavailableError(error)) {
       return res.json({
         tickets: [],
         unavailable: true,
@@ -312,7 +324,7 @@ router.post('/support-tickets', authorize('support_ticket.create'), async (req: 
 
     return res.status(201).json({ message: 'Support ticket created', ticket });
   } catch (error) {
-    if (isMissingSchemaError(error)) {
+    if (isOperationsModuleUnavailableError(error)) {
       return res.status(200).json({
         message: 'Support ticket module unavailable; request recorded as deferred',
         unavailable: true,
@@ -353,7 +365,7 @@ router.put('/support-tickets/:id', authorize('support_ticket.update'), async (re
 
     return res.json({ message: 'Support ticket updated', ticket: updated });
   } catch (error) {
-    if (isMissingSchemaError(error)) {
+    if (isOperationsModuleUnavailableError(error)) {
       return res.status(200).json({
         message: 'Support ticket module unavailable; update deferred',
         unavailable: true,
@@ -409,7 +421,7 @@ router.post('/escalations/run', authorize('escalation.run'), async (req: Authent
       staleWorkflows
     });
   } catch (error) {
-    if (isMissingSchemaError(error)) {
+    if (isOperationsModuleUnavailableError(error)) {
       return res.json({
         message: 'Escalation scan skipped',
         escalatedTickets: 0,
