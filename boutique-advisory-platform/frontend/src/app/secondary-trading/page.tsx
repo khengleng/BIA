@@ -837,16 +837,24 @@ export default function SecondaryTradingPage() {
                                     <div className="text-sm text-gray-400">
                                         Original: ${(listing.originalPricePerShare || 0).toFixed(2)}/share
                                     </div>
-                                    {listing.status === 'ACTIVE' && !listing.isOwner && listing.sellerId !== currentInvestorId && (
-                                        <button
-                                            onClick={() => handleBuyClick(listing)}
-                                            disabled={!isInvestor}
-                                            className="px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center gap-2 transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
+                                    <div className="flex items-center gap-2">
+                                        <Link
+                                            href={`/trading/terminal/${listing.id}`}
+                                            className="px-4 py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 rounded-lg text-sm font-medium transition-colors border border-blue-500/30"
                                         >
-                                            <ShoppingCart className="w-4 h-4" />
-                                            {isInvestor ? 'Buy Shares' : 'View Only'}
-                                        </button>
-                                    )}
+                                            Open Terminal
+                                        </Link>
+                                        {listing.status === 'ACTIVE' && !listing.isOwner && listing.sellerId !== currentInvestorId && (
+                                            <button
+                                                onClick={() => handleBuyClick(listing)}
+                                                disabled={!isInvestor}
+                                                className="px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center gap-2 transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
+                                            >
+                                                <ShoppingCart className="w-4 h-4" />
+                                                {isInvestor ? 'Buy Shares' : 'View Only'}
+                                            </button>
+                                        )}
+                                    </div>
                                     {(listing.isOwner || listing.sellerId === currentInvestorId) && listing.status === 'ACTIVE' && (
                                         <button
                                             onClick={() => handleCancelListing(listing.id)}

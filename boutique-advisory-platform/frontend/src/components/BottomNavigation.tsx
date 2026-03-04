@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from 'next/navigation'
 import { Home, Users, FileText, MessageSquare, Settings } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { IS_TRADING_PLATFORM } from '@/lib/platform'
 
 export default function BottomNavigation() {
     const pathname = usePathname()
@@ -35,13 +36,21 @@ export default function BottomNavigation() {
         return null
     }
 
-    const navItems = [
-        { icon: Home, label: 'Home', path: '/dashboard' },
-        { icon: Users, label: 'Network', path: '/investors' },
-        { icon: FileText, label: 'Deals', path: '/deals' },
-        { icon: MessageSquare, label: 'Messages', path: '/messages' },
-        { icon: Settings, label: 'Settings', path: '/settings' },
-    ]
+    const navItems = IS_TRADING_PLATFORM
+        ? [
+            { icon: Home, label: 'Markets', path: '/trading/markets' },
+            { icon: FileText, label: 'Trade', path: '/secondary-trading' },
+            { icon: Users, label: 'Portfolio', path: '/investor/portfolio' },
+            { icon: MessageSquare, label: 'Watchlist', path: '/trading/watchlist' },
+            { icon: Settings, label: 'Settings', path: '/settings/sessions' },
+        ]
+        : [
+            { icon: Home, label: 'Home', path: '/dashboard' },
+            { icon: Users, label: 'Network', path: '/investors' },
+            { icon: FileText, label: 'Deals', path: '/deals' },
+            { icon: MessageSquare, label: 'Messages', path: '/messages' },
+            { icon: Settings, label: 'Settings', path: '/settings' },
+        ]
 
     const handleNavigate = (path: string) => {
         // Haptic feedback
