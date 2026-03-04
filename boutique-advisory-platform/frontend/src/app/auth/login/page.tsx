@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useTranslations } from '../../../hooks/useTranslations'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Eye, EyeOff, Mail, Lock, Building2 } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, Building2, CandlestickChart } from 'lucide-react'
 import { apiRequest } from '../../../lib/api'
 import { CORE_FRONTEND_URL, IS_TRADING_PLATFORM } from '@/lib/platform'
 
@@ -179,16 +179,25 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="mx-auto h-12 w-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-          <Building2 className="h-6 w-6 text-white" />
+          {IS_TRADING_PLATFORM ? (
+            <CandlestickChart className="h-6 w-6 text-white" />
+          ) : (
+            <Building2 className="h-6 w-6 text-white" />
+          )}
         </div>
         <h2 className="mt-6 text-center text-3xl font-extrabold text-white">
-          {step === '2fa' ? 'Two-Factor Authentication' : t('auth.login')}
+          {step === '2fa' ? 'Two-Factor Authentication' : (IS_TRADING_PLATFORM ? 'CamboBia Trading Login' : t('auth.login'))}
         </h2>
         <p className="mt-2 text-center text-sm text-gray-300">
           {step === '2fa'
             ? 'Enter the 6-digit code from your authenticator app'
-            : (IS_TRADING_PLATFORM ? 'Sign in to your CamboBia Trading account' : 'Sign in to your Boutique Advisory account')}
+            : (IS_TRADING_PLATFORM ? 'Access secondary market listings, live orders, and trade history.' : 'Sign in to your Boutique Advisory account')}
         </p>
+        {step !== '2fa' && IS_TRADING_PLATFORM && (
+          <div className="mt-3 rounded-lg border border-blue-400/30 bg-blue-500/10 px-4 py-3 text-xs text-blue-200">
+            Trade CamboBia token units on the regulated secondary marketplace.
+          </div>
+        )}
       </div>
 
       {step === '2fa' ? (
