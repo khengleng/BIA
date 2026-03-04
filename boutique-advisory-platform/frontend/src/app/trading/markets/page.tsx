@@ -7,6 +7,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout'
 import { authorizedRequest } from '@/lib/api'
 import { useToast } from '@/contexts/ToastContext'
 import usePermissions from '@/hooks/usePermissions'
+import { isTradingOperatorRole, normalizeRole } from '@/lib/roles'
 
 interface Listing {
     id: string
@@ -35,8 +36,8 @@ export default function TradingMarketsPage() {
     const [query, setQuery] = useState('')
     const [listings, setListings] = useState<Listing[]>([])
     const [watchlistIds, setWatchlistIds] = useState<string[]>([])
-    const role = String(user?.role || '').toUpperCase()
-    const isOperator = role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'SUPPORT'
+    const role = normalizeRole(user?.role)
+    const isOperator = isTradingOperatorRole(role)
 
     useEffect(() => {
         const load = async () => {

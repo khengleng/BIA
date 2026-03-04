@@ -5,6 +5,7 @@ import DashboardLayout from '../../../components/layout/DashboardLayout'
 import { authorizedRequest } from '../../../lib/api'
 import { useToast } from '../../../contexts/ToastContext'
 import usePermissions from '../../../hooks/usePermissions'
+import { isTradingOperatorRole, normalizeRole } from '../../../lib/roles'
 
 interface TraderProfileResponse {
     mode?: 'TRADER' | 'OPERATOR'
@@ -56,8 +57,8 @@ export default function TradingProfilePage() {
 
     useEffect(() => {
         if (isRoleLoading) return
-        const role = String(user?.role || '').toUpperCase()
-        const isOperator = role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'SUPPORT'
+        const role = normalizeRole(user?.role)
+        const isOperator = isTradingOperatorRole(role)
 
         const fetchProfile = async () => {
             const response = await authorizedRequest('/api/secondary-trading/trader-profile')

@@ -43,6 +43,7 @@ import { User } from '../../types'
 import { API_URL, authorizedRequest } from '@/lib/api'
 import { hasPermission as hasUiPermission } from '@/lib/permissions'
 import { IS_TRADING_PLATFORM } from '@/lib/platform'
+import { isTradingOperatorRole, normalizeRole, TRADING_OPERATOR_ROLES } from '@/lib/roles'
 import NotificationCenter from '../NotificationCenter'
 import LanguageSwitcher from '../LanguageSwitcher'
 import Chatbot from '../Chatbot'
@@ -59,6 +60,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     const [isLoading, setIsLoading] = useState(true)
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
     const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({})
+    const normalizedRole = normalizeRole(user?.role)
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -112,7 +114,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
     const handleSwitchRole = async () => {
         if (!user) return;
-        const targetRole = user.role === 'SME' ? 'INVESTOR' : 'SME';
+        const targetRole = normalizedRole === 'SME' ? 'INVESTOR' : 'SME';
 
         try {
             const response = await authorizedRequest('/api/auth/switch-role', {
@@ -222,27 +224,28 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         },
     ]
 
-    const currentRole = String(user?.role ?? '')
-    const isTradingOperator = ['SUPER_ADMIN', 'ADMIN', 'SUPPORT'].includes(currentRole)
+    const isTradingOperator = isTradingOperatorRole(normalizedRole)
     const showTradingWidgets = !IS_TRADING_PLATFORM
     const tradingNavSections = isTradingOperator
         ? [
             {
                 label: 'Operator',
-                roles: ['ADMIN', 'SUPER_ADMIN', 'SUPPORT'],
+                roles: [...TRADING_OPERATOR_ROLES],
                 items: [
-                    { href: '/trading/markets', label: 'Market Monitor', icon: BarChart3, roles: ['ADMIN', 'SUPER_ADMIN', 'SUPPORT'] },
-                    { href: '/admin/dashboard', label: 'Platform Dashboard', icon: LayoutDashboard, roles: ['ADMIN', 'SUPER_ADMIN'] },
-                    { href: '/admin/deal-ops', label: 'Deal Operations', icon: Briefcase, roles: ['ADMIN', 'SUPER_ADMIN'] },
-                    { href: '/admin/cases', label: 'Case Management', icon: ClipboardList, roles: ['ADMIN', 'SUPER_ADMIN', 'SUPPORT'] },
+                    { href: '/trading/markets', label: 'Market Monitor', icon: BarChart3, roles: [...TRADING_OPERATOR_ROLES] },
+                    { href: '/admin/dashboard', label: 'Platform Dashboard', icon: LayoutDashboard, roles: ['ADMIN', 'SUPER_ADMIN', 'AUDITOR'] },
+                    { href: '/admin/deal-ops', label: 'Deal Operations', icon: Briefcase, roles: ['ADMIN', 'SUPER_ADMIN', 'COMPLIANCE'] },
+                    { href: '/admin/investor-ops', label: 'Investor eKYC', icon: UsersRound, roles: ['ADMIN', 'SUPER_ADMIN', 'COMPLIANCE', 'CX'] },
+                    { href: '/admin/reconciliation', label: 'Trading Fee & Reconciliation', icon: Wallet, roles: ['ADMIN', 'SUPER_ADMIN', 'FINOPS', 'AUDITOR'] },
+                    { href: '/admin/cases', label: 'Case Management', icon: ClipboardList, roles: ['ADMIN', 'SUPER_ADMIN', 'SUPPORT', 'CX'] },
                 ]
             },
             {
                 label: 'Security',
-                roles: ['ADMIN', 'SUPER_ADMIN', 'SUPPORT'],
+                roles: [...TRADING_OPERATOR_ROLES],
                 items: [
-                    { href: '/trading/security', label: 'Platform Security', icon: ShieldCheck, roles: ['ADMIN', 'SUPER_ADMIN', 'SUPPORT'] },
-                    { href: '/settings/sessions', label: 'Manage Sessions', icon: Shield, roles: ['ADMIN', 'SUPER_ADMIN', 'SUPPORT'] },
+                    { href: '/trading/security', label: 'Platform Security', icon: ShieldCheck, roles: [...TRADING_OPERATOR_ROLES] },
+                    { href: '/settings/sessions', label: 'Manage Sessions', icon: Shield, roles: [...TRADING_OPERATOR_ROLES] },
                 ]
             },
         ]
@@ -272,12 +275,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
     const filteredNavSections = navSections.map((section: any) => {
         if (!user) return null
-        if (section.roles && !section.roles.includes(user.role)) return null
+        if (section.roles && !section.roles.includes(normalizedRole)) return null
 
         const items = section.items.filter((item: any) => {
-            if (item.permission && !hasUiPermission(user.role, item.permission)) return false
+            if (item.permission && !hasUiPermission(normalizedRole, item.permission)) return false
             if (!item.roles) return true
-            return item.roles.includes(user.role)
+            return item.roles.includes(normalizedRole)
         })
 
         if (items.length === 0) return null
@@ -398,15 +401,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                                 {user?.firstName} {user?.lastName}
                             </p>
                             <p className="text-xs text-gray-400 capitalize truncate">
-                                {user?.role.toLowerCase()}
+                                {normalizedRole.toLowerCase()}
                             </p>
-                            {!IS_TRADING_PLATFORM && (user?.role === 'SME' || user?.role === 'INVESTOR') && (
+                            {!IS_TRADING_PLATFORM && (normalizedRole === 'SME' || normalizedRole === 'INVESTOR') && (
                                 <button
                                     onClick={handleSwitchRole}
                                     className="text-[10px] text-blue-400 hover:text-blue-300 mt-1 flex items-center gap-1 transition-colors"
                                 >
                                     <RefreshCw className="w-3 h-3" />
-                                    Switch to {user.role === 'SME' ? 'Investor' : 'SME'}
+                                    Switch to {normalizedRole === 'SME' ? 'Investor' : 'SME'}
                                 </button>
                             )}
                         </div>

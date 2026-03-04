@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { apiRequest } from '@/lib/api'
 import { CORE_FRONTEND_URL, IS_TRADING_PLATFORM } from '@/lib/platform'
+import { isTradingOperatorRole, normalizeRole } from '@/lib/roles'
 
 function SsoCallbackContent() {
   const router = useRouter()
@@ -45,8 +46,8 @@ function SsoCallbackContent() {
           localStorage.setItem('user', JSON.stringify(data.user))
           window.dispatchEvent(new Event('auth:changed'))
         }
-        const role = String(data?.user?.role || '').toUpperCase()
-        const isOperator = role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'SUPPORT'
+        const role = normalizeRole(data?.user?.role)
+        const isOperator = isTradingOperatorRole(role)
         router.replace(isOperator ? '/trading/markets' : '/secondary-trading')
       } catch {
         setError('Unable to complete SSO login. Please try again.')

@@ -1,15 +1,37 @@
 'use client'
 
 import { usePathname, useRouter } from 'next/navigation'
-import { Home, Users, FileText, MessageSquare, Settings } from 'lucide-react'
+import { Home, Users, FileText, MessageSquare, Settings, ShieldCheck, Briefcase } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { IS_TRADING_PLATFORM } from '@/lib/platform'
+import { isTradingOperatorRole, normalizeRole } from '@/lib/roles'
 
 export default function BottomNavigation() {
     const pathname = usePathname()
     const router = useRouter()
     const [isVisible, setIsVisible] = useState(true)
     const [lastScrollY, setLastScrollY] = useState(0)
+    const [role, setRole] = useState('')
+
+    useEffect(() => {
+        const loadRole = () => {
+            try {
+                const stored = localStorage.getItem('user')
+                if (!stored) {
+                    setRole('')
+                    return
+                }
+                const parsed = JSON.parse(stored)
+                setRole(normalizeRole(parsed?.role))
+            } catch {
+                setRole('')
+            }
+        }
+
+        loadRole()
+        window.addEventListener('auth:changed', loadRole)
+        return () => window.removeEventListener('auth:changed', loadRole)
+    }, [])
 
     // Hide/show on scroll
     useEffect(() => {
@@ -36,8 +58,18 @@ export default function BottomNavigation() {
         return null
     }
 
+    const isTradingOperator = isTradingOperatorRole(role)
+
     const navItems = IS_TRADING_PLATFORM
-        ? [
+        ? isTradingOperator
+            ? [
+                { icon: Home, label: 'Markets', path: '/trading/markets' },
+                { icon: ShieldCheck, label: 'Ops', path: '/admin/dashboard' },
+                { icon: Briefcase, label: 'Deals', path: '/admin/deal-ops' },
+                { icon: Users, label: 'Investors', path: '/admin/investor-ops' },
+                { icon: Settings, label: 'Reconcile', path: '/admin/reconciliation' },
+            ]
+            : [
             { icon: Home, label: 'Markets', path: '/trading/markets' },
             { icon: FileText, label: 'Trade', path: '/secondary-trading' },
             { icon: Users, label: 'Portfolio', path: '/investor/portfolio' },

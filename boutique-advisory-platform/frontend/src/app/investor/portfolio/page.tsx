@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import DashboardLayout from '../../../components/layout/DashboardLayout'
 import PortfolioOverview from '../../../components/PortfolioOverview'
 import usePermissions from '../../../hooks/usePermissions'
+import { isTradingOperatorRole, normalizeRole } from '../../../lib/roles'
 
 export default function InvestorPortfolioPage() {
     const router = useRouter()
@@ -12,8 +13,8 @@ export default function InvestorPortfolioPage() {
 
     useEffect(() => {
         if (isLoading) return
-        const role = String(user?.role || '').toUpperCase()
-        if (role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'SUPPORT') {
+        const role = normalizeRole(user?.role)
+        if (isTradingOperatorRole(role)) {
             router.replace('/trading/markets')
         }
     }, [isLoading, router, user?.role])

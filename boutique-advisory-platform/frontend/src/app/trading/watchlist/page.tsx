@@ -8,6 +8,7 @@ import { useToast } from '../../../contexts/ToastContext'
 import { Star, ShoppingCart } from 'lucide-react'
 import Link from 'next/link'
 import usePermissions from '../../../hooks/usePermissions'
+import { isTradingOperatorRole, normalizeRole } from '../../../lib/roles'
 
 interface WatchlistListing {
     id: string
@@ -50,8 +51,8 @@ export default function TradingWatchlistPage() {
 
     useEffect(() => {
         if (isRoleLoading) return
-        const role = String(user?.role || '').toUpperCase()
-        if (role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'SUPPORT') {
+        const role = normalizeRole(user?.role)
+        if (isTradingOperatorRole(role)) {
             router.replace('/trading/markets')
             return
         }

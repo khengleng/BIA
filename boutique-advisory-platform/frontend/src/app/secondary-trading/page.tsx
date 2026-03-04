@@ -23,6 +23,7 @@ import Link from 'next/link'
 import DashboardLayout from '../../components/layout/DashboardLayout'
 import { useToast } from '../../contexts/ToastContext'
 import usePermissions from '../../hooks/usePermissions'
+import { isTradingOperatorRole } from '../../lib/roles'
 
 import { authorizedRequest } from '../../lib/api'
 
@@ -195,7 +196,7 @@ export default function SecondaryTradingPage() {
     const [isBuyingTokens, setIsBuyingTokens] = useState(false)
     const [currentInvestorId, setCurrentInvestorId] = useState<string | null>(null)
     const userRole = String(user?.role || '').toUpperCase()
-    const isTradingOperator = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN' || userRole === 'SUPPORT'
+    const isTradingOperator = isTradingOperatorRole(userRole)
 
     useEffect(() => {
         if (isRoleLoading) return

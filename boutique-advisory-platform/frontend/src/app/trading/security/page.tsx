@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import { authorizedRequest } from '@/lib/api'
 import { useToast } from '@/contexts/ToastContext'
+import { isTradingOperatorRole, normalizeRole } from '@/lib/roles'
 import { CheckCircle, Shield, Smartphone, XCircle } from 'lucide-react'
 
 interface Session {
@@ -53,8 +54,8 @@ export default function TradingSecurityPage() {
                     const me = await meRes.json()
                     setIs2faEnabled(Boolean(me?.user?.twoFactorEnabled))
                     setAccountEmail(me?.user?.email || '')
-                    const role = String(me?.user?.role || '').toUpperCase()
-                    setRoleLabel(role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'SUPPORT' ? 'Operator' : 'Investor')
+                    const role = normalizeRole(me?.user?.role)
+                    setRoleLabel(isTradingOperatorRole(role) ? 'Operator' : 'Investor')
                 }
 
                 if (sessionsRes.ok) {
