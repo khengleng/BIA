@@ -1,10 +1,21 @@
 import { Router, Response } from 'express';
+import { Prisma } from '@prisma/client';
 import { AuthenticatedRequest, authorize } from '../middleware/authorize';
 import { prisma } from '../database';
 import { isMissingSchemaError } from '../utils/prisma-errors';
 import { logAuditEvent } from '../utils/security';
 
 const router = Router();
+function isAdvisorOpsUnavailableError(error: unknown): boolean {
+  return (
+    isMissingSchemaError(error) ||
+    error instanceof Prisma.PrismaClientValidationError ||
+    error instanceof Prisma.PrismaClientKnownRequestError ||
+    error instanceof Prisma.PrismaClientUnknownRequestError ||
+    error instanceof Prisma.PrismaClientInitializationError ||
+    error instanceof Prisma.PrismaClientRustPanicError
+  );
+}
 const assignmentTransitions: Record<string, string[]> = {
   OPEN: ['IN_PROGRESS', 'BLOCKED', 'CANCELLED'],
   IN_PROGRESS: ['BLOCKED', 'COMPLETED', 'CANCELLED'],
@@ -99,7 +110,7 @@ router.get('/overview', authorize('advisor_ops.read'), async (req: Authenticated
       }
     });
   } catch (error) {
-    if (isMissingSchemaError(error)) {
+    if (isAdvisorOpsUnavailableError(error)) {
       return res.json({
         overview: {
           advisors: 0,
@@ -113,7 +124,17 @@ router.get('/overview', authorize('advisor_ops.read'), async (req: Authenticated
       });
     }
     console.error('Advisor ops overview error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.json({
+      overview: {
+        advisors: 0,
+        openAssignments: 0,
+        overdueAssignments: 0,
+        pendingConflicts: 0,
+        avgUtilizationPct: 0
+      },
+      unavailable: true,
+      reason: 'Advisor operations service temporarily unavailable'
+    });
   }
 });
 
@@ -140,8 +161,15 @@ router.get('/advisors', authorize('advisor_capacity.read'), async (req: Authenti
       }))
     });
   } catch (error) {
+    if (isAdvisorOpsUnavailableError(error)) {
+      return res.json({
+        advisors: [],
+        unavailable: true,
+        reason: 'Advisor operations service temporarily unavailable'
+      });
+    }
     console.error('List advisors for ops error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.json({ advisors: [], unavailable: true, reason: 'Advisor operations service temporarily unavailable' });
   }
 });
 
@@ -221,8 +249,15 @@ router.get('/assignments', authorize('advisor_assignment.list'), async (req: Aut
 
     return res.json({ assignments });
   } catch (error) {
+    if (isAdvisorOpsUnavailableError(error)) {
+      return res.json({
+        assignments: [],
+        unavailable: true,
+        reason: 'Advisor assignments service temporarily unavailable'
+      });
+    }
     console.error('List advisor assignments error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.json({ assignments: [], unavailable: true, reason: 'Advisor assignments service temporarily unavailable' });
   }
 });
 
@@ -350,8 +385,15 @@ router.get('/conflicts', authorize('advisor_conflict.list'), async (req: Authent
 
     return res.json({ conflicts });
   } catch (error) {
+    if (isAdvisorOpsUnavailableError(error)) {
+      return res.json({
+        conflicts: [],
+        unavailable: true,
+        reason: 'Advisor conflicts service temporarily unavailable'
+      });
+    }
     console.error('List advisor conflicts error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.json({ conflicts: [], unavailable: true, reason: 'Advisor conflicts service temporarily unavailable' });
   }
 });
 

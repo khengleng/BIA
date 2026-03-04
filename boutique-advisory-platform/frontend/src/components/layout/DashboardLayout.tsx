@@ -163,7 +163,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 { href: '/pipeline', label: t('navigation.deals'), icon: KanbanSquare, roles: ['ADMIN', 'ADVISOR'] },
                 { href: '/sme-pipeline', label: t('advisory.pipeline'), icon: ClipboardCheck, roles: ['ADMIN', 'ADVISOR'] },
                 { href: '/matchmaking', label: 'AI Matching', icon: Sparkles, roles: ['ADMIN', 'ADVISOR'] },
-                { href: '/investor/portfolio', label: 'My Portfolio', icon: Briefcase, roles: ['ADMIN', 'ADVISOR', 'INVESTOR'] },
+                { href: '/investor/portfolio', label: 'My Portfolio', icon: Briefcase, roles: ['INVESTOR'] },
             ]
         },
         {
@@ -220,7 +220,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             roles: ['ADMIN', 'SUPER_ADMIN', 'INVESTOR'],
             items: [
                 { href: '/secondary-trading', label: 'Marketplace', icon: ArrowLeftRight, roles: ['INVESTOR', 'ADMIN', 'SUPER_ADMIN'] },
-                { href: '/investor/portfolio', label: 'My Portfolio', icon: Briefcase, roles: ['INVESTOR', 'ADMIN', 'SUPER_ADMIN'] },
+                { href: '/investor/portfolio', label: 'My Portfolio', icon: Briefcase, roles: ['INVESTOR'] },
             ]
         },
         {

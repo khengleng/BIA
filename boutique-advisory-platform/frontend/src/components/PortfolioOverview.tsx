@@ -56,6 +56,7 @@ export default function PortfolioOverview() {
     const [selectedDeal, setSelectedDeal] = useState<{ id: string; name: string } | null>(null)
     const [showSellModal, setShowSellModal] = useState(false)
     const [selectedSellItem, setSelectedSellItem] = useState<PortfolioItem | null>(null)
+    const [accessDenied, setAccessDenied] = useState(false)
 
     useEffect(() => {
         fetchPortfolioData()
@@ -69,8 +70,13 @@ export default function PortfolioOverview() {
                 setSummary(data.summary)
                 setSectors(data.sectors)
                 setItems(data.items)
+                setAccessDenied(false)
             } else {
-                console.error('Failed to fetch portfolio data')
+                if (response.status === 404 || response.status === 403) {
+                    setAccessDenied(true)
+                } else {
+                    console.error('Failed to fetch portfolio data')
+                }
             }
         } catch (error) {
             console.error('Error fetching portfolio:', error)
@@ -87,6 +93,20 @@ export default function PortfolioOverview() {
         return (
             <div className="flex items-center justify-center p-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+            </div>
+        )
+    }
+
+    if (accessDenied) {
+        return (
+            <div className="bg-gray-800 border border-gray-700 rounded-2xl p-6">
+                <div className="flex items-center gap-2 text-yellow-400 mb-2">
+                    <AlertCircle className="w-5 h-5" />
+                    <h3 className="text-lg font-semibold">Portfolio Unavailable</h3>
+                </div>
+                <p className="text-gray-300 text-sm">
+                    This account does not have investor portfolio access.
+                </p>
             </div>
         )
     }

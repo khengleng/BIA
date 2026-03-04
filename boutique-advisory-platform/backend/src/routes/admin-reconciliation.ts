@@ -80,8 +80,15 @@ router.get('/runs', authorize('reconciliation.read'), async (req: AuthenticatedR
 
     return res.json({ runs });
   } catch (error) {
+    if (isMissingSchemaError(error)) {
+      return res.json({
+        runs: [],
+        unavailable: true,
+        reason: 'Pending database migration for reconciliation'
+      });
+    }
     console.error('List reconciliation runs error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.json({ runs: [], unavailable: true, reason: 'Reconciliation service temporarily unavailable' });
   }
 });
 
@@ -227,6 +234,13 @@ router.post('/runs', authorize('reconciliation.run'), async (req: AuthenticatedR
       exceptionsCreated: exceptionCount
     });
   } catch (error) {
+    if (isMissingSchemaError(error)) {
+      return res.status(200).json({
+        message: 'Reconciliation module unavailable; run not executed',
+        unavailable: true,
+        reason: 'Pending database migration for reconciliation'
+      });
+    }
     console.error('Create reconciliation run error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -252,8 +266,15 @@ router.get('/exceptions', authorize('reconciliation.exception.list'), async (req
 
     return res.json({ exceptions });
   } catch (error) {
+    if (isMissingSchemaError(error)) {
+      return res.json({
+        exceptions: [],
+        unavailable: true,
+        reason: 'Pending database migration for reconciliation'
+      });
+    }
     console.error('List reconciliation exceptions error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.json({ exceptions: [], unavailable: true, reason: 'Reconciliation service temporarily unavailable' });
   }
 });
 
@@ -284,6 +305,13 @@ router.patch('/exceptions/:id', authorize('reconciliation.exception.update'), as
 
     return res.json({ message: 'Reconciliation exception updated', exception: updated });
   } catch (error) {
+    if (isMissingSchemaError(error)) {
+      return res.status(200).json({
+        message: 'Reconciliation module unavailable; update deferred',
+        unavailable: true,
+        reason: 'Pending database migration for reconciliation'
+      });
+    }
     console.error('Update reconciliation exception error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

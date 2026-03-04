@@ -380,7 +380,13 @@ export default function SettingsPage() {
                   <h2 className="text-xl font-semibold text-white">Security Settings</h2>
 
                   {/* Password Section */}
-                  <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
+                  <form
+                    className="bg-gray-800 p-6 rounded-lg border border-gray-700"
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      void handleUpdatePassword()
+                    }}
+                  >
                     <h3 className="text-lg font-medium text-white mb-4">Change Password</h3>
                     <div className="space-y-4">
                       <div>
@@ -411,13 +417,13 @@ export default function SettingsPage() {
                         />
                       </div>
                       <button
-                        onClick={handleUpdatePassword}
+                        type="submit"
                         className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
                       >
                         Update Password
                       </button>
                     </div>
-                  </div>
+                  </form>
 
                   {/* 2FA Section */}
                   <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
@@ -660,7 +666,13 @@ export default function SettingsPage() {
               <h3 className="text-xl font-bold text-white mb-2">Disable 2FA?</h3>
               <p className="text-gray-400 text-sm mb-6">Are you sure? This will decrease your account security.</p>
 
-              <div className="space-y-4">
+              <form
+                className="space-y-4"
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  void handleDisable2FA()
+                }}
+              >
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">Confirm Password</label>
                   <input
@@ -679,13 +691,13 @@ export default function SettingsPage() {
                     Cancel
                   </button>
                   <button
-                    onClick={handleDisable2FA}
+                    type="submit"
                     className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium"
                   >
                     Disable 2FA
                   </button>
                 </div>
-              </div>
+              </form>
             </div>
           </div>
         )

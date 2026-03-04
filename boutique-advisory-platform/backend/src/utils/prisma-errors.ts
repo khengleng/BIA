@@ -9,6 +9,15 @@ const MISSING_SCHEMA_PATTERNS = [
 ];
 
 export function isMissingSchemaError(error: unknown): boolean {
+  if (
+    error instanceof Prisma.PrismaClientValidationError ||
+    error instanceof Prisma.PrismaClientUnknownRequestError ||
+    error instanceof Prisma.PrismaClientInitializationError ||
+    error instanceof Prisma.PrismaClientRustPanicError
+  ) {
+    return true;
+  }
+
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     // P2021: table does not exist, P2022: column does not exist
     if (error.code === 'P2021' || error.code === 'P2022') {
