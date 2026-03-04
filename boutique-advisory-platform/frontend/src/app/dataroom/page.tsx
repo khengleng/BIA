@@ -76,6 +76,32 @@ export default function DataRoomPage() {
         file: null as File | null
     })
 
+    const normalizeDocument = (doc: any): DataRoomDocument => ({
+        id: String(doc?.id || ''),
+        name: String(doc?.name || 'Untitled Document'),
+        category: String(doc?.category || doc?.type || 'OTHER'),
+        size: String(doc?.size || '0 MB'),
+        uploadedBy: String(doc?.uploadedBy || 'system'),
+        uploadedAt: String(doc?.uploadedAt || new Date().toISOString()),
+        accessCount: Number(doc?.accessCount || 0),
+        lastAccessedBy: doc?.lastAccessedBy || null,
+        lastAccessedAt: doc?.lastAccessedAt || null,
+        url: typeof doc?.url === 'string' ? doc.url : undefined,
+        versions: Array.isArray(doc?.versions) ? doc.versions : []
+    })
+
+    const normalizeRoom = (room: any): DataRoom => ({
+        id: String(room?.id || ''),
+        dealId: String(room?.dealId || room?.id || ''),
+        name: String(room?.name || room?.dealName || 'Data Room'),
+        status: String(room?.status || 'ACTIVE'),
+        createdBy: String(room?.createdBy || room?.smeName || 'system'),
+        accessList: Array.isArray(room?.accessList) ? room.accessList : [],
+        documents: Array.isArray(room?.documents) ? room.documents.map(normalizeDocument) : [],
+        activityLog: Array.isArray(room?.activityLog) ? room.activityLog : [],
+        createdAt: String(room?.createdAt || room?.lastUpdate || new Date().toISOString())
+    })
+
     // Pull-to-refresh
     const handleTouchStart = (e: React.TouchEvent) => {
         touchStartY.current = e.touches[0].clientY
@@ -119,9 +145,10 @@ export default function DataRoomPage() {
 
             if (response.ok) {
                 const data = await response.json()
-                setDataRooms(Array.isArray(data) ? data : [])
-                if (Array.isArray(data) && data.length > 0) {
-                    setSelectedRoom(data[0])
+                const normalized = Array.isArray(data) ? data.map(normalizeRoom) : []
+                setDataRooms(normalized)
+                if (normalized.length > 0) {
+                    setSelectedRoom(normalized[0])
                 }
             }
         } catch (error) {
@@ -603,18 +630,18 @@ export default function DataRoomPage() {
                                         {/* Analytics Dashboard */}
                                         {showAnalytics && analyticsData && (
                                             <div className="bg-gray-700/50 rounded-lg p-4 mb-4 animate-in fade-in slide-in-from-top-4 duration-300">
-                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                                                    <div className="bg-gray-800 p-4 rounded-lg border border-gray-600">
-                                                        <p className="text-gray-400 text-xs uppercase font-medium">Unique Visitors</p>
-                                                        <p className="text-2xl font-bold text-white mt-1">{analyticsData.visitorStats.uniqueVisitors}</p>
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                                            <div className="bg-gray-800 p-4 rounded-lg border border-gray-600">
+                                                <p className="text-gray-400 text-xs uppercase font-medium">Unique Visitors</p>
+                                                        <p className="text-2xl font-bold text-white mt-1">{analyticsData?.visitorStats?.uniqueVisitors || 0}</p>
                                                     </div>
                                                     <div className="bg-gray-800 p-4 rounded-lg border border-gray-600">
                                                         <p className="text-gray-400 text-xs uppercase font-medium">Total Views</p>
-                                                        <p className="text-2xl font-bold text-blue-400 mt-1">{analyticsData.visitorStats.totalViews}</p>
+                                                        <p className="text-2xl font-bold text-blue-400 mt-1">{analyticsData?.visitorStats?.totalViews || 0}</p>
                                                     </div>
                                                     <div className="bg-gray-800 p-4 rounded-lg border border-gray-600">
                                                         <p className="text-gray-400 text-xs uppercase font-medium">Total Downloads</p>
-                                                        <p className="text-2xl font-bold text-green-400 mt-1">{analyticsData.visitorStats.totalDownloads}</p>
+                                                        <p className="text-2xl font-bold text-green-400 mt-1">{analyticsData?.visitorStats?.totalDownloads || 0}</p>
                                                     </div>
                                                 </div>
 
@@ -622,7 +649,7 @@ export default function DataRoomPage() {
                                                     <div>
                                                         <h4 className="text-sm font-semibold text-white mb-3">Top Documents</h4>
                                                         <div className="space-y-2">
-                                                            {analyticsData.topDocuments.map((doc: any, i: number) => (
+                                                            {(analyticsData?.topDocuments || []).map((doc: any, i: number) => (
                                                                 <div key={i} className="flex justify-between items-center bg-gray-800 p-2 rounded text-sm">
                                                                     <div className="flex items-center gap-2 truncate flex-1">
                                                                         <span className="text-gray-500 w-4 text-xs font-mono">{i + 1}</span>
@@ -641,7 +668,7 @@ export default function DataRoomPage() {
                                                     <div>
                                                         <h4 className="text-sm font-semibold text-white mb-3">Top Interested Investors</h4>
                                                         <div className="space-y-2">
-                                                            {analyticsData.topInvestors.map((inv: any, i: number) => (
+                                                            {(analyticsData?.topInvestors || []).map((inv: any, i: number) => (
                                                                 <div key={i} className="flex justify-between items-center bg-gray-800 p-2 rounded text-sm">
                                                                     <div className="flex items-center gap-2">
                                                                         <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${i === 0 ? 'bg-yellow-500/20 text-yellow-500' : 'bg-gray-700 text-gray-400'
@@ -658,7 +685,7 @@ export default function DataRoomPage() {
                                                                     </div>
                                                                 </div>
                                                             ))}
-                                                            {analyticsData.topInvestors.length === 0 && (
+                                                            {(analyticsData?.topInvestors || []).length === 0 && (
                                                                 <p className="text-gray-500 text-xs italic">No investor activity yet.</p>
                                                             )}
                                                         </div>
