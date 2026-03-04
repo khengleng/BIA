@@ -42,7 +42,7 @@ export default function BottomNavigation() {
             { icon: FileText, label: 'Trade', path: '/secondary-trading' },
             { icon: Users, label: 'Portfolio', path: '/investor/portfolio' },
             { icon: MessageSquare, label: 'Watchlist', path: '/trading/watchlist' },
-            { icon: Settings, label: 'Settings', path: '/settings/sessions' },
+            { icon: Settings, label: 'Security', path: '/trading/security' },
         ]
         : [
             { icon: Home, label: 'Home', path: '/dashboard' },

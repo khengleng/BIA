@@ -27,23 +27,34 @@ interface TraderProfileResponse {
     }
 }
 
+const SECTOR_OPTIONS = [
+    'Fintech',
+    'Agriculture',
+    'Energy',
+    'Healthcare',
+    'Manufacturing',
+    'Retail',
+    'Logistics',
+    'Education',
+    'Real Estate',
+    'Technology'
+]
+
 export default function TradingProfilePage() {
     const { addToast } = useToast()
     const [profile, setProfile] = useState<TraderProfileResponse | null>(null)
     const [isSaving, setIsSaving] = useState(false)
-    const [sectorInput, setSectorInput] = useState('')
 
     useEffect(() => {
         const fetchProfile = async () => {
             const response = await authorizedRequest('/api/secondary-trading/trader-profile')
             if (!response.ok) {
-                addToast('error', 'Failed to load trader profile')
+                addToast('error', 'Failed to load investor profile')
                 return
             }
 
             const data = await response.json()
             setProfile(data)
-            setSectorInput((data.profile?.preferredSectors || []).join(', '))
         }
 
         fetchProfile()
@@ -53,33 +64,27 @@ export default function TradingProfilePage() {
         if (!profile) return
         setIsSaving(true)
 
-        const preferredSectors = sectorInput
-            .split(',')
-            .map(v => v.trim())
-            .filter(Boolean)
-            .slice(0, 10)
-
         const response = await authorizedRequest('/api/secondary-trading/trader-profile', {
             method: 'PUT',
             body: JSON.stringify({
                 ...profile.profile,
-                preferredSectors
+                preferredSectors: profile.profile.preferredSectors || []
             })
         })
 
         setIsSaving(false)
         if (!response.ok) {
-            addToast('error', 'Failed to update trader profile')
+            addToast('error', 'Failed to update investor profile')
             return
         }
 
-        addToast('success', 'Trader profile updated')
+        addToast('success', 'Investor profile updated')
     }
 
     if (!profile) {
         return (
             <DashboardLayout>
-                <div className="text-gray-300">Loading trader profile...</div>
+                <div className="text-gray-300">Loading investor profile...</div>
             </DashboardLayout>
         )
     }
@@ -88,7 +93,7 @@ export default function TradingProfilePage() {
         <DashboardLayout>
             <div className="max-w-4xl mx-auto space-y-6">
                 <div>
-                    <h1 className="text-3xl font-bold text-white">Trader Profile</h1>
+                    <h1 className="text-3xl font-bold text-white">Investor Profile</h1>
                     <p className="text-gray-400 mt-1">Configure your risk, strategy, and trading notifications.</p>
                 </div>
 
@@ -164,14 +169,21 @@ export default function TradingProfilePage() {
                     </div>
 
                     <div>
-                        <label className="block text-sm text-gray-300 mb-2">Preferred Sectors (comma-separated)</label>
-                        <input
-                            type="text"
-                            value={sectorInput}
-                            onChange={(e) => setSectorInput(e.target.value)}
-                            placeholder="Fintech, Agriculture, Energy"
-                            className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white"
-                        />
+                        <label className="block text-sm text-gray-300 mb-2">Preferred Sectors</label>
+                        <select
+                            multiple
+                            value={profile.profile.preferredSectors || []}
+                            onChange={(e) => {
+                                const selected = Array.from(e.target.selectedOptions).map((option) => option.value).slice(0, 10)
+                                setProfile(prev => prev ? { ...prev, profile: { ...prev.profile, preferredSectors: selected } } : prev)
+                            }}
+                            className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white min-h-36"
+                        >
+                            {SECTOR_OPTIONS.map((sector) => (
+                                <option key={sector} value={sector}>{sector}</option>
+                            ))}
+                        </select>
+                        <p className="text-xs text-gray-500 mt-2">Hold `Ctrl`/`Cmd` to choose multiple sectors.</p>
                     </div>
 
                     <div className="space-y-2">
@@ -207,7 +219,7 @@ export default function TradingProfilePage() {
                         disabled={isSaving}
                         className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-lg"
                     >
-                        {isSaving ? 'Saving...' : 'Save Trader Profile'}
+                        {isSaving ? 'Saving...' : 'Save Investor Profile'}
                     </button>
                 </div>
             </div>

@@ -223,7 +223,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 { href: '/trading/markets', label: 'Markets', icon: BarChart3, roles: ['INVESTOR', 'ADMIN', 'SUPER_ADMIN'] },
                 { href: '/investor/portfolio', label: 'My Portfolio', icon: Briefcase, roles: ['INVESTOR'] },
                 { href: '/trading/watchlist', label: 'Watchlist', icon: Sparkles, roles: ['INVESTOR', 'ADMIN', 'SUPER_ADMIN'] },
-                { href: '/trading/profile', label: 'Trader Profile', icon: UserCog, roles: ['INVESTOR', 'ADMIN', 'SUPER_ADMIN'] },
+                { href: '/trading/profile', label: 'Investor Profile', icon: UserCog, roles: ['INVESTOR', 'ADMIN', 'SUPER_ADMIN'] },
+                { href: '/trading/security', label: 'Investor Security', icon: ShieldCheck, roles: ['INVESTOR', 'ADMIN', 'SUPER_ADMIN'] },
                 { href: '/notifications', label: 'Notifications', icon: MessageSquare, roles: ['INVESTOR', 'ADMIN', 'SUPER_ADMIN'] },
             ]
         },
