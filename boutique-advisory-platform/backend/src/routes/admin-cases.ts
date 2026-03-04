@@ -76,7 +76,11 @@ router.get('/stats', authorize('case.list'), async (req: AuthenticatedRequest, r
       });
     }
     console.error('Case stats error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.json({
+      stats: { open: 0, inProgress: 0, escalated: 0, resolved: 0 },
+      unavailable: true,
+      reason: 'Cases service temporarily unavailable'
+    });
   }
 });
 
@@ -125,7 +129,11 @@ router.get('/', authorize('case.list'), async (req: AuthenticatedRequest, res: R
       });
     }
     console.error('List cases error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.json({
+      cases: [],
+      unavailable: true,
+      reason: 'Cases service temporarily unavailable'
+    });
   }
 });
 
