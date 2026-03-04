@@ -657,6 +657,8 @@ if (isTradingService) {
   app.use('/api/investors', authenticateToken, investorRoutes);
   app.use('/api/syndicate-tokens', authenticateToken, syndicateTokenRoutes);
   app.use('/api/secondary-trading', authenticateToken, secondaryTradingRoutes);
+  app.use('/api/notifications', authenticateToken, notificationRoutes);
+  app.use('/api/push', authenticateToken, notificationRoutes); // Alias for push subscription endpoints
 } else {
   // Core endpoints - NOW PROTECTED (Fix #1)
   app.use('/api/smes', authenticateToken, smeRoutes);
