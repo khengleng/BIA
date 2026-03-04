@@ -36,6 +36,12 @@ async function requireInvestor(req: AuthenticatedRequest, tenantId: string, res:
     return investor;
 }
 
+async function getInvestor(req: AuthenticatedRequest, tenantId: string) {
+    return prisma.investor.findFirst({
+        where: { userId: req.user?.id, tenantId }
+    });
+}
+
 // Platform fee percentage
 const PLATFORM_FEE = 0.01; // 1%
 
@@ -178,8 +184,27 @@ router.get('/trader-profile', authorize('secondary_trading.read'), async (req: A
             return;
         }
 
-        const investor = await requireInvestor(req, tenantId, res);
-        if (!investor) return;
+        const investor = await getInvestor(req, tenantId);
+        if (!investor) {
+            res.json({
+                mode: 'READ_ONLY',
+                profile: {
+                    riskLevel: 'MEDIUM',
+                    investmentHorizon: 'MID',
+                    strategy: 'VALUE',
+                    maxPositionSize: 10,
+                    preferredSectors: [],
+                    notifications: {
+                        priceAlerts: false,
+                        executionUpdates: false,
+                        marketAnnouncements: true
+                    },
+                    watchlistCount: 0
+                },
+                message: 'Trader profile is available for investor accounts only.'
+            });
+            return;
+        }
 
         const prefs = (investor.preferences as Record<string, unknown>) || {};
         const tradingProfile = (prefs.tradingProfile as Record<string, unknown>) || {};
@@ -231,8 +256,11 @@ router.put('/trader-profile', authorize('secondary_trading.buy'), async (req: Au
             return;
         }
 
-        const investor = await requireInvestor(req, tenantId, res);
-        if (!investor) return;
+        const investor = await getInvestor(req, tenantId);
+        if (!investor) {
+            res.status(403).json({ error: 'Only investor accounts can update trader profile settings' });
+            return;
+        }
 
         const body = req.body || {};
         const existingPrefs = (investor.preferences as Record<string, unknown>) || {};
@@ -284,8 +312,25 @@ router.get('/watchlist', authorize('secondary_trading.read'), async (req: Authen
             return;
         }
 
-        const investor = await requireInvestor(req, tenantId, res);
-        if (!investor) return;
+        const role = req.user?.role;
+        if (isTradingOperatorRole(role)) {
+            res.json({
+                mode: 'OPERATOR',
+                listingIds: [],
+                listings: []
+            });
+            return;
+        }
+
+        const investor = await getInvestor(req, tenantId);
+        if (!investor) {
+            res.json({
+                mode: 'READ_ONLY',
+                listingIds: [],
+                listings: []
+            });
+            return;
+        }
 
         const prefs = (investor.preferences as Record<string, unknown>) || {};
         const rawIds = Array.isArray(prefs.watchlist) ? (prefs.watchlist as unknown[]) : [];
@@ -351,8 +396,16 @@ router.put('/watchlist', authorize('secondary_trading.buy'), async (req: Authent
             return;
         }
 
-        const investor = await requireInvestor(req, tenantId, res);
-        if (!investor) return;
+        if (isTradingOperatorRole(req.user?.role)) {
+            res.status(403).json({ error: 'Operator accounts do not have personal watchlists' });
+            return;
+        }
+
+        const investor = await getInvestor(req, tenantId);
+        if (!investor) {
+            res.status(403).json({ error: 'Only investor accounts can update watchlists' });
+            return;
+        }
 
         const rawIds = Array.isArray(req.body?.listingIds) ? req.body.listingIds : [];
         const listingIds = rawIds.map((v: unknown) => String(v)).filter(Boolean).slice(0, 100);
