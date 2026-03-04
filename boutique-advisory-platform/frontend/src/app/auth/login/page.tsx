@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, Mail, Lock, Building2, CandlestickChart } from 'lucide-react'
 import { apiRequest } from '../../../lib/api'
-import { CORE_FRONTEND_URL, IS_TRADING_PLATFORM } from '@/lib/platform'
+import { CORE_FRONTEND_URL, IS_TRADING_PLATFORM, isTradingHostname } from '@/lib/platform'
 import { isTradingOperatorRole, normalizeRole } from '@/lib/roles'
 
 export default function LoginPage() {
@@ -54,7 +54,7 @@ export default function LoginPage() {
       setNextPath(next)
     }
 
-    setIsTradingRuntime(IS_TRADING_PLATFORM || window.location.hostname === 'trade.cambobia.com')
+    setIsTradingRuntime(IS_TRADING_PLATFORM || isTradingHostname(window.location.hostname))
   }, [])
 
   const handleResendVerification = async () => {

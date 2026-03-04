@@ -6,7 +6,7 @@ import { useTranslations } from '../../../hooks/useTranslations'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, Mail, Lock, User, Building2, Users, Handshake } from 'lucide-react'
-import { IS_TRADING_PLATFORM } from '@/lib/platform'
+import { IS_TRADING_PLATFORM, isTradingHostname } from '@/lib/platform'
 
 export default function RegisterPage() {
   const { t } = useTranslations()
@@ -38,7 +38,7 @@ export default function RegisterPage() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    setIsTradingRuntime(IS_TRADING_PLATFORM || window.location.hostname === 'trade.cambobia.com')
+    setIsTradingRuntime(IS_TRADING_PLATFORM || isTradingHostname(window.location.hostname))
   }, [])
 
   useEffect(() => {

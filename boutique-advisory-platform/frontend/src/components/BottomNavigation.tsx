@@ -15,7 +15,8 @@ export default function BottomNavigation() {
     const [isTradingRuntime, setIsTradingRuntime] = useState(IS_TRADING_PLATFORM)
 
     useEffect(() => {
-        setIsTradingRuntime(IS_TRADING_PLATFORM || isTradingHostname(window.location.hostname))
+        const isTradingPath = Boolean(pathname?.startsWith('/trading') || pathname?.startsWith('/secondary-trading'))
+        setIsTradingRuntime(IS_TRADING_PLATFORM || isTradingHostname(window.location.hostname) || isTradingPath)
 
         const loadRole = () => {
             try {
@@ -34,7 +35,7 @@ export default function BottomNavigation() {
         loadRole()
         window.addEventListener('auth:changed', loadRole)
         return () => window.removeEventListener('auth:changed', loadRole)
-    }, [])
+    }, [pathname])
 
     // Hide/show on scroll
     useEffect(() => {

@@ -64,8 +64,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     const normalizedRole = normalizeRole(user?.role)
 
     useEffect(() => {
-        setIsTradingRuntime(IS_TRADING_PLATFORM || isTradingHostname(window.location.hostname))
-    }, [])
+        const isTradingPath = Boolean(pathname?.startsWith('/trading') || pathname?.startsWith('/secondary-trading'))
+        setIsTradingRuntime(IS_TRADING_PLATFORM || isTradingHostname(window.location.hostname) || isTradingPath)
+    }, [pathname])
 
     useEffect(() => {
         const fetchUser = async () => {
