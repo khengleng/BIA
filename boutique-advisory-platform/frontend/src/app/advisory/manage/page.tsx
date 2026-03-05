@@ -295,7 +295,7 @@ export default function ManageServicesPage() {
                                     </div>
                                     <div className="mt-4">
                                         <div className="flex flex-wrap gap-2">
-                                            {service.features.map((feature, idx) => (
+                                            {(service.features || []).map((feature, idx) => (
                                                 <span key={idx} className="px-2 py-1 text-xs bg-gray-700 text-gray-300 rounded-md">
                                                     {feature}
                                                 </span>
