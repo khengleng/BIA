@@ -51,6 +51,17 @@ function isTradingHost(hostname: string): boolean {
     || host.includes('trade-');
 }
 
+function looksLikeTradingServiceTarget(candidate: string): boolean {
+  const value = String(candidate || '').trim().toLowerCase();
+  if (!value) return false;
+  // Match known trading backend/service patterns so core runtime never proxies there.
+  return value.includes('trade.cambobia.com')
+    || value.includes('trading.railway')
+    || value.includes('trade-')
+    || value.includes('trading-backend')
+    || value.includes('/trading');
+}
+
 function isTradingRuntime(req: NextRequest): boolean {
   if (process.env.NEXT_PUBLIC_PLATFORM_MODE === 'trading') return true;
   return isTradingHost(req.nextUrl.hostname);
@@ -58,15 +69,17 @@ function isTradingRuntime(req: NextRequest): boolean {
 
 function getBackendTargets(req: NextRequest): string[] {
   const targets: string[] = [];
+  const tradingRuntime = isTradingRuntime(req);
   const addTarget = (candidate?: string) => {
     const sanitized = sanitizeBaseUrl(candidate);
     if (!sanitized) return;
+    // Guardrail: keep core host traffic away from trading service targets.
+    if (!tradingRuntime && looksLikeTradingServiceTarget(sanitized)) return;
     if (targets.includes(sanitized)) return;
     if (sanitized === req.nextUrl.origin) return;
     targets.push(sanitized);
   };
 
-  const tradingRuntime = isTradingRuntime(req);
   const coreInternalBackend = inferServiceUrl(
     process.env.RAILWAY_SERVICE_BACKEND_URL,
     'http://backend.railway.internal:8080'

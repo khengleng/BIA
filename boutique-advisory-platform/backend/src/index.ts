@@ -683,6 +683,11 @@ if (isTradingService) {
   app.use('/api/calendar', authenticateToken, calendarRoutes);
   app.use('/api/report', authenticateToken, reportRoutes);
   app.use('/api/reports', authenticateToken, reportRoutes);
+  // Keep advisory APIs mounted to avoid core advisor feature regressions when
+  // service-mode/env routing is temporarily misaligned during deploys.
+  app.use('/api/advisory', authenticateToken, advisoryRoutes);
+  app.use('/api/advisory-services', authenticateToken, advisoryRoutes);
+  app.use('/api/advisors', authenticateToken, advisoryRoutes);
   app.use('/api/dataroom', authenticateToken, dataroomRoutes);
   app.use('/api/audit', authenticateToken, auditRoutes);
   app.use('/api/payments', authenticateToken, paymentRoutes);
