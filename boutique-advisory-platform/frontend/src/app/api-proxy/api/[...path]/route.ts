@@ -30,6 +30,20 @@ function sanitizeBaseUrl(baseUrl: string | undefined): string | null {
   }
 }
 
+function isTradingHost(hostname: string): boolean {
+  const host = String(hostname || '').trim().toLowerCase();
+  return host === 'trade.cambobia.com'
+    || host.endsWith('.trade.cambobia.com')
+    || host.includes('trade.cambobia.com')
+    || host.includes('trading.railway')
+    || host.includes('trade-');
+}
+
+function isTradingRuntime(req: NextRequest): boolean {
+  if (process.env.NEXT_PUBLIC_PLATFORM_MODE === 'trading') return true;
+  return isTradingHost(req.nextUrl.hostname);
+}
+
 function getBackendTargets(req: NextRequest): string[] {
   const targets: string[] = [];
   const addTarget = (candidate?: string) => {
@@ -40,13 +54,30 @@ function getBackendTargets(req: NextRequest): string[] {
     targets.push(sanitized);
   };
 
-  const railwayPrivateBackend = process.env.RAILWAY_SERVICE_BACKEND_URL
+  const tradingRuntime = isTradingRuntime(req);
+  const coreInternalBackend = process.env.RAILWAY_SERVICE_BACKEND_URL
     ? `http://${process.env.RAILWAY_SERVICE_BACKEND_URL}`
     : 'http://backend.railway.internal:8080';
+  const tradingInternalBackend =
+    (process.env.RAILWAY_SERVICE_TRADING_URL && `http://${process.env.RAILWAY_SERVICE_TRADING_URL}`)
+    || (process.env.RAILWAY_SERVICE_TRADING_BACKEND_URL && `http://${process.env.RAILWAY_SERVICE_TRADING_BACKEND_URL}`)
+    || 'http://trading.railway.internal:8080';
 
+  if (tradingRuntime) {
+    addTarget(process.env.TRADING_API_URL);
+    addTarget(process.env.TRADING_BACKEND_INTERNAL_URL);
+    addTarget(process.env.TRADING_BACKEND_URL);
+    addTarget(tradingInternalBackend);
+  } else {
+    addTarget(process.env.CORE_API_URL);
+    addTarget(process.env.CORE_BACKEND_INTERNAL_URL);
+    addTarget(process.env.CORE_BACKEND_URL);
+    addTarget(coreInternalBackend);
+  }
+
+  // Shared fallbacks for backward compatibility with existing Railway variables.
   addTarget(process.env.API_URL);
   addTarget(process.env.BACKEND_INTERNAL_URL);
-  addTarget(railwayPrivateBackend);
   addTarget(process.env.BACKEND_URL);
   addTarget(process.env.NEXT_PUBLIC_API_URL);
 

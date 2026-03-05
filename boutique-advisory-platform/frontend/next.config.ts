@@ -109,15 +109,42 @@ const nextConfig: NextConfig = {
     // HTTP API requests are handled by the Route Handler at:
     // /api-proxy/api/[...path]
     // which adds retry/fallback behavior across backend targets.
-    const railwayPrivateBackend = process.env.RAILWAY_SERVICE_BACKEND_URL
-      ? `http://${process.env.RAILWAY_SERVICE_BACKEND_URL}`
-      : 'http://backend.railway.internal:8080';
-    const apiUrl =
-      process.env.API_URL ||
-      process.env.BACKEND_INTERNAL_URL ||
-      process.env.BACKEND_URL ||
-      process.env.NEXT_PUBLIC_API_URL ||
-      railwayPrivateBackend;
+    const tradingBuild = process.env.NEXT_PUBLIC_PLATFORM_MODE === 'trading';
+    const railwayPrivateBackend = tradingBuild
+      ? (
+        process.env.RAILWAY_SERVICE_TRADING_URL
+          ? `http://${process.env.RAILWAY_SERVICE_TRADING_URL}`
+          : process.env.RAILWAY_SERVICE_TRADING_BACKEND_URL
+            ? `http://${process.env.RAILWAY_SERVICE_TRADING_BACKEND_URL}`
+            : 'http://trading.railway.internal:8080'
+      )
+      : (
+        process.env.RAILWAY_SERVICE_BACKEND_URL
+          ? `http://${process.env.RAILWAY_SERVICE_BACKEND_URL}`
+          : 'http://backend.railway.internal:8080'
+      );
+
+    const apiUrl = tradingBuild
+      ? (
+        process.env.TRADING_API_URL ||
+        process.env.TRADING_BACKEND_INTERNAL_URL ||
+        process.env.TRADING_BACKEND_URL ||
+        process.env.API_URL ||
+        process.env.BACKEND_INTERNAL_URL ||
+        process.env.BACKEND_URL ||
+        process.env.NEXT_PUBLIC_API_URL ||
+        railwayPrivateBackend
+      )
+      : (
+        process.env.CORE_API_URL ||
+        process.env.CORE_BACKEND_INTERNAL_URL ||
+        process.env.CORE_BACKEND_URL ||
+        process.env.API_URL ||
+        process.env.BACKEND_INTERNAL_URL ||
+        process.env.BACKEND_URL ||
+        process.env.NEXT_PUBLIC_API_URL ||
+        railwayPrivateBackend
+      );
     console.log(`📡 [Proxy Configuration] Target: ${apiUrl}`);
 
 
