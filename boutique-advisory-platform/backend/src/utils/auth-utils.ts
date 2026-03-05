@@ -58,15 +58,6 @@ function resolveTradingCookieScope(req?: Request | null): boolean {
 }
 
 export function getAuthCookieNames(req?: Request): AuthCookieNames {
-    if (resolveTradingCookieScope(req)) {
-        // Keep trading auth isolated from core subdomain cookies.
-        return {
-            accessToken: 'tr_accessToken',
-            refreshToken: 'tr_refreshToken',
-            token: 'tr_token',
-        };
-    }
-
     return {
         accessToken: 'accessToken',
         refreshToken: 'refreshToken',

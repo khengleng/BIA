@@ -20,18 +20,12 @@ interface JwtPayload {
 
 export const authenticateToken = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     const cookieNames = getAuthCookieNames(req);
-    const isTradingCookieScope = cookieNames.accessToken.startsWith('tr_');
-    // 1. Try to get Access Token
     const authHeader = req.headers['authorization'];
     let token = (authHeader && authHeader.split(' ')[1])
         || (req.cookies && req.cookies[cookieNames.accessToken])
-        || (req.cookies && req.cookies[cookieNames.token]);
-
-    // Legacy fallback is only safe in core scope.
-    if (!token && !isTradingCookieScope) {
-        token = (req.cookies && req.cookies['accessToken'])
-            || (req.cookies && req.cookies['token']); // Backward compatibility / transition
-    }
+        || (req.cookies && req.cookies[cookieNames.token])
+        || (req.cookies && req.cookies['accessToken'])
+        || (req.cookies && req.cookies['token']);
 
     if (!token) {
         // No access token, try refresh token logic immediately?
@@ -84,11 +78,7 @@ export const authenticateToken = async (req: AuthenticatedRequest, res: Response
  */
 async function handleRefresh(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     const cookieNames = getAuthCookieNames(req);
-    const isTradingCookieScope = cookieNames.refreshToken.startsWith('tr_');
-    let refreshToken = req.cookies[cookieNames.refreshToken];
-    if (!refreshToken && !isTradingCookieScope) {
-        refreshToken = req.cookies['refreshToken'];
-    }
+    let refreshToken = req.cookies[cookieNames.refreshToken] || req.cookies['refreshToken'];
 
     if (!refreshToken) {
         res.status(401).json({ error: 'Session expired. Please login again.' });
