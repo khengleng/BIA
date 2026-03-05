@@ -384,10 +384,17 @@ router.post('/login', async (req: Request, res: Response, next: NextFunction) =>
       return res.status(400).json({ error: 'Invalid email format' });
     }
 
+    const tenantId = getTenantId(req);
+    // Find user early so SUPER_ADMIN lockout bypass can be evaluated safely.
+    const user = await prisma.user.findFirst({
+      where: { email: sanitizedEmail, tenantId }
+    });
+
     // SECURITY: Check account-centric lockout (email only).
     // IP abuse protection is enforced by the auth rate limiter in index.ts.
+    // SUPER_ADMIN is allowed to bypass account lockout to avoid operator lockout.
     const emailLocked = await isLockedOut(sanitizedEmail);
-    if (emailLocked) {
+    if (emailLocked && user?.role !== 'SUPER_ADMIN') {
       await logAuditEvent({
         userId: 'unknown',
         action: 'LOGIN_BLOCKED',
@@ -401,12 +408,6 @@ router.post('/login', async (req: Request, res: Response, next: NextFunction) =>
         error: 'Too many failed attempts. Please try again in 15 minutes.'
       });
     }
-
-    const tenantId = getTenantId(req);
-    // Find user
-    const user = await prisma.user.findFirst({
-      where: { email: sanitizedEmail, tenantId }
-    });
 
     if (!user) {
       // SECURITY: Record failed attempt but don't reveal if user exists
