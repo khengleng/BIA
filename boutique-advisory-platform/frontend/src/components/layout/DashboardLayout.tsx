@@ -173,6 +173,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 { href: '/dataroom', label: 'Data Room', icon: FolderLock, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
                 { href: '/reports', label: t('navigation.reports'), icon: FileText, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
                 { href: '/analytics', label: t('home.features.analytics.title'), icon: TrendingUp, roles: ['ADMIN', 'ADVISOR', 'INVESTOR'] },
+                { href: '/wallet', label: 'My Wallet', icon: Wallet, roles: ['ADVISOR', 'INVESTOR', 'SME'] },
             ]
         },
         {
@@ -274,6 +275,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 items: [
                     { href: '/secondary-trading', label: 'Marketplace', icon: ArrowLeftRight, roles: ['INVESTOR'] },
                     { href: '/trading/markets', label: 'Markets', icon: BarChart3, roles: ['INVESTOR'] },
+                    { href: '/trading/wallet', label: 'My Wallet', icon: Wallet, roles: ['INVESTOR'] },
                     { href: '/trading/portfolio', label: 'My Portfolio', icon: Briefcase, roles: ['INVESTOR'] },
                     { href: '/trading/watchlist', label: 'Watchlist', icon: Sparkles, roles: ['INVESTOR'] },
                     { href: '/trading/profile', label: 'Investor Profile', icon: UserCog, roles: ['INVESTOR'] },
@@ -389,6 +391,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             '/secondary-trading',
             '/trading/markets',
             '/trading/terminal',
+            '/trading/wallet',
             '/trading/watchlist',
             '/trading/profile',
             '/trading/portfolio',

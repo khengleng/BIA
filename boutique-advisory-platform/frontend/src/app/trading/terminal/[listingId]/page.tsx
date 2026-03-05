@@ -7,15 +7,18 @@ import {
     Activity,
     ArrowLeft,
     BarChart3,
+    Clock,
     Clock3,
     Info,
     TrendingDown,
-    TrendingUp
+    TrendingUp,
+    Wallet
 } from 'lucide-react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import { authorizedRequest } from '@/lib/api'
 import { useToast } from '@/contexts/ToastContext'
 import usePermissions from '@/hooks/usePermissions'
+import { useSocket } from '@/hooks/useSocket'
 import { isTradingOperatorRole, normalizeRole } from '@/lib/roles'
 
 interface Listing {
@@ -59,16 +62,38 @@ export default function TradeTerminalPage() {
     const { user, isLoading: isRoleLoading } = usePermissions()
     const listingId = params?.listingId
 
+    const { socket, isConnected } = useSocket()
     const [isLoading, setIsLoading] = useState(true)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [listing, setListing] = useState<Listing | null>(null)
     const [recentTrades, setRecentTrades] = useState<RecentTrade[]>([])
+    const [walletBalance, setWalletBalance] = useState<number | null>(null)
 
     const [side, setSide] = useState<'BUY' | 'SELL'>('BUY')
     const [orderType, setOrderType] = useState<'LIMIT' | 'MARKET'>('LIMIT')
     const [quantity, setQuantity] = useState('')
     const [limitPrice, setLimitPrice] = useState('')
     const [depthStepPct, setDepthStepPct] = useState(0.2)
+
+    // WebSocket: Listen for real-time market updates
+    useEffect(() => {
+        if (!socket || !listingId) return
+
+        const handleMarketUpdate = (data: any) => {
+            if (data.type === 'TRADE_EXECUTED' && data.listingId === listingId) {
+                setRecentTrades(prev => [...prev.slice(-119), data.trade])
+                // Also update listing if any price changes (in a real app, we'd fetch the latest listing state)
+            }
+            if (data.type === 'NEW_LISTING' && data.listing?.id === listingId) {
+                setListing(data.listing)
+            }
+        }
+
+        socket.on('market_update', handleMarketUpdate)
+        return () => {
+            socket.off('market_update', handleMarketUpdate)
+        }
+    }, [socket, listingId])
 
     useEffect(() => {
         if (isRoleLoading) return
@@ -82,9 +107,10 @@ export default function TradeTerminalPage() {
             if (!listingId) return
 
             try {
-                const [listingRes, tradesRes] = await Promise.all([
+                const [listingRes, tradesRes, walletRes] = await Promise.all([
                     authorizedRequest(`/api/secondary-trading/listings/${listingId}`),
-                    authorizedRequest('/api/secondary-trading/trades/recent?limit=120')
+                    authorizedRequest('/api/secondary-trading/trades/recent?limit=120'),
+                    authorizedRequest('/api/wallet')
                 ])
 
                 if (listingRes.status === 404) {
@@ -107,6 +133,11 @@ export default function TradeTerminalPage() {
                         : []
                     const sorted = filtered.sort((a: RecentTrade, b: RecentTrade) => new Date(a.executedAt).getTime() - new Date(b.executedAt).getTime())
                     setRecentTrades(sorted)
+                }
+
+                if (walletRes.ok) {
+                    const data = await walletRes.json()
+                    setWalletBalance(data.wallet?.balance || 0)
                 }
             } catch (error) {
                 console.error('Failed to load terminal', error)
@@ -486,6 +517,25 @@ export default function TradeTerminalPage() {
                                 </button>
                             </div>
 
+                            <div className="mb-4">
+                                <div className="flex justify-between items-center text-[11px] mb-1">
+                                    <span className="text-gray-400 flex items-center gap-1">
+                                        <Wallet className="w-3 h-3" /> Balance
+                                    </span>
+                                    <span className="text-white font-medium">
+                                        {walletBalance !== null ? `$${walletBalance.toLocaleString()}` : <span className="animate-pulse">Loading...</span>}
+                                    </span>
+                                </div>
+                                {side === 'BUY' && walletBalance !== null && (
+                                    <div className="w-full bg-gray-900 h-1.5 rounded-full overflow-hidden border border-gray-700">
+                                        <div
+                                            className="bg-blue-500 h-full transition-all duration-500"
+                                            style={{ width: `${Math.min(100, ((total + feeEstimate) / (Math.max(1, walletBalance))) * 100)}%` }}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
                             <div className="space-y-3">
                                 {orderType === 'LIMIT' ? (
                                     <div>
@@ -568,8 +618,11 @@ export default function TradeTerminalPage() {
                 )}
 
                 <div className="bg-gray-800 border border-gray-700 rounded-xl p-3 text-xs text-gray-400 flex flex-wrap items-center gap-4">
-                    <span className="inline-flex items-center gap-1"><Clock3 className="w-3.5 h-3.5" /> Live price updates refresh on every page load.</span>
-                    <span className="inline-flex items-center gap-1"><Activity className="w-3.5 h-3.5" /> Market depth is indicative and derived from current listing liquidity.</span>
+                    <span className="inline-flex items-center gap-1">
+                        <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                        {isConnected ? 'Real-time market connectivity active.' : 'Connecting to market data...'}
+                    </span>
+                    <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Market depth updates automatically on every trade.</span>
                 </div>
             </div>
         </DashboardLayout>

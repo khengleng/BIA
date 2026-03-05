@@ -67,17 +67,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         const isTradingContext = typeof window !== 'undefined'
             && resolveTradingRuntime(window.location.hostname, window.location.pathname)
 
-        if (isTradingContext) {
-            if (socketRef.current) {
-                intentionalDisconnectRef.current = true
-                socketRef.current.io.opts.reconnection = false
-                socketRef.current.removeAllListeners()
-                socketRef.current.disconnect()
-                socketRef.current = null
-                setIsConnected(false)
-            }
-            return
-        }
+        // Enabled for both Core and Trading platforms to support real-time market/notification updates
 
         if (!user) {
             if (socketRef.current) {

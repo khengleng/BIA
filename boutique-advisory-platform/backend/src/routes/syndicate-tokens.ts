@@ -8,6 +8,8 @@ import { Router, Response } from 'express';
 import { AuthenticatedRequest, authorize } from '../middleware/authorize';
 import { prisma, prismaReplica } from '../database';
 import { shouldUseDatabase } from '../migration-manager';
+import { io } from '../socket';
+import { WalletService } from '../services/wallet';
 
 const router = Router();
 
@@ -188,6 +190,15 @@ router.post('/listings', authorize('secondary_trading.create_listing'), async (r
                 }
             }
         });
+
+        // Real-time market update
+        if (io) {
+            io.emit('market_update', {
+                type: 'NEW_SYNDICATE_LISTING',
+                symbol: listing.syndicateId,
+                listing
+            });
+        }
 
         res.status(201).json(listing);
     } catch (error) {
@@ -386,6 +397,33 @@ router.post('/buy', authorize('secondary_trading.buy'), async (req: Authenticate
                 tokens: { decrement: tokens }
             }
         });
+
+        // Transfer funds via Wallet System (Binance Standard)
+        const buyerUser = await prisma.user.findUnique({ where: { id: req.user!.id } });
+        const sellerUser = await prisma.user.findUnique({
+            where: { id: listing.seller.userId }
+        });
+
+        if (buyerUser && sellerUser) {
+            await WalletService.settleTrade(
+                buyerUser.id,
+                sellerUser.id,
+                totalAmount,
+                fee,
+                trade.id,
+                buyerUser.tenantId,
+                prisma as any
+            );
+        }
+
+        // Real-time market update
+        if (io) {
+            io.emit('market_update', {
+                type: 'SYNDICATE_TRADE_EXECUTED',
+                syndicateId: listing.syndicateId,
+                trade
+            });
+        }
 
         res.status(201).json({
             message: 'Tokens purchased successfully',

@@ -11,6 +11,7 @@ import { shouldUseDatabase } from '../migration-manager';
 import { createAbaTransaction } from '../utils/aba';
 import { settleSecondaryTrade } from '../services/secondary-trade-settlement';
 import { isTradingOperatorRole } from '../lib/roles';
+import { io } from '../socket';
 
 const router = Router();
 
@@ -629,6 +630,18 @@ router.post('/listings', authorize('secondary_trading.create_listing'), async (r
                 expiresAt: expiresAt ? new Date(expiresAt) : null
             }
         });
+
+        // Real-time market update: New Listing
+        if (io) {
+            io.emit('market_update', {
+                type: 'NEW_LISTING',
+                symbol: listing.id,
+                listing: {
+                    ...listing,
+                    deal: dealInvestor.deal
+                }
+            });
+        }
 
         res.status(201).json(listing);
     } catch (error) {

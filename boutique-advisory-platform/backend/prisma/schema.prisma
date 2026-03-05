@@ -50,6 +50,7 @@ model Tenant {
   reconciliationRuns ReconciliationRun[]
   reconciliationExceptions ReconciliationException[]
   activityLogs  ActivityLog[]
+  wallets       Wallet[]
 
   @@map("tenants")
 }
@@ -120,6 +121,7 @@ model User {
   assignedReconciliationExceptions ReconciliationException[] @relation("ReconciliationExceptionAssignee")
   invoices      Invoice[] @relation("InvoiceCustomer")
 
+  wallet        Wallet?
   refreshTokens     RefreshToken[]
 
   @@unique([tenantId, email])
@@ -1801,4 +1803,75 @@ enum AccessLevel {
   QUALIFIED
   CONFIDENTIAL
   ADMIN_ONLY
+}
+
+// ==================== WALLET & FINANCE SYSTEM ====================
+
+model Wallet {
+  id              String   @id @default(cuid())
+  tenantId        String
+  userId          String   @unique
+  
+  balance         Float    @default(0)
+  frozenBalance   Float    @default(0) // For open orders or pending withdrawals
+  currency        String   @default("USD")
+  
+  status          WalletStatus @default(ACTIVE)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions    WalletTransaction[]
+
+  @@index([tenantId, userId])
+  @@map("wallets")
+}
+
+model WalletTransaction {
+  id              String   @id @default(cuid())
+  walletId        String
+  tenantId        String
+  
+  amount          Float
+  type            WalletTransactionType
+  status          WalletTransactionStatus @default(PENDING)
+  
+  referenceType   String?  // TRADE, DEPOSIT, WITHDRAWAL, FEE
+  referenceId     String?
+  
+  description     String?
+  metadata        Json?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  wallet          Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId, createdAt])
+  @@index([tenantId, type, status])
+  @@map("wallet_transactions")
+}
+
+enum WalletStatus {
+  ACTIVE
+  FROZEN
+  LOCKED
+}
+
+enum WalletTransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  TRADE_BUY
+  TRADE_SELL
+  FEE
+  REFUND
+  ADVISORY_PAYMENT
+}
+
+enum WalletTransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  CANCELLED
 }

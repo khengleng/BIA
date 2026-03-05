@@ -100,6 +100,7 @@ import adminInvestorOpsRoutes from './routes/admin-investor-ops';
 import adminDataGovernanceRoutes from './routes/admin-data-governance';
 import adminReconciliationRoutes from './routes/admin-reconciliation';
 import adminSecurityRoutes from './routes/admin-security';
+import walletRoutes from './routes/wallet';
 
 // Core Feature Routes
 import authRoutes from './routes/auth';
@@ -712,6 +713,7 @@ app.use('/api', (req: express.Request, res: express.Response, next: express.Next
 
 // Authentication endpoints (public but rate limited)
 app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/wallet', authenticateToken, walletRoutes);
 app.use('/api/webhooks', webhookRoutes);
 
 if (isTradingService) {

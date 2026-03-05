@@ -1,11 +1,19 @@
 import { Prisma } from '@prisma/client';
+import { WalletService } from './wallet';
 
 type TxClient = Prisma.TransactionClient;
 
 export async function settleSecondaryTrade(tx: TxClient, tradeId: string, tenantId: string) {
   const trade = await tx.secondaryTrade.findUnique({
     where: { id: tradeId },
-    include: { listing: true }
+    include: {
+      listing: {
+        include: {
+          seller: { select: { userId: true } }
+        }
+      },
+      buyer: { select: { userId: true } }
+    }
   });
 
   if (!trade || trade.listing.tenantId !== tenantId) {
@@ -60,6 +68,18 @@ export async function settleSecondaryTrade(tx: TxClient, tradeId: string, tenant
       }
     });
   }
+
+  // 5. Update Wallets (Binance Standard)
+  // This ensures the financial move is recorded in the platform's ledger
+  await WalletService.settleTrade(
+    trade.buyer.userId,
+    trade.listing.seller.userId,
+    trade.totalAmount,
+    trade.fee,
+    trade.id,
+    tenantId,
+    tx
+  );
 
   return tx.secondaryTrade.update({
     where: { id: trade.id },
