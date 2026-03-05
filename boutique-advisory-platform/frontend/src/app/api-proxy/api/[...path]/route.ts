@@ -82,14 +82,10 @@ function getBackendTargets(req: NextRequest): string[] {
       const targetHost = new URL(sanitized).host.toLowerCase();
       if (targetHost === currentHost) return;
     } catch {
-      // invalid URL in env var, skip
       return;
     }
 
-    // Guardrail: keep core host traffic away from trading service targets.
-    if (!tradingRuntime && looksLikeTradingServiceTarget(sanitized)) return;
     if (targets.includes(sanitized)) return;
-    if (sanitized === req.nextUrl.origin) return;
     targets.push(sanitized);
   };
 
@@ -102,41 +98,36 @@ function getBackendTargets(req: NextRequest): string[] {
     'http://trading.railway.internal:8080'
   );
 
+  // Strategy: Prioritize based on runtime, but always include fallbacks
   if (tradingRuntime) {
-    // Primary: Trading-specific targets
+    // Priority: Trading -> Core -> Others
     addTarget(process.env.TRADING_API_URL);
     addTarget(process.env.TRADING_BACKEND_INTERNAL_URL);
     addTarget(process.env.TRADING_BACKEND_URL);
     addTarget(tradingInternalBackend);
 
-    // Secondary: Fallback to core targets (sessions/users are often shared or stored here)
     addTarget(process.env.CORE_API_URL);
     addTarget(process.env.CORE_BACKEND_INTERNAL_URL);
     addTarget(process.env.CORE_BACKEND_URL);
     addTarget(coreInternalBackend);
   } else {
-    // Primary: Core targets
+    // Priority: Core -> Trading -> Others
     addTarget(process.env.CORE_API_URL);
     addTarget(process.env.CORE_BACKEND_INTERNAL_URL);
     addTarget(process.env.CORE_BACKEND_URL);
     addTarget(coreInternalBackend);
 
-    // Secondary: Fallback to trading targets (useful for shared assets/notifications)
     addTarget(process.env.TRADING_API_URL);
     addTarget(process.env.TRADING_BACKEND_INTERNAL_URL);
     addTarget(process.env.TRADING_BACKEND_URL);
     addTarget(tradingInternalBackend);
   }
 
-  // Shared fallbacks for backward compatibility with existing Railway variables.
-  // IMPORTANT: do not apply these in trading runtime, otherwise misconfigured
-  // shared vars can route trade.cambobia.com traffic into core backend auth.
-  if (!tradingRuntime) {
-    addTarget(process.env.API_URL);
-    addTarget(process.env.BACKEND_INTERNAL_URL);
-    addTarget(process.env.BACKEND_URL);
-    addTarget(process.env.NEXT_PUBLIC_API_URL);
-  }
+  // Common fallbacks
+  addTarget(process.env.API_URL);
+  addTarget(process.env.BACKEND_INTERNAL_URL);
+  addTarget(process.env.BACKEND_URL);
+  addTarget(process.env.NEXT_PUBLIC_API_URL);
 
   return targets;
 }
@@ -181,6 +172,7 @@ function copyUpstreamHeaders(upstream: Response, response: NextResponse): void {
 async function proxy(req: NextRequest, pathParts: string[]): Promise<NextResponse> {
   const targets = getBackendTargets(req);
   if (targets.length === 0) {
+    console.error(`❌ [Proxy] No backend targets found for request to /api/${pathParts.join('/')}`);
     return NextResponse.json(
       { error: 'Backend proxy is not configured.' },
       { status: 503 }
@@ -202,6 +194,7 @@ async function proxy(req: NextRequest, pathParts: string[]): Promise<NextRespons
     const isLastTarget = i === targets.length - 1;
 
     try {
+      console.log(`📡 [Proxy Attempt ${i + 1}/${targets.length}] -> ${upstreamUrl}`);
       const upstream = await fetch(upstreamUrl, {
         method,
         headers,
@@ -211,23 +204,39 @@ async function proxy(req: NextRequest, pathParts: string[]): Promise<NextRespons
       });
 
       lastStatus = upstream.status;
+      console.log(`📨 [Proxy Response] ${upstream.status} ${upstream.statusText} from ${targetBase}`);
+
       if (!TRANSIENT_STATUSES.has(upstream.status) || isLastTarget) {
-        const response = new NextResponse(upstream.body, { status: upstream.status });
+        // Read full body buffer to avoid streaming/decoding issues during content forwarding
+        const bodyBuffer = await upstream.arrayBuffer();
+        const response = new NextResponse(bodyBuffer, { status: upstream.status });
+
         copyUpstreamHeaders(upstream, response);
+
+        // SECURITY: Strip encoding and length from copied headers as the new body 
+        // buffer is already decompressed and Next will set its own length.
+        response.headers.delete('content-encoding');
+        response.headers.delete('content-length');
+        response.headers.delete('transfer-encoding');
+
         response.headers.set('x-proxy-target', targetBase);
+        response.headers.set('x-proxy-attempt', String(i + 1));
         return response;
       }
     } catch (error: any) {
       lastError = error?.message || 'Proxy connection failed';
+      console.warn(`⚠️ [Proxy Error] Attempt ${i + 1} failed: ${lastError}`);
       if (isLastTarget) break;
     }
   }
 
+  console.error(`❌ [Proxy Failed] Exhausted all ${targets.length} targets for ${upstreamPath}`);
   return NextResponse.json(
     {
       error: 'Service temporarily unavailable. Please try again in a few seconds.',
       proxyStatus: lastStatus,
-      proxyError: lastError
+      proxyError: lastError,
+      targetsAttempted: targets.length
     },
     { status: 503 }
   );
