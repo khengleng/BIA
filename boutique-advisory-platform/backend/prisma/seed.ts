@@ -33,12 +33,12 @@ async function main() {
         where: {
             tenantId_email: {
                 tenantId: 'default',
-                email: 'admin@boutique-advisory.com'
+                email: 'contact@cambobia.com'
             }
         },
         update: {},
         create: {
-            email: 'admin@boutique-advisory.com',
+            email: 'contact@cambobia.com',
             password: passwordHash,
             firstName: 'Admin',
             lastName: 'User',
@@ -558,7 +558,7 @@ async function main() {
 
     console.log('\n🎉 Database seeding completed successfully!');
     console.log('\n📋 Login credentials:');
-    console.log(`   Admin:     admin@boutique-advisory.com / ${initialAdminPassword}`);
+    console.log(`   Admin:     contact@cambobia.com / ${initialAdminPassword}`);
     console.log('   Advisor:   advisor@boutique-advisory.com / advisor123');
     console.log('   Investor:  investor@boutique-advisory.com / investor123');
     console.log('   SME:       sme@boutique-advisory.com / sme123');
@@ -580,4 +580,3 @@ main()
     .finally(async () => {
         await prisma.$disconnect();
     });
-

@@ -83,7 +83,7 @@ export async function performMigration(): Promise<MigrationStatus> {
     const users = [
       {
         id: 'admin_1',
-        email: 'admin@boutique-advisory.com',
+        email: 'contact@cambobia.com',
         password: hashedPassword,
         role: 'ADMIN' as const,
         firstName: 'Admin',

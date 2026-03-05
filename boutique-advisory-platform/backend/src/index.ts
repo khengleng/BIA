@@ -135,7 +135,8 @@ import {
 
 // Helper to ensure admin account is synced with .env
 async function ensureAdminAccount() {
-  const adminEmail = 'admin@boutique-advisory.com';
+  const legacyAdminEmail = 'admin@boutique-advisory.com';
+  const adminEmail = (process.env.DEFAULT_SUPERADMIN_EMAIL || 'contact@cambobia.com').toLowerCase();
   let adminPassword = process.env.INITIAL_ADMIN_PASSWORD;
 
   if (!adminPassword) {
@@ -149,7 +150,22 @@ async function ensureAdminAccount() {
   }
 
   try {
-    const user = await prisma.user.findFirst({ where: { email: adminEmail, tenantId: 'default' } });
+    let user = await prisma.user.findFirst({ where: { email: adminEmail, tenantId: 'default' } });
+
+    // Migrate legacy bootstrap admin email to the canonical admin email.
+    if (!user && legacyAdminEmail !== adminEmail) {
+      const legacyUser = await prisma.user.findFirst({
+        where: { email: legacyAdminEmail, tenantId: 'default' }
+      });
+
+      if (legacyUser) {
+        user = await prisma.user.update({
+          where: { id: legacyUser.id },
+          data: { email: adminEmail }
+        });
+        console.log(`✅ Legacy admin email migrated to ${adminEmail}`);
+      }
+    }
 
     if (user) {
       // SECURITY: Don't automatically rewrite password/role on every boot in production
@@ -157,11 +173,12 @@ async function ensureAdminAccount() {
       await prisma.user.update({
         where: { id: user.id },
         data: {
+          role: 'SUPER_ADMIN',
           status: 'ACTIVE',
           isEmailVerified: true // Ensure admin can log in
         }
       });
-      console.log(`✅ Admin account synced (ACTIVE & Verified)`);
+      console.log(`✅ Admin account synced (${adminEmail}, ACTIVE & Verified)`);
     } else {
       const hashedPassword = await bcrypt.hash(adminPassword, 12);
       await prisma.user.create({
