@@ -105,13 +105,10 @@ const nextConfig: NextConfig = {
     ];
   },
   async rewrites() {
-    // In production, Next.js should proxy to an internal backend URL first.
-    // This avoids intermittent external edge hops that can yield transient 503s.
-    // Priority:
-    // 1) API_URL (recommended internal URL, e.g. http://backend.railway.internal:8080)
-    // 2) BACKEND_INTERNAL_URL (optional alias)
-    // 3) BACKEND_URL / NEXT_PUBLIC_API_URL (public fallback)
-    // 4) Railway private domain fallback
+    // Keep rewrite passthrough only for WebSocket transport.
+    // HTTP API requests are handled by the Route Handler at:
+    // /api-proxy/api/[...path]
+    // which adds retry/fallback behavior across backend targets.
     const railwayPrivateBackend = process.env.RAILWAY_SERVICE_BACKEND_URL
       ? `http://${process.env.RAILWAY_SERVICE_BACKEND_URL}`
       : 'http://backend.railway.internal:8080';
@@ -126,9 +123,13 @@ const nextConfig: NextConfig = {
 
     return [
       {
-        source: '/api-proxy/:path*',
-        destination: `${apiUrl}/:path*`,
+        source: '/api-proxy/socket.io',
+        destination: `${apiUrl}/socket.io`,
       },
+      {
+        source: '/api-proxy/socket.io/:path*',
+        destination: `${apiUrl}/socket.io/:path*`,
+      }
     ];
   },
 
