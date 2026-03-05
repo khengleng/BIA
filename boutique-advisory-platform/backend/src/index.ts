@@ -497,7 +497,22 @@ app.use((req, res, next) => {
 
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'X-CSRF-Token', 'x-csrf-token'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'Accept',
+      'X-CSRF-Token',
+      'x-csrf-token',
+      // Browsers can include cache-control style request headers for no-store
+      // fetches. Allow them explicitly to avoid CORS preflight rejections.
+      'Cache-Control',
+      'cache-control',
+      'Pragma',
+      'pragma',
+      'Expires',
+      'expires'
+    ],
     exposedHeaders: ['Set-Cookie'],
     maxAge: 86400,
   })(req, res, next);

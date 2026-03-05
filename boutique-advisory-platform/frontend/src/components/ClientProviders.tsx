@@ -37,12 +37,18 @@ export default function ClientProviders({ children }: Props) {
             const shouldResetSw = host === 'trade.cambobia.com' || host === 'www.cambobia.com' || host === 'cambobia.com';
 
             if (shouldResetSw) {
-                const resetKey = `${host}-sw-reset-v3`;
+                const resetKey = `${host}-sw-reset-v4`;
                 const hasReset = window.localStorage.getItem(resetKey);
 
                 if (!hasReset && 'serviceWorker' in navigator) {
                     navigator.serviceWorker.getRegistrations().then((registrations) => {
                         Promise.all(registrations.map((registration) => registration.unregister()))
+                            .then(async () => {
+                                if ('caches' in window) {
+                                    const cacheKeys = await window.caches.keys();
+                                    await Promise.all(cacheKeys.map((key) => window.caches.delete(key)));
+                                }
+                            })
                             .finally(() => {
                                 window.localStorage.setItem(resetKey, '1');
                                 window.location.reload();
