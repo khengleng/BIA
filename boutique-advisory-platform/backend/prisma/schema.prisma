@@ -51,6 +51,7 @@ model Tenant {
   reconciliationExceptions ReconciliationException[]
   activityLogs  ActivityLog[]
   wallets       Wallet[]
+  walletTransactions WalletTransaction[]
 
   @@map("tenants")
 }
