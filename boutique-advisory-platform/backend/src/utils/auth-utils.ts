@@ -173,24 +173,28 @@ export async function issueTokensAndSetCookies(res: Response, user: any, req: Re
 
     const cookieNames = getAuthCookieNames(req);
 
+    const cookieDomain = process.env.COOKIE_DOMAIN || (process.env.NODE_ENV === 'production' ? '.cambobia.com' : undefined);
+
     // 3. Set Cookies
     // Access Token
     res.cookie(cookieNames.accessToken, accessToken, {
         ...COOKIE_OPTIONS,
+        domain: cookieDomain,
         maxAge: 15 * 60 * 1000 // 15 minutes
     });
 
     // Refresh Token
     res.cookie(cookieNames.refreshToken, refreshToken, {
         ...COOKIE_OPTIONS,
-        path: '/', // Changed from /api to / to ensure proxy compatibility
+        domain: cookieDomain,
+        path: '/', // Ensure proxy compatibility
         maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
 
-
-    // Set 'token' cookie for backward compatibility with existing middleware/FE
+    // Set 'token' cookie for backward compatibility
     res.cookie(cookieNames.token, accessToken, {
         ...COOKIE_OPTIONS,
+        domain: cookieDomain,
         maxAge: 15 * 60 * 1000
     });
 }
