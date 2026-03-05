@@ -37,7 +37,7 @@ export default function ClientProviders({ children }: Props) {
             const shouldResetSw = host === 'trade.cambobia.com' || host === 'www.cambobia.com' || host === 'cambobia.com';
 
             if (shouldResetSw) {
-                const resetKey = `${host}-sw-reset-v4`;
+                const resetKey = `${host}-sw-reset-v5`;
                 const hasReset = window.localStorage.getItem(resetKey);
 
                 if (!hasReset && 'serviceWorker' in navigator) {

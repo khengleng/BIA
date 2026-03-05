@@ -62,6 +62,7 @@ import { promisify } from 'util';
 import { randomBytes } from 'crypto';
 import { initSocket } from './socket';
 import { prisma, connectDatabase } from './database';
+import { runMaintenanceTasks } from './utils/maintenance';
 
 import { doubleCsrf } from 'csrf-csrf';
 import {
@@ -1025,6 +1026,17 @@ async function startServer() {
         process.exit(1);
       }
       console.log('✅ Security configuration validated');
+
+      // Run background maintenance tasks (Logs/Token cleanup)
+      const triggerMaintenance = () => {
+        runMaintenanceTasks().catch(e => console.error('⚠️ Maintenance failed:', e.message));
+      };
+
+      // Initial run
+      triggerMaintenance();
+
+      // Periodic run every 24 hours
+      setInterval(triggerMaintenance, 24 * 60 * 60 * 1000);
 
       // Check data migration status (seeding)
       console.log('📋 Checking database data status...');

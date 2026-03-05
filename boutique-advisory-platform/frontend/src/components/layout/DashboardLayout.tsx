@@ -378,18 +378,40 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }, [filteredNavSections])
 
     useEffect(() => {
-        if (!isTradingRuntime || !user || !isTradingOperator) return
-        const investorOnlyPaths = [
+        if (!isTradingRuntime || !user || !pathname) return
+
+        const operatorAllowedPrefixes = [
+            '/trading/operator',
+            '/trading/markets',
+            '/trading/sessions',
+        ]
+        const investorAllowedPrefixes = [
             '/secondary-trading',
+            '/trading/markets',
+            '/trading/terminal',
             '/trading/watchlist',
             '/trading/profile',
             '/trading/portfolio',
             '/trading/security',
+            '/trading/sessions',
+            '/trading/notifications',
         ]
-        if (pathname && investorOnlyPaths.some((path) => pathname.startsWith(path))) {
-            router.replace(TRADING_OPERATOR_HOME)
+
+        if (isTradingOperator) {
+            const isAllowedOperatorPath = operatorAllowedPrefixes.some((path) => pathname.startsWith(path))
+            if (!isAllowedOperatorPath) {
+                router.replace(TRADING_OPERATOR_HOME)
+            }
+            return
         }
-    }, [isTradingRuntime, isTradingOperator, pathname, router, user])
+
+        if (normalizedRole === 'INVESTOR') {
+            const isAllowedInvestorPath = investorAllowedPrefixes.some((path) => pathname.startsWith(path))
+            if (!isAllowedInvestorPath) {
+                router.replace('/secondary-trading')
+            }
+        }
+    }, [isTradingRuntime, isTradingOperator, normalizedRole, pathname, router, user])
 
     if (isLoading) {
         return (
