@@ -57,9 +57,9 @@ export default function KYCPage() {
                                     <ShieldCheck className="w-10 h-10 text-green-400" />
                                 </div>
                                 <div>
-                                    <h2 className="text-2xl font-bold text-white mb-2">Instant Identity Verification</h2>
+                                    <h2 className="text-2xl font-bold text-white mb-2">Identity Verification (Mock)</h2>
                                     <p className="text-gray-400 max-w-md mx-auto">
-                                        We use Sumsub for secure, instant identity verification. This process takes less than 2 minutes and requires a valid ID document.
+                                        Mock KYC mode is enabled for testing. This flow does not call external KYC providers and no real verification decision is issued.
                                     </p>
                                 </div>
 
@@ -67,11 +67,11 @@ export default function KYCPage() {
                                     <div className="grid grid-cols-2 gap-4 text-left">
                                         <div className="p-4 bg-gray-900/50 rounded-xl border border-gray-700">
                                             <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Method</p>
-                                            <p className="text-sm text-white font-medium">Digital Scan</p>
+                                            <p className="text-sm text-white font-medium">Mock Decision</p>
                                         </div>
                                         <div className="p-4 bg-gray-900/50 rounded-xl border border-gray-700">
                                             <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Time</p>
-                                            <p className="text-sm text-white font-medium">~2 Minutes</p>
+                                            <p className="text-sm text-white font-medium">~1 Minute</p>
                                         </div>
                                     </div>
 
@@ -81,7 +81,7 @@ export default function KYCPage() {
                                         className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-2xl transition-all shadow-lg shadow-green-900/40 disabled:opacity-50 flex items-center justify-center gap-3 text-lg"
                                     >
                                         <ShieldCheck className="w-6 h-6" />
-                                        {kycStatus === 'UNDER_REVIEW' ? 'Review in Progress' : 'Start Verification Now'}
+                                        {kycStatus === 'UNDER_REVIEW' ? 'Review in Progress' : 'Start Mock Verification'}
                                     </button>
                                 </div>
 
@@ -120,11 +120,10 @@ export default function KYCPage() {
                             <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-2xl p-6">
                                 <h3 className="text-yellow-400 font-bold mb-4 flex items-center gap-2">
                                     <AlertCircle className="w-5 h-5" />
-                                    Security Note
+                                    Testing Note
                                 </h3>
                                 <p className="text-xs text-gray-400 leading-relaxed">
-                                    Your data is encrypted using AES-256 standards. We never share your ID details with third parties except for regulatory compliance.
-                                    Verification usually takes 24-48 hours.
+                                    This is a non-production test flow. Use it to validate UX and permissions before enabling live KYC provider integration.
                                 </p>
                             </div>
                         </div>

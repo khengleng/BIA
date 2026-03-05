@@ -1,129 +1,134 @@
 'use client'
 
-import React, { useState } from 'react'
-import SumsubWebSdk from '@sumsub/websdk-react'
-import { authorizedRequest } from '../lib/api'
-import { X } from 'lucide-react'
+import React, { useMemo, useState } from 'react'
+import { CheckCircle2, Clock3, ShieldCheck, X } from 'lucide-react'
 
 interface SumsubKycProps {
     onClose: () => void
     onComplete?: () => void
 }
 
+type MockStatus = 'IDLE' | 'RUNNING' | 'REVIEW' | 'APPROVED'
+
 export default function SumsubKyc({ onClose, onComplete }: SumsubKycProps) {
-    const [token, setToken] = useState<string | null>(null)
-    const [isLoading, setIsLoading] = useState(false)
-    const [error, setError] = useState<string | null>(null)
+    const [status, setStatus] = useState<MockStatus>('IDLE')
+    const [isSubmitting, setIsSubmitting] = useState(false)
 
-    const getFriendlyError = (status: number, apiError?: string) => {
-        switch (status) {
-            case 401:
-                return 'Your session has expired. Please sign in again and retry verification.'
-            case 403:
-                return 'This account is not allowed to start identity verification.'
-            case 404:
-                return 'Your investor profile is not ready yet. Please complete your profile first.'
-            case 503:
-                return 'Identity verification is temporarily unavailable. Please try again shortly.'
-            default:
-                return apiError || 'We could not start verification right now. Please try again.'
-        }
-    }
-
-    const fetchToken = async () => {
-        setIsLoading(true);
-        setError(null);
-        try {
-            const response = await authorizedRequest('/api/investors/kyc-token', { method: 'POST' });
-            if (response.ok) {
-                const data = await response.json();
-                setToken(data.token);
-            } else {
-                const payload = await response.json().catch(() => ({}));
-                setError(getFriendlyError(response.status, payload?.error));
+    const statusMeta = useMemo(() => {
+        if (status === 'APPROVED') {
+            return {
+                label: 'Approved',
+                description: 'Identity verification has been completed in mock mode.',
+                className: 'text-green-300'
             }
-        } catch {
-            setError('Connection error. Please check your internet.');
-        } finally {
-            setIsLoading(false);
+        }
+
+        if (status === 'REVIEW') {
+            return {
+                label: 'Needs Review',
+                description: 'Submitted for manual compliance review in mock mode.',
+                className: 'text-amber-300'
+            }
+        }
+
+        if (status === 'RUNNING') {
+            return {
+                label: 'In Progress',
+                description: 'Mock verification checks are running.',
+                className: 'text-blue-300'
+            }
+        }
+
+        return {
+            label: 'Not Started',
+            description: 'Start mock identity verification for testing.',
+            className: 'text-gray-300'
+        }
+    }, [status])
+
+    const runMock = async (target: Exclude<MockStatus, 'IDLE' | 'RUNNING'>) => {
+        setIsSubmitting(true)
+        setStatus('RUNNING')
+        await new Promise((resolve) => setTimeout(resolve, 900))
+        setStatus(target)
+        setIsSubmitting(false)
+
+        if (target === 'APPROVED') {
+            onComplete?.()
         }
     }
-
-    React.useEffect(() => {
-        fetchToken();
-    }, []);
-
-    const onMessage = (type: string, payload: any) => {
-        console.log('Sumsub Message:', type, payload);
-        if (type === 'idCheck.onApplicantStatusChanged' && payload.reviewStatus === 'completed') {
-            if (onComplete) onComplete();
-        }
-    };
-
-    const onError = (error: any) => {
-        console.error('Sumsub Error:', error);
-    };
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="bg-gray-800 border border-gray-700 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col h-[80vh]">
+            <div className="bg-gray-800 border border-gray-700 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col">
                 <div className="p-4 border-b border-gray-700 flex items-center justify-between bg-gray-900/50">
-                    <h3 className="text-white font-bold">Identity Verification</h3>
-                    <button onClick={onClose} className="text-gray-400 hover:text-white p-2">
+                    <h3 className="text-white font-bold">Identity Verification (Mock)</h3>
+                    <button onClick={onClose} className="text-gray-400 hover:text-white p-2" type="button">
                         <X className="w-6 h-6" />
                     </button>
                 </div>
 
-                <div className="flex-1 overflow-hidden relative bg-[#F4F7F9]">
-                    {isLoading && (
-                        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center space-y-4 bg-gray-800">
-                            <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
-                            <p className="text-gray-400 font-medium">Initializing Secure Session...</p>
-                        </div>
-                    )}
+                <div className="p-6 space-y-5">
+                    <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 p-4">
+                        <p className="text-blue-200 text-sm">
+                            Mock mode is active. No Sumsub API call is made and no real KYC decision is issued.
+                        </p>
+                    </div>
 
-                    {error ? (
-                        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center p-8 text-center bg-gray-800">
-                            <p className="text-red-400 font-bold mb-2">Unable to start verification</p>
-                            <p className="text-gray-300 mb-5 max-w-md">{error}</p>
-                            <div className="flex items-center gap-3">
-                                <button
-                                    onClick={fetchToken}
-                                    className="bg-blue-600 px-6 py-2 rounded-xl text-white font-bold"
-                                >
-                                    Try Again
-                                </button>
-                                <button
-                                    onClick={onClose}
-                                    className="bg-gray-700 px-6 py-2 rounded-xl text-white font-bold"
-                                >
-                                    Close
-                                </button>
+                    <div className="rounded-xl border border-gray-700 bg-gray-900/40 p-4">
+                        <p className={`font-semibold ${statusMeta.className}`}>{statusMeta.label}</p>
+                        <p className="text-gray-300 text-sm mt-1">{statusMeta.description}</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="rounded-lg bg-gray-900/50 border border-gray-700 p-3">
+                            <div className="flex items-center gap-2 text-gray-200 text-sm font-medium">
+                                <ShieldCheck className="w-4 h-4 text-blue-400" />
+                                Document Check
                             </div>
+                            <p className="text-xs text-gray-400 mt-2">Passport/ID upload simulated</p>
                         </div>
-                    ) : token && (
-                        <div className="h-full w-full">
-                            <SumsubWebSdk
-                                accessToken={token}
-                                expirationHandler={fetchToken}
-                                onMessage={onMessage}
-                                onError={onError}
-                                config={{
-                                    lang: 'en',
-                                    i18n: {
-                                        en: {
-                                            "header.title": "Verification for Boutique Advisory Platform"
-                                        }
-                                    }
-                                }}
-                                options={{
-                                    addViewportTag: true,
-                                    adaptIframeHeight: true
-                                }}
-                                style={{ height: '100%', width: '100%' }}
-                            />
+                        <div className="rounded-lg bg-gray-900/50 border border-gray-700 p-3">
+                            <div className="flex items-center gap-2 text-gray-200 text-sm font-medium">
+                                <Clock3 className="w-4 h-4 text-amber-400" />
+                                Face Match
+                            </div>
+                            <p className="text-xs text-gray-400 mt-2">Liveness flow simulated</p>
                         </div>
-                    )}
+                        <div className="rounded-lg bg-gray-900/50 border border-gray-700 p-3">
+                            <div className="flex items-center gap-2 text-gray-200 text-sm font-medium">
+                                <CheckCircle2 className="w-4 h-4 text-green-400" />
+                                Final Decision
+                            </div>
+                            <p className="text-xs text-gray-400 mt-2">Compliance result simulated</p>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3 pt-2">
+                        <button
+                            type="button"
+                            onClick={() => void runMock('APPROVED')}
+                            disabled={isSubmitting}
+                            className="bg-green-600 hover:bg-green-500 disabled:bg-gray-600 px-4 py-2 rounded-lg text-white font-semibold"
+                        >
+                            {isSubmitting ? 'Processing...' : 'Mark Verified'}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => void runMock('REVIEW')}
+                            disabled={isSubmitting}
+                            className="bg-amber-600 hover:bg-amber-500 disabled:bg-gray-600 px-4 py-2 rounded-lg text-white font-semibold"
+                        >
+                            Send to Review
+                        </button>
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-white font-semibold"
+                        >
+                            Close
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
