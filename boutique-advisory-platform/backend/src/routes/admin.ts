@@ -185,7 +185,12 @@ router.post('/users', authorize('admin.user_manage'), async (req: AuthenticatedR
                 role: role as any,
                 tenantId,
                 status: 'ACTIVE',
-                language: 'EN'
+                language: 'EN',
+                // Admin-created accounts are trusted onboarding actions.
+                // Mark verified so users can sign in immediately without email loop blockers.
+                isEmailVerified: true,
+                verificationToken: null,
+                verificationTokenExpiry: null
             }
         });
 

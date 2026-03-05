@@ -456,6 +456,7 @@ export default function UserManagementPage() {
                                     <input
                                         type="text"
                                         required
+                                        autoComplete="given-name"
                                         className="w-full bg-gray-800 border-gray-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-blue-500"
                                         value={newUser.firstName}
                                         onChange={(e) => setNewUser({ ...newUser, firstName: e.target.value })}
@@ -466,6 +467,7 @@ export default function UserManagementPage() {
                                     <input
                                         type="text"
                                         required
+                                        autoComplete="family-name"
                                         className="w-full bg-gray-800 border-gray-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-blue-500"
                                         value={newUser.lastName}
                                         onChange={(e) => setNewUser({ ...newUser, lastName: e.target.value })}
@@ -477,6 +479,7 @@ export default function UserManagementPage() {
                                 <input
                                     type="email"
                                     required
+                                    autoComplete="email"
                                     className="w-full bg-gray-800 border-gray-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-blue-500"
                                     value={newUser.email}
                                     onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
@@ -488,6 +491,7 @@ export default function UserManagementPage() {
                                     type="password"
                                     required
                                     minLength={8}
+                                    autoComplete="new-password"
                                     className="w-full bg-gray-800 border-gray-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-blue-500"
                                     value={newUser.password}
                                     onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
