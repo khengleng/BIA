@@ -144,10 +144,13 @@ export async function apiRequest(
 
             try {
                 const sharedResponse = await authMeInFlight;
+                const authMeTtlMs = sharedResponse.status === 401 ? 15000 : 1500;
                 authMeLastResponse = {
                     response: sharedResponse,
                     // Collapse request bursts that happen during mount/auth state sync.
-                    expiresAt: Date.now() + 1500,
+                    // For unauthenticated responses, keep a slightly longer cooldown to
+                    // avoid hammering /auth/me while the UI redirects to login.
+                    expiresAt: Date.now() + authMeTtlMs,
                 };
                 response = sharedResponse.clone();
             } finally {
