@@ -15,8 +15,9 @@ import {
     Calendar,
     AlertCircle
 } from 'lucide-react'
-import { API_URL, authorizedRequest } from '@/lib/api'
+import { authorizedRequest } from '@/lib/api'
 import { useSocket } from '@/hooks/useSocket'
+import { resolveTradingRuntime } from '@/lib/platform'
 
 interface Notification {
     id: string
@@ -35,9 +36,17 @@ export default function NotificationCenter() {
     const [unreadCount, setUnreadCount] = useState(0)
     const [isLoading, setIsLoading] = useState(false)
     const [isUnauthorized, setIsUnauthorized] = useState(false)
+    const [isUnavailable, setIsUnavailable] = useState(false)
+    const [isTradingRuntime, setIsTradingRuntime] = useState(false)
     const dropdownRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
+        if (typeof window === 'undefined') return
+        setIsTradingRuntime(resolveTradingRuntime(window.location.hostname, window.location.pathname))
+    }, [])
+
+    useEffect(() => {
+        if (isTradingRuntime) return
         const fetchNotifications = async () => {
             try {
                 const userData = localStorage.getItem('user')
@@ -54,14 +63,18 @@ export default function NotificationCenter() {
                     setNotifications(data.notifications || [])
                     setUnreadCount(data.unreadCount || 0)
                     setIsUnauthorized(false)
+                    setIsUnavailable(false)
                 } else if (response.status === 401) {
                     // Session may be expired or switching accounts; stop polling noise.
                     setIsUnauthorized(true)
+                } else if (response.status === 403 || response.status === 404) {
+                    // Trading deployments without notification module should fail quietly.
+                    setIsUnavailable(true)
                 } else {
-                    console.error('Failed to fetch notifications:', response.statusText)
+                    setIsUnavailable(true)
                 }
             } catch (error) {
-                console.error('Network error fetching notifications:', error)
+                setIsUnavailable(true)
             } finally {
                 setIsLoading(false)
             }
@@ -71,10 +84,10 @@ export default function NotificationCenter() {
 
         // Poll for new notifications every 60 seconds (fallback)
         const interval = setInterval(() => {
-            if (!isUnauthorized) fetchNotifications()
+            if (!isUnauthorized && !isUnavailable) fetchNotifications()
         }, 60000)
         return () => clearInterval(interval)
-    }, [isUnauthorized])
+    }, [isUnauthorized, isUnavailable, isTradingRuntime])
 
     const { lastNotification } = useSocket()
 
@@ -98,7 +111,10 @@ export default function NotificationCenter() {
         return () => document.removeEventListener('mousedown', handleClickOutside)
     }, [])
 
+    if (isTradingRuntime) return null
+
     const markAsRead = async (notifId: string) => {
+        if (isUnavailable) return
         try {
             await authorizedRequest(`/api/notifications/${notifId}/read`, {
                 method: 'PUT'
@@ -114,6 +130,7 @@ export default function NotificationCenter() {
     }
 
     const markAllAsRead = async () => {
+        if (isUnavailable) return
         try {
             await authorizedRequest('/api/notifications/read-all', {
                 method: 'PUT'
@@ -197,6 +214,10 @@ export default function NotificationCenter() {
                         {isUnauthorized ? (
                             <div className="p-6 text-center text-gray-400 text-sm">
                                 Notifications unavailable until you sign in again.
+                            </div>
+                        ) : isUnavailable ? (
+                            <div className="p-6 text-center text-gray-400 text-sm">
+                                Notifications are not enabled for this account.
                             </div>
                         ) : isLoading ? (
                             <div className="p-8 text-center">

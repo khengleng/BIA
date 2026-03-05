@@ -662,7 +662,10 @@ if (isTradingService) {
   app.use('/api/push', authenticateToken, notificationRoutes); // Alias for push subscription endpoints
   app.use('/api/dashboard', authenticateToken, dashboardRoutes);
   app.use('/api/messages', authenticateToken, messagesRoutes);
+  app.use('/api/calendar', authenticateToken, calendarRoutes);
+  app.use('/api/report', authenticateToken, reportRoutes);
   app.use('/api/reports', authenticateToken, reportRoutes);
+  app.use('/api/dataroom', authenticateToken, dataroomRoutes);
   app.use('/api/audit', authenticateToken, auditRoutes);
   app.use('/api/payments', authenticateToken, paymentRoutes);
   app.use('/api/admin', authenticateToken, adminRoutes);
@@ -680,6 +683,8 @@ if (isTradingService) {
   // Core endpoints - NOW PROTECTED (Fix #1)
   app.use('/api/smes', authenticateToken, smeRoutes);
   app.use('/api/investors', authenticateToken, investorRoutes);
+  app.use('/api/syndicate-tokens', authenticateToken, syndicateTokenRoutes);
+  app.use('/api/secondary-trading', authenticateToken, secondaryTradingRoutes);
   app.use('/api/deals', authenticateToken, dealRoutes);
   app.use('/api/documents', authenticateToken, documentRoutes);
 

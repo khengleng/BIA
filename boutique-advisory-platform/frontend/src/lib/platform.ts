@@ -7,6 +7,28 @@ export const isTradingHostname = (hostname: string): boolean => {
     || host.includes('trade-');
 };
 
+export const isCoreHostname = (hostname: string): boolean => {
+  const host = String(hostname || '').toLowerCase().trim();
+  return host === 'cambobia.com'
+    || host === 'www.cambobia.com'
+    || host.endsWith('.cambobia.com');
+};
+
+export const isTradingPathname = (pathname: string): boolean => {
+  const path = String(pathname || '').toLowerCase();
+  return path.startsWith('/trading')
+    || path.startsWith('/secondary-trading');
+};
+
+export const resolveTradingRuntime = (hostname?: string, pathname?: string): boolean => {
+  return isTradingHostname(String(hostname || '')) || isTradingPathname(String(pathname || ''));
+};
+
+export const shouldEnableOneSignal = (hostname: string): boolean => {
+  const host = String(hostname || '').toLowerCase().trim();
+  return host === 'www.cambobia.com';
+};
+
 const envTrading = process.env.NEXT_PUBLIC_PLATFORM_MODE === 'trading';
 export const PLATFORM_MODE = envTrading ? 'trading' : 'core';
 export const IS_TRADING_PLATFORM = PLATFORM_MODE === 'trading';

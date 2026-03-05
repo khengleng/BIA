@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { io, Socket } from 'socket.io-client'
+import { resolveTradingRuntime } from '@/lib/platform'
 
 interface SocketContextType {
     socket: Socket | null
@@ -63,6 +64,20 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
             : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003')
 
         const isAuthRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/auth/')
+        const isTradingContext = typeof window !== 'undefined'
+            && resolveTradingRuntime(window.location.hostname, window.location.pathname)
+
+        if (isTradingContext) {
+            if (socketRef.current) {
+                intentionalDisconnectRef.current = true
+                socketRef.current.io.opts.reconnection = false
+                socketRef.current.removeAllListeners()
+                socketRef.current.disconnect()
+                socketRef.current = null
+                setIsConnected(false)
+            }
+            return
+        }
 
         if (!user) {
             if (socketRef.current) {

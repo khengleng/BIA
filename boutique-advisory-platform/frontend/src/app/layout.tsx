@@ -1,8 +1,8 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
-import Script from 'next/script'
 import './globals.css'
 import ClientProviders from '../components/ClientProviders'
+import OneSignalLoader from '../components/OneSignalLoader'
 
 // const inter = Inter({ subsets: ['latin'] })
 const inter = { className: 'sans-serif' }
@@ -75,20 +75,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
       <body className={inter.className}>
-        <Script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer />
-        <Script id="onesignal-init" strategy="afterInteractive">
-          {`
-            window.OneSignalDeferred = window.OneSignalDeferred || [];
-            OneSignalDeferred.push(async function(OneSignal) {
-              if (window.location.origin !== "https://www.cambobia.com") {
-                return;
-              }
-              await OneSignal.init({
-                appId: "4d61e383-61ef-42ca-a6c5-1ece240d2ebf",
-              });
-            });
-          `}
-        </Script>
+        <OneSignalLoader />
         <ClientProviders>
           {children}
         </ClientProviders>

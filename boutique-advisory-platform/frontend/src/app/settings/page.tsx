@@ -387,6 +387,16 @@ export default function SettingsPage() {
                       void handleUpdatePassword()
                     }}
                   >
+                    <input
+                      type="text"
+                      name="username"
+                      value={user?.email || ''}
+                      autoComplete="username"
+                      readOnly
+                      tabIndex={-1}
+                      aria-hidden="true"
+                      className="sr-only"
+                    />
                     <h3 className="text-lg font-medium text-white mb-4">Change Password</h3>
                     <div className="space-y-4">
                       <div>
@@ -395,6 +405,7 @@ export default function SettingsPage() {
                           type="password"
                           value={currentPassword}
                           onChange={(e) => setCurrentPassword(e.target.value)}
+                          autoComplete="current-password"
                           className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
@@ -404,6 +415,7 @@ export default function SettingsPage() {
                           type="password"
                           value={newPassword}
                           onChange={(e) => setNewPassword(e.target.value)}
+                          autoComplete="new-password"
                           className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
@@ -413,6 +425,7 @@ export default function SettingsPage() {
                           type="password"
                           value={confirmPassword}
                           onChange={(e) => setConfirmPassword(e.target.value)}
+                          autoComplete="new-password"
                           className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
@@ -673,12 +686,23 @@ export default function SettingsPage() {
                   void handleDisable2FA()
                 }}
               >
+                <input
+                  type="text"
+                  name="username"
+                  value={user?.email || ''}
+                  autoComplete="username"
+                  readOnly
+                  tabIndex={-1}
+                  aria-hidden="true"
+                  className="sr-only"
+                />
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">Confirm Password</label>
                   <input
                     type="password"
                     value={disablePassword}
                     onChange={(e) => setDisablePassword(e.target.value)}
+                    autoComplete="current-password"
                     className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                 </div>

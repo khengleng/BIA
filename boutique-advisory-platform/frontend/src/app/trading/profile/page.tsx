@@ -60,9 +60,64 @@ export default function TradingProfilePage() {
         const role = normalizeRole(user?.role)
         const isOperator = isTradingOperatorRole(role)
 
+        if (isOperator) {
+            setProfile({
+                mode: 'OPERATOR',
+                operator: {
+                    userId: user?.id,
+                    role,
+                    tenantId: user?.tenantId
+                },
+                profile: {
+                    riskLevel: 'MEDIUM',
+                    investmentHorizon: 'MID',
+                    strategy: 'VALUE',
+                    maxPositionSize: 10,
+                    preferredSectors: [],
+                    notifications: {
+                        priceAlerts: true,
+                        executionUpdates: true,
+                        marketAnnouncements: true
+                    },
+                    watchlistCount: 0
+                }
+            })
+            return
+        }
+
         const fetchProfile = async () => {
             const response = await authorizedRequest('/api/secondary-trading/trader-profile')
             if (!response.ok) {
+                if (response.status === 404) {
+                    setProfile({
+                        mode: isOperator ? 'OPERATOR' : 'TRADER',
+                        operator: isOperator ? {
+                            userId: user?.id,
+                            role,
+                            tenantId: user?.tenantId
+                        } : undefined,
+                        investor: isOperator ? undefined : {
+                            id: user?.id || '',
+                            name: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Investor',
+                            type: 'INDIVIDUAL',
+                            kycStatus: 'PENDING',
+                        },
+                        profile: {
+                            riskLevel: 'MEDIUM',
+                            investmentHorizon: 'MID',
+                            strategy: 'VALUE',
+                            maxPositionSize: 10,
+                            preferredSectors: [],
+                            notifications: {
+                                priceAlerts: true,
+                                executionUpdates: true,
+                                marketAnnouncements: true
+                            },
+                            watchlistCount: 0
+                        }
+                    })
+                    return
+                }
                 if (isOperator) {
                     setProfile({
                         mode: 'OPERATOR',

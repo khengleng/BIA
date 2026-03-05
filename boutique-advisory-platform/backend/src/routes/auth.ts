@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 
 import bcrypt from 'bcryptjs';
 
-import { clearAuthCookies, issueTokensAndSetCookies } from '../utils/auth-utils';
+import { clearAuthCookies, getAuthCookieNames, issueTokensAndSetCookies } from '../utils/auth-utils';
 import { getTenantId } from '../utils/tenant-utils';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../database';
@@ -27,13 +27,13 @@ import {
   AuthenticatedRequest
 } from '../middleware/jwt-auth';
 import redis from '../redis';
-import { isAdminLikeRole, normalizeRole } from '../lib/roles';
+import { isAdminLikeRole, normalizeRole, TRADING_OPERATOR_ROLES } from '../lib/roles';
 
 const router = Router();
 const serviceMode = (process.env.SERVICE_MODE || 'core').toLowerCase();
 const isTradingService = serviceMode === 'trading';
 const ssoTokenTtlSeconds = Number(process.env.SSO_TOKEN_TTL_SECONDS || 120);
-const ssoAllowedRoles = new Set(['INVESTOR', 'ADMIN', 'SUPER_ADMIN', 'FINOPS', 'CX', 'AUDITOR', 'COMPLIANCE', 'SUPPORT']);
+const ssoAllowedRoles = new Set(['INVESTOR', ...TRADING_OPERATOR_ROLES]);
 
 router.use((_req: Request, res: Response, next: NextFunction) => {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -791,7 +791,8 @@ router.post('/sso/trading/exchange', async (req: Request, res: Response) => {
 // Refresh Token Endpoint
 router.post('/refresh', async (req: Request, res: Response) => {
   try {
-    const refreshToken = req.cookies['refreshToken'];
+    const cookieNames = getAuthCookieNames(req);
+    const refreshToken = req.cookies[cookieNames.refreshToken] || req.cookies['refreshToken'];
     if (!refreshToken) {
       return res.status(401).json({ error: 'No refresh token provided' });
     }
@@ -848,7 +849,8 @@ router.post('/refresh', async (req: Request, res: Response) => {
 
 // Logout endpoint
 router.post('/logout', async (req: Request, res: Response) => {
-  const refreshToken = req.cookies['refreshToken'];
+  const cookieNames = getAuthCookieNames(req);
+  const refreshToken = req.cookies[cookieNames.refreshToken] || req.cookies['refreshToken'];
   if (refreshToken) {
     try {
       const tokenHash = hashToken(refreshToken);
@@ -1741,7 +1743,8 @@ router.get('/sessions', authenticateToken, async (req: AuthenticatedRequest, res
     const user = req.user;
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-    const currentRefreshToken = req.cookies?.['refreshToken'];
+    const cookieNames = getAuthCookieNames(req);
+    const currentRefreshToken = req.cookies?.[cookieNames.refreshToken] || req.cookies?.['refreshToken'];
     let currentSessionId: string | null = null;
     if (currentRefreshToken) {
       const currentTokenHash = hashToken(currentRefreshToken);
@@ -1797,7 +1800,8 @@ router.delete('/sessions/:id', authenticateToken, async (req: AuthenticatedReque
       where: { id: sessionId }
     });
 
-    const currentRefreshToken = req.cookies?.['refreshToken'];
+    const cookieNames = getAuthCookieNames(req);
+    const currentRefreshToken = req.cookies?.[cookieNames.refreshToken] || req.cookies?.['refreshToken'];
     if (currentRefreshToken && session.token === hashToken(currentRefreshToken)) {
       // If user revoked the current device session, clear local auth cookies immediately.
       clearAuthCookies(res, req);

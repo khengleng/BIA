@@ -41,6 +41,10 @@ export default function TradingWatchlistPage() {
         const response = await authorizedRequest('/api/secondary-trading/watchlist')
         setIsLoading(false)
         if (!response.ok) {
+            if (response.status === 404) {
+                setListings([])
+                return
+            }
             addToast('error', 'Failed to load watchlist')
             return
         }

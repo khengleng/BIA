@@ -5,7 +5,7 @@ import { Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { apiRequest } from '@/lib/api'
-import { CORE_FRONTEND_URL, IS_TRADING_PLATFORM } from '@/lib/platform'
+import { CORE_FRONTEND_URL, resolveTradingRuntime } from '@/lib/platform'
 import { isTradingOperatorRole, normalizeRole } from '@/lib/roles'
 
 function SsoCallbackContent() {
@@ -15,7 +15,7 @@ function SsoCallbackContent() {
 
   useEffect(() => {
     const completeSso = async () => {
-      if (!IS_TRADING_PLATFORM) {
+      if (typeof window !== 'undefined' && !resolveTradingRuntime(window.location.hostname, window.location.pathname)) {
         router.replace('/auth/login')
         return
       }

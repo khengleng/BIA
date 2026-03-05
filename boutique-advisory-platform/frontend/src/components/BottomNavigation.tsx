@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from 'next/navigation'
 import { Home, Users, FileText, MessageSquare, Settings, ShieldCheck, Briefcase } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { IS_TRADING_PLATFORM, isTradingHostname } from '@/lib/platform'
+import { IS_TRADING_PLATFORM, resolveTradingRuntime } from '@/lib/platform'
 import { isTradingOperatorRole, normalizeRole } from '@/lib/roles'
 
 export default function BottomNavigation() {
@@ -15,8 +15,7 @@ export default function BottomNavigation() {
     const [isTradingRuntime, setIsTradingRuntime] = useState(IS_TRADING_PLATFORM)
 
     useEffect(() => {
-        const isTradingPath = Boolean(pathname?.startsWith('/trading') || pathname?.startsWith('/secondary-trading'))
-        setIsTradingRuntime(IS_TRADING_PLATFORM || isTradingHostname(window.location.hostname) || isTradingPath)
+        setIsTradingRuntime(resolveTradingRuntime(window.location.hostname, pathname || window.location.pathname))
 
         const loadRole = () => {
             try {

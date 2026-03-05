@@ -1,15 +1,22 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Building2, Users, Handshake, Shield, TrendingUp } from 'lucide-react'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import { useTranslations } from '../hooks/useTranslations'
-import { IS_TRADING_PLATFORM } from '@/lib/platform'
+import { IS_TRADING_PLATFORM, resolveTradingRuntime } from '@/lib/platform'
 
 export default function HomePage() {
   const { t } = useTranslations()
+  const [isTradingRuntime, setIsTradingRuntime] = useState(IS_TRADING_PLATFORM)
 
-  if (IS_TRADING_PLATFORM) {
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    setIsTradingRuntime(resolveTradingRuntime(window.location.hostname, window.location.pathname))
+  }, [])
+
+  if (isTradingRuntime) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
         <header className="bg-white/10 backdrop-blur-md border-b border-white/20">

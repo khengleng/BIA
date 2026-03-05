@@ -11,6 +11,69 @@ export const COOKIE_OPTIONS: CookieOptions = {
     maxAge: 24 * 60 * 60 * 1000 // 24 hours default, usually overridden
 };
 
+export interface AuthCookieNames {
+    accessToken: string;
+    refreshToken: string;
+    token: string;
+}
+
+function readHostFromRequest(req?: Request | null): string {
+    if (!req) return '';
+
+    const forwardedHost = req.headers['x-forwarded-host'];
+    const hostHeader = req.headers['host'];
+
+    const first = (value: string | string[] | undefined): string => {
+        if (Array.isArray(value)) return (value[0] || '').trim().toLowerCase();
+        return (value || '').trim().toLowerCase();
+    };
+
+    const raw = first(forwardedHost) || first(hostHeader) || String(req.hostname || '').trim().toLowerCase();
+    return raw.replace(/:\d+$/, '');
+}
+
+function isTradingHostname(hostname: string): boolean {
+    if (!hostname) return false;
+    if (hostname === 'trade.cambobia.com') return true;
+    if (hostname.startsWith('trade.')) return true;
+    return false;
+}
+
+function resolveTradingCookieScope(req?: Request | null): boolean {
+    const requestHost = readHostFromRequest(req);
+    if (isTradingHostname(requestHost)) return true;
+
+    const configuredTradingUrl = String(process.env.TRADING_FRONTEND_URL || '').trim();
+    if (configuredTradingUrl) {
+        try {
+            const configuredHost = new URL(configuredTradingUrl).hostname.toLowerCase();
+            if (requestHost && configuredHost === requestHost) return true;
+        } catch {
+            // Ignore invalid URL and continue with SERVICE_MODE fallback.
+        }
+    }
+
+    const serviceMode = String(process.env.SERVICE_MODE || 'core').toLowerCase();
+    return serviceMode === 'trading';
+}
+
+export function getAuthCookieNames(req?: Request): AuthCookieNames {
+    if (resolveTradingCookieScope(req)) {
+        // Keep trading auth isolated from core subdomain cookies.
+        return {
+            accessToken: 'tr_accessToken',
+            refreshToken: 'tr_refreshToken',
+            token: 'tr_token',
+        };
+    }
+
+    return {
+        accessToken: 'accessToken',
+        refreshToken: 'refreshToken',
+        token: 'token',
+    };
+}
+
 function getCookieDomainCandidates(req: Request): string[] {
     const domains = new Set<string>();
     const envDomain = String(process.env.COOKIE_DOMAIN || '').trim().toLowerCase();
@@ -21,7 +84,7 @@ function getCookieDomainCandidates(req: Request): string[] {
         domains.add(envDomain.startsWith('.') ? envDomain : `.${envDomain}`);
     }
 
-    const host = String(req.hostname || '').trim().toLowerCase().replace(/:\d+$/, '');
+    const host = readHostFromRequest(req);
     if (!host || host === 'localhost' || host === '127.0.0.1' || host.includes('railway.internal')) {
         return Array.from(domains).filter(Boolean);
     }
@@ -41,7 +104,15 @@ function getCookieDomainCandidates(req: Request): string[] {
 
 export function clearAuthCookies(res: Response, req: Request): void {
     const clearPaths = ['/', '/api'];
-    const cookieNames = ['token', 'accessToken', 'refreshToken'];
+    // Always clear both legacy and service-specific cookie names.
+    const cookieNames = [
+        'token',
+        'accessToken',
+        'refreshToken',
+        'tr_token',
+        'tr_accessToken',
+        'tr_refreshToken',
+    ];
     const domainCandidates = getCookieDomainCandidates(req);
 
     for (const name of cookieNames) {
@@ -113,15 +184,17 @@ export async function issueTokensAndSetCookies(res: Response, user: any, req: Re
     // Clear any legacy/duplicate auth cookies first so old identities cannot linger.
     clearAuthCookies(res, req);
 
+    const cookieNames = getAuthCookieNames(req);
+
     // 3. Set Cookies
     // Access Token
-    res.cookie('accessToken', accessToken, {
+    res.cookie(cookieNames.accessToken, accessToken, {
         ...COOKIE_OPTIONS,
         maxAge: 15 * 60 * 1000 // 15 minutes
     });
 
     // Refresh Token
-    res.cookie('refreshToken', refreshToken, {
+    res.cookie(cookieNames.refreshToken, refreshToken, {
         ...COOKIE_OPTIONS,
         path: '/', // Changed from /api to / to ensure proxy compatibility
         maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
@@ -129,7 +202,7 @@ export async function issueTokensAndSetCookies(res: Response, user: any, req: Re
 
 
     // Set 'token' cookie for backward compatibility with existing middleware/FE
-    res.cookie('token', accessToken, {
+    res.cookie(cookieNames.token, accessToken, {
         ...COOKIE_OPTIONS,
         maxAge: 15 * 60 * 1000
     });

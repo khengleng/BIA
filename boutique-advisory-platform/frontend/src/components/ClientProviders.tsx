@@ -7,12 +7,16 @@ import PWAInstallPrompt from './PWAInstallPrompt'
 import BottomNavigation from './BottomNavigation'
 import PushNotifications from './PushNotifications'
 import { SocketProvider } from '../contexts/SocketContext'
+import { resolveTradingRuntime } from '@/lib/platform'
 
 interface Props {
     children: React.ReactNode
 }
 
 export default function ClientProviders({ children }: Props) {
+    const isTradingRuntime = typeof window !== 'undefined'
+        && resolveTradingRuntime(window.location.hostname, window.location.pathname)
+
     useEffect(() => {
         // Force unregister service workers on localhost to prevent "no-response" errors
         if (typeof window !== 'undefined' &&
@@ -33,7 +37,7 @@ export default function ClientProviders({ children }: Props) {
             const shouldResetSw = host === 'trade.cambobia.com' || host === 'www.cambobia.com' || host === 'cambobia.com';
 
             if (shouldResetSw) {
-                const resetKey = `${host}-sw-reset-v2`;
+                const resetKey = `${host}-sw-reset-v3`;
                 const hasReset = window.localStorage.getItem(resetKey);
 
                 if (!hasReset && 'serviceWorker' in navigator) {
@@ -48,6 +52,19 @@ export default function ClientProviders({ children }: Props) {
             }
         }
     }, []);
+
+    if (isTradingRuntime) {
+        return (
+            <ErrorBoundary>
+                <ToastProvider>
+                    {children}
+                    <PWAInstallPrompt />
+                    <PushNotifications />
+                    <BottomNavigation />
+                </ToastProvider>
+            </ErrorBoundary>
+        )
+    }
 
     return (
         <ErrorBoundary>

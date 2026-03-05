@@ -10,7 +10,7 @@ export interface AuthenticatedRequest extends Request {
 }
 
 import { hashToken } from '../utils/security';
-import { issueTokensAndSetCookies } from '../utils/auth-utils';
+import { getAuthCookieNames, issueTokensAndSetCookies } from '../utils/auth-utils';
 
 interface JwtPayload {
     userId: string;
@@ -19,11 +19,19 @@ interface JwtPayload {
 }
 
 export const authenticateToken = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    const cookieNames = getAuthCookieNames(req);
+    const isTradingCookieScope = cookieNames.accessToken.startsWith('tr_');
     // 1. Try to get Access Token
     const authHeader = req.headers['authorization'];
     let token = (authHeader && authHeader.split(' ')[1])
-        || (req.cookies && req.cookies['accessToken'])
-        || (req.cookies && req.cookies['token']); // Backward compatibility
+        || (req.cookies && req.cookies[cookieNames.accessToken])
+        || (req.cookies && req.cookies[cookieNames.token]);
+
+    // Legacy fallback is only safe in core scope.
+    if (!token && !isTradingCookieScope) {
+        token = (req.cookies && req.cookies['accessToken'])
+            || (req.cookies && req.cookies['token']); // Backward compatibility / transition
+    }
 
     if (!token) {
         // No access token, try refresh token logic immediately?
@@ -75,7 +83,12 @@ export const authenticateToken = async (req: AuthenticatedRequest, res: Response
  * Helper to handle silent refresh within middleware
  */
 async function handleRefresh(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-    const refreshToken = req.cookies['refreshToken'];
+    const cookieNames = getAuthCookieNames(req);
+    const isTradingCookieScope = cookieNames.refreshToken.startsWith('tr_');
+    let refreshToken = req.cookies[cookieNames.refreshToken];
+    if (!refreshToken && !isTradingCookieScope) {
+        refreshToken = req.cookies['refreshToken'];
+    }
 
     if (!refreshToken) {
         res.status(401).json({ error: 'Session expired. Please login again.' });

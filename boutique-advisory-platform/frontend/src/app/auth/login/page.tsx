@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, Mail, Lock, Building2, CandlestickChart } from 'lucide-react'
 import { apiRequest } from '../../../lib/api'
-import { CORE_FRONTEND_URL, IS_TRADING_PLATFORM, isTradingHostname } from '@/lib/platform'
+import { CORE_FRONTEND_URL, IS_TRADING_PLATFORM, resolveTradingRuntime } from '@/lib/platform'
 import { isTradingOperatorRole, normalizeRole } from '@/lib/roles'
 
 export default function LoginPage() {
@@ -20,7 +20,8 @@ export default function LoginPage() {
   const [showResendVerification, setShowResendVerification] = useState(false)
   const [resendStatus, setResendStatus] = useState('')
   const [nextPath, setNextPath] = useState('')
-  const [isTradingRuntime, setIsTradingRuntime] = useState(false)
+  const [isTradingRuntime, setIsTradingRuntime] = useState(IS_TRADING_PLATFORM)
+  const [isSsoLoading, setIsSsoLoading] = useState(false)
 
   const [formData, setFormData] = useState({
     email: '',
@@ -33,12 +34,20 @@ export default function LoginPage() {
     return isTradingOperatorRole(normalizeRole(role)) ? '/admin/dashboard' : '/secondary-trading'
   }
 
-  const syncSessionUser = async (fallbackUser?: any) => {
+  const syncSessionUser = async (fallbackUser?: any, expectedEmail?: string) => {
     try {
       const meResponse = await apiRequest('/api/auth/me', { method: 'GET', credentials: 'include' })
       if (meResponse.ok) {
         const meData = await meResponse.safeJson()
-        if (meData?.user) return meData.user
+        const sessionUser = meData?.user
+        if (sessionUser) {
+          const normalizedExpected = String(expectedEmail || '').trim().toLowerCase()
+          const normalizedActual = String(sessionUser?.email || '').trim().toLowerCase()
+          if (normalizedExpected && normalizedActual && normalizedExpected !== normalizedActual) {
+            return fallbackUser || null
+          }
+          return sessionUser
+        }
       }
     } catch {
       // fall back to login payload user
@@ -67,8 +76,29 @@ export default function LoginPage() {
       setNextPath(next)
     }
 
-    setIsTradingRuntime(IS_TRADING_PLATFORM || isTradingHostname(window.location.hostname))
+    setIsTradingRuntime(resolveTradingRuntime(window.location.hostname, window.location.pathname))
   }, [])
+
+  const handleTradingSso = async () => {
+    if (isSsoLoading) return
+    setIsSsoLoading(true)
+
+    try {
+      // Ensure previous trading-domain session is cleared before switching account via core SSO.
+      await apiRequest('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      }).catch(() => null)
+
+      localStorage.removeItem('user')
+      window.dispatchEvent(new Event('auth:changed'))
+      window.location.assign(`${CORE_FRONTEND_URL}/auth/sso?prompt=login`)
+    } catch {
+      window.location.assign(`${CORE_FRONTEND_URL}/auth/sso?prompt=login`)
+    } finally {
+      setIsSsoLoading(false)
+    }
+  }
 
   const handleResendVerification = async () => {
     if (!formData.email) {
@@ -143,7 +173,7 @@ export default function LoginPage() {
       if (response.ok) {
         const data = await response.safeJson()
         // localStorage.setItem('token', data.token)
-        const sessionUser = await syncSessionUser(data?.user)
+        const sessionUser = await syncSessionUser(data?.user, formData.email)
         if (!sessionUser) {
           setErrors({ general: 'Unable to establish session. Please try again.' })
           return
@@ -171,6 +201,16 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
+      if (isTradingRuntime) {
+        // Clear stale cookie/local state before cross-account login attempts.
+        await apiRequest('/api/auth/logout', {
+          method: 'POST',
+          credentials: 'include',
+        }).catch(() => null)
+        localStorage.removeItem('user')
+        window.dispatchEvent(new Event('auth:changed'))
+      }
+
       const response = await apiRequest('/api/auth/login', {
         method: 'POST',
         credentials: 'include',
@@ -190,7 +230,7 @@ export default function LoginPage() {
           setErrors({})
         } else {
           // localStorage.setItem('token', data.token) // Token is now in HttpOnly cookie
-          const sessionUser = await syncSessionUser(data?.user)
+          const sessionUser = await syncSessionUser(data?.user, formData.email)
           if (!sessionUser) {
             setErrors({ general: 'Unable to establish session. Please try again.' })
             return
@@ -223,23 +263,7 @@ export default function LoginPage() {
         <div className="absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.08)_1px,transparent_1px)] bg-[size:44px_44px]" />
       </div>
 
-      <div className={`relative z-10 mx-auto flex min-h-screen w-full items-center px-4 py-10 sm:px-6 lg:px-10 ${isTradingRuntime ? 'max-w-7xl gap-8 lg:grid lg:grid-cols-[1.25fr_0.95fr]' : 'max-w-md justify-center'}`}>
-        {isTradingRuntime && step !== '2fa' && (
-          <aside className="hidden rounded-2xl border border-slate-700/60 bg-slate-900/65 p-8 text-slate-100 shadow-2xl backdrop-blur lg:block">
-            <div className="mb-6 inline-flex items-center rounded-full border border-blue-400/30 bg-blue-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-blue-200">
-              CamboBia Trading
-            </div>
-            <h1 className="text-4xl font-bold leading-tight text-white">Professional Secondary Market Access</h1>
-            <p className="mt-4 text-base text-slate-300">
-              Monitor tokenized SME units, evaluate issuer performance, and execute trades from a dedicated marketplace experience.
-            </p>
-            <div className="mt-8 space-y-3 text-sm text-slate-300">
-              <div className="rounded-lg border border-slate-700 bg-slate-900/60 px-4 py-3">Real-time listings and market depth</div>
-              <div className="rounded-lg border border-slate-700 bg-slate-900/60 px-4 py-3">Order placement with live status updates</div>
-              <div className="rounded-lg border border-slate-700 bg-slate-900/60 px-4 py-3">Trade history, holdings, and account security controls</div>
-            </div>
-          </aside>
-        )}
+      <div className="relative z-10 mx-auto flex min-h-screen w-full items-center px-4 py-10 sm:px-6 lg:px-10 max-w-md justify-center">
 
         <section className="w-full">
           <div className="rounded-2xl border border-slate-700/70 bg-slate-900/78 p-6 shadow-2xl backdrop-blur sm:p-8">
@@ -452,12 +476,14 @@ export default function LoginPage() {
 
           {isTradingRuntime && (
             <div>
-              <a
-                href={`${CORE_FRONTEND_URL}/auth/sso?prompt=login`}
+              <button
+                type="button"
+                onClick={handleTradingSso}
+                disabled={isSsoLoading || isLoading}
                 className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-semibold rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
               >
-                Continue with CamboBia Account (SSO)
-              </a>
+                {isSsoLoading ? 'Redirecting to SSO...' : 'Continue with CamboBia Account (SSO)'}
+              </button>
             </div>
           )}
 

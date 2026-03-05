@@ -23,6 +23,9 @@ import {
     hasPermission as checkPermission,
     canPerformAction
 } from '../lib/permissions';
+import { authorizedRequest } from '../lib/api';
+import { normalizeRole } from '../lib/roles';
+import { resolveTradingRuntime } from '../lib/platform';
 
 /**
  * Get current user from localStorage
@@ -33,7 +36,11 @@ function getCurrentUser(): User | null {
     try {
         const userData = localStorage.getItem('user');
         if (!userData) return null;
-        return JSON.parse(userData) as User;
+        const parsed = JSON.parse(userData) as User;
+        return {
+            ...parsed,
+            role: normalizeRole(parsed.role),
+        };
     } catch {
         return null;
     }
@@ -51,29 +58,78 @@ export function usePermissions(): PermissionHelpers & {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        const loadUser = () => {
-            const currentUser = getCurrentUser();
-            setUser(currentUser);
-            setIsLoading(false);
+        let isMounted = true;
+
+        const loadUser = async (preferCache: boolean = true, strictFreshIdentity: boolean = false) => {
+            const cachedUser = getCurrentUser();
+            if (preferCache && cachedUser && isMounted) {
+                setUser(cachedUser);
+                setIsLoading(false);
+            }
+
+            try {
+                const response = await authorizedRequest('/api/auth/me');
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        localStorage.removeItem('user');
+                        if (isMounted) {
+                            setUser(null);
+                        }
+                    }
+                    return;
+                }
+
+                const payload = await response.json();
+                const apiUser = payload?.user;
+                if (!apiUser) {
+                    return;
+                }
+
+                const normalizedApiUser: User = {
+                    ...apiUser,
+                    role: normalizeRole(apiUser.role),
+                };
+
+                localStorage.setItem('user', JSON.stringify(normalizedApiUser));
+                if (isMounted) {
+                    setUser(normalizedApiUser);
+                }
+            } catch {
+                // In trading runtime we prefer consistency over optimistic fallback
+                // to prevent stale persona rendering after SSO/session switches.
+                if (!preferCache && strictFreshIdentity && isMounted) {
+                    localStorage.removeItem('user');
+                    setUser(null);
+                }
+            } finally {
+                if (isMounted) {
+                    setIsLoading(false);
+                }
+            }
         };
 
-        loadUser();
+        const isTradingContext = typeof window !== 'undefined'
+            && resolveTradingRuntime(window.location.hostname, window.location.pathname);
+
+        // Trading runtime should not optimistically render cached persona data.
+        void loadUser(!isTradingContext, isTradingContext);
 
         // Listen for storage changes (e.g., login/logout in another tab)
         const handleStorageChange = (e: StorageEvent) => {
             if (e.key === 'user') {
-                loadUser();
+                void loadUser(false, isTradingContext);
             }
         };
 
         // Listen for same-tab auth changes dispatched after login/logout/SSO
         const handleAuthChanged = () => {
-            loadUser();
+            void loadUser(false, isTradingContext);
         };
 
         window.addEventListener('storage', handleStorageChange);
         window.addEventListener('auth:changed', handleAuthChanged as EventListener);
         return () => {
+            isMounted = false;
             window.removeEventListener('storage', handleStorageChange);
             window.removeEventListener('auth:changed', handleAuthChanged as EventListener);
         };
@@ -180,7 +236,7 @@ export function IfRole({
     fallback = null
 }: RoleProps): ReactNode {
     const { user } = usePermissions();
-    const hasRole = user && roles.includes(user.role as UserRole);
+    const hasRole = user && roles.includes(normalizeRole(user.role) as UserRole);
     if (hasRole) {
         return children;
     }

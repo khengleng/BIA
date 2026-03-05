@@ -20,6 +20,44 @@ interface TwoFaSetup {
     qrCode: string
 }
 
+const getEmbeddedPlatform = (uaRaw: string) => {
+    const match = (uaRaw || '').match(/\[platform:([^\]]+)\]/i)
+    return match?.[1]?.trim().toLowerCase() || ''
+}
+
+const getCleanUserAgent = (uaRaw: string) => {
+    return (uaRaw || '').replace(/\[platform:[^\]]+\]\s*/i, '')
+}
+
+const parseDevice = (uaRaw: string) => {
+    const platform = getEmbeddedPlatform(uaRaw)
+    const ua = getCleanUserAgent(uaRaw).toLowerCase()
+
+    if (platform.includes('mac')) return 'Mac'
+    if (platform.includes('win')) return 'Windows PC'
+    if (platform.includes('android')) return 'Android Device'
+    if (platform.includes('iphone') || platform.includes('ios')) return 'iPhone'
+    if (platform.includes('ipad')) return 'iPad'
+    if (platform.includes('linux')) return 'Linux Device'
+
+    if (ua.includes('macintosh') || ua.includes('mac os x')) return 'Mac'
+    if (ua.includes('windows nt')) return 'Windows PC'
+    if (ua.includes('iphone')) return 'iPhone'
+    if (ua.includes('ipad')) return 'iPad'
+    if (ua.includes('android')) return 'Android Device'
+    if (ua.includes('linux')) return 'Linux Device'
+    return 'Unknown Device'
+}
+
+const parseBrowser = (uaRaw: string) => {
+    const ua = getCleanUserAgent(uaRaw).toLowerCase()
+    if (ua.includes('edg/')) return 'Edge'
+    if (ua.includes('firefox/')) return 'Firefox'
+    if (ua.includes('chrome/')) return 'Chrome'
+    if (ua.includes('safari/')) return 'Safari'
+    return 'Web Browser'
+}
+
 export default function TradingSecurityPage() {
     const { addToast } = useToast()
     const [isLoading, setIsLoading] = useState(true)
@@ -377,12 +415,14 @@ export default function TradingSecurityPage() {
                                         <Smartphone className="w-5 h-5 text-gray-400 mt-0.5" />
                                         <div>
                                             <p className="text-white text-sm">
-                                                {session.userAgent || 'Unknown device'}
+                                                {parseDevice(session.userAgent || '')}
                                                 {currentSessionId === session.id && (
                                                     <span className="ml-2 px-2 py-0.5 text-[10px] bg-blue-500/20 text-blue-300 rounded border border-blue-500/30">Current</span>
                                                 )}
                                             </p>
-                                            <p className="text-xs text-gray-400">{session.ipAddress} • Started {new Date(session.createdAt).toLocaleString()}</p>
+                                            <p className="text-xs text-gray-400">
+                                                {parseBrowser(session.userAgent || '')} • {session.ipAddress} • Started {new Date(session.createdAt).toLocaleString()}
+                                            </p>
                                         </div>
                                     </div>
                                     <button
