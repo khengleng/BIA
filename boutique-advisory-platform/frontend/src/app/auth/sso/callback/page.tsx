@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { apiRequest } from '@/lib/api'
 import { CORE_FRONTEND_URL, resolveTradingRuntime } from '@/lib/platform'
 import { isTradingOperatorRole, normalizeRole } from '@/lib/roles'
+import { TRADING_OPERATOR_HOME } from '@/lib/tradingOperatorRoutes'
 
 function SsoCallbackContent() {
   const router = useRouter()
@@ -61,7 +62,7 @@ function SsoCallbackContent() {
         }
         const role = normalizeRole(sessionUser?.role)
         const isOperator = isTradingOperatorRole(role)
-        router.replace(isOperator ? '/admin/dashboard' : '/secondary-trading')
+        router.replace(isOperator ? TRADING_OPERATOR_HOME : '/secondary-trading')
       } catch {
         setError('Unable to complete SSO login. Please try again.')
       }

@@ -8,6 +8,7 @@ import { Eye, EyeOff, Mail, Lock, Building2, CandlestickChart } from 'lucide-rea
 import { apiRequest } from '../../../lib/api'
 import { CORE_FRONTEND_URL, IS_TRADING_PLATFORM, resolveTradingRuntime } from '@/lib/platform'
 import { isTradingOperatorRole, normalizeRole } from '@/lib/roles'
+import { TRADING_OPERATOR_HOME } from '@/lib/tradingOperatorRoutes'
 
 export default function LoginPage() {
   const { t } = useTranslations()
@@ -31,7 +32,7 @@ export default function LoginPage() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const getPostLoginPath = (role?: string) => {
     if (!isTradingRuntime) return '/dashboard'
-    return isTradingOperatorRole(normalizeRole(role)) ? '/admin/dashboard' : '/secondary-trading'
+    return isTradingOperatorRole(normalizeRole(role)) ? TRADING_OPERATOR_HOME : '/secondary-trading'
   }
 
   const syncSessionUser = async (fallbackUser?: any, expectedEmail?: string) => {

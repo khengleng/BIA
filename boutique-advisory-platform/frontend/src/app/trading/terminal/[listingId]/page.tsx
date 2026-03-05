@@ -255,7 +255,7 @@ export default function TradeTerminalPage() {
 
         if (side === 'SELL') {
             addToast('info', 'Sell flow runs from your Portfolio positions.')
-            router.push('/investor/portfolio')
+            router.push('/trading/portfolio')
             return
         }
 
@@ -559,7 +559,7 @@ export default function TradeTerminalPage() {
                                     Sell orders are managed through your portfolio positions to ensure ownership checks.
                                 </p>
 
-                                <Link href="/investor/portfolio" className="block text-center text-sm text-blue-300 hover:text-blue-200">
+                                <Link href="/trading/portfolio" className="block text-center text-sm text-blue-300 hover:text-blue-200">
                                     Open Portfolio
                                 </Link>
                             </div>

@@ -43,6 +43,7 @@ import { authorizedRequest } from '@/lib/api'
 import { hasPermission as hasUiPermission } from '@/lib/permissions'
 import { IS_TRADING_PLATFORM, resolveTradingRuntime } from '@/lib/platform'
 import { isTradingOperatorRole, normalizeRole, TRADING_OPERATOR_ROLES } from '@/lib/roles'
+import { TRADING_OPERATOR_HOME } from '@/lib/tradingOperatorRoutes'
 import NotificationCenter from '../NotificationCenter'
 import LanguageSwitcher from '../LanguageSwitcher'
 import Chatbot from '../Chatbot'
@@ -273,7 +274,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 items: [
                     { href: '/secondary-trading', label: 'Marketplace', icon: ArrowLeftRight, roles: ['INVESTOR'] },
                     { href: '/trading/markets', label: 'Markets', icon: BarChart3, roles: ['INVESTOR'] },
-                    { href: '/investor/portfolio', label: 'My Portfolio', icon: Briefcase, roles: ['INVESTOR'] },
+                    { href: '/trading/portfolio', label: 'My Portfolio', icon: Briefcase, roles: ['INVESTOR'] },
                     { href: '/trading/watchlist', label: 'Watchlist', icon: Sparkles, roles: ['INVESTOR'] },
                     { href: '/trading/profile', label: 'Investor Profile', icon: UserCog, roles: ['INVESTOR'] },
                     { href: '/trading/security', label: 'Investor Security', icon: ShieldCheck, roles: ['INVESTOR'] },
@@ -283,7 +284,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 label: 'Security',
                 roles: ['INVESTOR'],
                 items: [
-                    { href: '/settings/sessions', label: 'Manage Sessions', icon: ShieldCheck, roles: ['INVESTOR'] },
+                    { href: '/trading/sessions', label: 'Manage Sessions', icon: ShieldCheck, roles: ['INVESTOR'] },
                 ]
             },
         ]
@@ -292,54 +293,56 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 label: 'Platform Admin',
                 roles: operatorRoles,
                 items: [
-                    { href: '/admin/dashboard', label: 'Control Tower', icon: LayoutDashboard, roles: ['SUPER_ADMIN', 'ADMIN', 'AUDITOR'] },
-                    { href: '/admin/trading-ops', label: 'Listing Control', icon: ArrowLeftRight, roles: ['SUPER_ADMIN', 'ADMIN', 'COMPLIANCE', 'SUPPORT'] },
+                    { href: '/trading/operator/dashboard', label: 'Control Tower', icon: LayoutDashboard, roles: ['SUPER_ADMIN', 'ADMIN', 'AUDITOR'] },
+                    { href: '/trading/operator/listing-control', label: 'Listing Control', icon: ArrowLeftRight, roles: ['SUPER_ADMIN', 'ADMIN', 'COMPLIANCE', 'SUPPORT'] },
                     { href: '/trading/markets', label: 'Market Monitor', icon: BarChart3, roles: operatorRoles },
-                    { href: '/admin/role-lifecycle', label: 'Role Lifecycle', icon: Shield, roles: ['SUPER_ADMIN', 'ADMIN', 'COMPLIANCE'] },
-                    { href: '/admin/users', label: 'User Management', icon: UserCog, roles: ['SUPER_ADMIN', 'ADMIN'] },
+                    { href: '/trading/operator/role-lifecycle', label: 'Role Lifecycle', icon: Shield, roles: ['SUPER_ADMIN', 'ADMIN', 'COMPLIANCE'] },
+                    { href: '/trading/operator/users', label: 'User Management', icon: UserCog, roles: ['SUPER_ADMIN', 'ADMIN'] },
                 ]
             },
             {
                 label: 'FinOps',
                 roles: operatorRoles,
                 items: [
-                    { href: '/admin/reconciliation', label: 'Trading Fee & Reconciliation', icon: Wallet, roles: ['SUPER_ADMIN', 'ADMIN', 'FINOPS', 'AUDITOR'] },
-                    { href: '/admin/billing', label: 'Billing Ops', icon: Wallet, roles: ['SUPER_ADMIN', 'ADMIN', 'FINOPS', 'AUDITOR'] },
+                    { href: '/trading/operator/reconciliation', label: 'Trading Fee & Reconciliation', icon: Wallet, roles: ['SUPER_ADMIN', 'ADMIN', 'FINOPS', 'AUDITOR'] },
+                    { href: '/trading/operator/billing', label: 'Billing Ops', icon: Wallet, roles: ['SUPER_ADMIN', 'ADMIN', 'FINOPS', 'AUDITOR'] },
+                    { href: '/trading/operator/business-ops', label: 'Business Ops', icon: Briefcase, roles: ['SUPER_ADMIN', 'ADMIN', 'FINOPS', 'CX'] },
                 ]
             },
             {
                 label: 'CX Ops',
                 roles: operatorRoles,
                 items: [
-                    { href: '/admin/cases', label: 'Case Management', icon: ClipboardList, roles: ['SUPER_ADMIN', 'ADMIN', 'SUPPORT', 'CX', 'COMPLIANCE'] },
-                    { href: '/admin/operations', label: 'Ops Readiness', icon: ShieldCheck, roles: ['SUPER_ADMIN', 'ADMIN', 'SUPPORT', 'CX', 'COMPLIANCE'] },
-                    { href: '/admin/onboarding', label: 'Onboarding Orchestration', icon: ClipboardCheck, roles: ['SUPER_ADMIN', 'ADMIN', 'SUPPORT', 'CX'] },
+                    { href: '/trading/operator/cases', label: 'Case Management', icon: ClipboardList, roles: ['SUPER_ADMIN', 'ADMIN', 'SUPPORT', 'CX', 'COMPLIANCE'] },
+                    { href: '/trading/operator/operations', label: 'Ops Readiness', icon: ShieldCheck, roles: ['SUPER_ADMIN', 'ADMIN', 'SUPPORT', 'CX', 'COMPLIANCE'] },
+                    { href: '/trading/operator/onboarding', label: 'Onboarding Orchestration', icon: ClipboardCheck, roles: ['SUPER_ADMIN', 'ADMIN', 'SUPPORT', 'CX'] },
                 ]
             },
             {
                 label: 'Compliance & Legal',
                 roles: operatorRoles,
                 items: [
-                    { href: '/admin/investor-ops', label: 'Investor eKYC', icon: UsersRound, roles: ['SUPER_ADMIN', 'ADMIN', 'COMPLIANCE', 'CX'] },
-                    { href: '/admin/deal-ops', label: 'Deal Oversight', icon: Briefcase, roles: ['SUPER_ADMIN', 'ADMIN', 'COMPLIANCE'] },
-                    { href: '/admin/data-governance', label: 'Data Governance', icon: ShieldCheck, roles: ['SUPER_ADMIN', 'ADMIN', 'COMPLIANCE', 'AUDITOR'] },
+                    { href: '/trading/operator/investor-kyc', label: 'Investor eKYC', icon: UsersRound, roles: ['SUPER_ADMIN', 'ADMIN', 'COMPLIANCE', 'CX'] },
+                    { href: '/trading/operator/deal-oversight', label: 'Deal Oversight', icon: Briefcase, roles: ['SUPER_ADMIN', 'ADMIN', 'COMPLIANCE'] },
+                    { href: '/trading/operator/data-governance', label: 'Data Governance', icon: ShieldCheck, roles: ['SUPER_ADMIN', 'ADMIN', 'COMPLIANCE', 'AUDITOR'] },
+                    { href: '/trading/operator/advisor-ops', label: 'Advisor Ops', icon: Users, roles: ['SUPER_ADMIN', 'ADMIN', 'CX'] },
                 ]
             },
             {
                 label: 'Sales & Marketing',
                 roles: operatorRoles,
                 items: [
-                    { href: '/analytics', label: 'Demand Analytics', icon: TrendingUp, roles: ['SUPER_ADMIN', 'ADMIN', 'CX'] },
-                    { href: '/reports', label: 'Campaign & Sales Reports', icon: FileText, roles: ['SUPER_ADMIN', 'ADMIN', 'CX'] },
+                    { href: '/trading/operator/analytics', label: 'Demand Analytics', icon: TrendingUp, roles: ['SUPER_ADMIN', 'ADMIN', 'CX'] },
+                    { href: '/trading/operator/reports', label: 'Campaign & Sales Reports', icon: FileText, roles: ['SUPER_ADMIN', 'ADMIN', 'CX'] },
                 ]
             },
             {
                 label: 'Security',
                 roles: operatorRoles,
                 items: [
-                    { href: '/trading/security', label: 'Platform Security', icon: ShieldCheck, roles: operatorRoles },
-                    { href: '/settings/sessions', label: 'Manage Sessions', icon: Shield, roles: operatorRoles },
-                    { href: '/admin/audit', label: 'Audit Trail', icon: History, roles: ['SUPER_ADMIN', 'ADMIN', 'AUDITOR', 'COMPLIANCE'] },
+                    { href: '/trading/operator/security', label: 'Platform Security', icon: ShieldCheck, roles: operatorRoles },
+                    { href: '/trading/sessions', label: 'Manage Sessions', icon: Shield, roles: operatorRoles },
+                    { href: '/trading/operator/audit', label: 'Audit Trail', icon: History, roles: ['SUPER_ADMIN', 'ADMIN', 'AUDITOR', 'COMPLIANCE'] },
                 ]
             },
         ]
@@ -380,10 +383,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             '/secondary-trading',
             '/trading/watchlist',
             '/trading/profile',
-            '/investor/portfolio',
+            '/trading/portfolio',
+            '/trading/security',
         ]
         if (pathname && investorOnlyPaths.some((path) => pathname.startsWith(path))) {
-            router.replace('/admin/dashboard')
+            router.replace(TRADING_OPERATOR_HOME)
         }
     }, [isTradingRuntime, isTradingOperator, pathname, router, user])
 

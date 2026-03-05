@@ -21,6 +21,8 @@ import {
 } from 'lucide-react'
 import { useTranslations } from '../../hooks/useTranslations'
 import { authorizedRequest } from '../../lib/api'
+import { resolveTradingRuntime } from '@/lib/platform'
+import { TRADING_OPERATOR_HOME } from '@/lib/tradingOperatorRoutes'
 
 interface User {
   id: string
@@ -47,7 +49,8 @@ export default function DashboardPage() {
 
           // Admin users use the dedicated admin dashboard.
           if (['ADMIN', 'SUPER_ADMIN', 'FINOPS', 'CX', 'AUDITOR', 'COMPLIANCE', 'SUPPORT'].includes(parsedUser.role)) {
-            router.replace('/admin/dashboard')
+            const isTradingRuntime = resolveTradingRuntime(window.location.hostname, window.location.pathname)
+            router.replace(isTradingRuntime ? TRADING_OPERATOR_HOME : '/admin/dashboard')
             return
           }
 

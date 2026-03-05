@@ -1,21 +1,14 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import {
+  mapAdminPathToTradingOperator,
+  mapLegacyTradingPath,
+} from '@/lib/tradingOperatorRoutes';
 
 const mode = process.env.NEXT_PUBLIC_PLATFORM_MODE === 'trading' ? 'trading' : 'core';
 const isTradingHost = (hostname: string) => hostname === 'trade.cambobia.com';
 
-const tradingProtectedPrefixes = [
-  '/admin',
-  '/secondary-trading',
-  '/trading',
-  '/dashboard',
-  '/investor/portfolio',
-  '/messages',
-  '/reports',
-  '/audit',
-  '/notifications',
-  '/settings/sessions',
-];
+const tradingProtectedPrefixes = ['/secondary-trading', '/trading'];
 
 const tradingSessionCookieNames = [
   'tr_token',
@@ -64,6 +57,20 @@ export function middleware(req: NextRequest) {
 
   if (staticTradingPrefixes.some((prefix) => pathname.startsWith(prefix))) {
     return NextResponse.next();
+  }
+
+  const mappedAdminPath = mapAdminPathToTradingOperator(pathname);
+  if (mappedAdminPath) {
+    const url = req.nextUrl.clone();
+    url.pathname = mappedAdminPath;
+    return NextResponse.redirect(url);
+  }
+
+  const mappedLegacyPath = mapLegacyTradingPath(pathname);
+  if (mappedLegacyPath) {
+    const url = req.nextUrl.clone();
+    url.pathname = mappedLegacyPath;
+    return NextResponse.redirect(url);
   }
 
   if (tradingProtectedPrefixes.some((prefix) => pathname.startsWith(prefix))) {

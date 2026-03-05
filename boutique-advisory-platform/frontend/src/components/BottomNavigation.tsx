@@ -67,15 +67,15 @@ export default function BottomNavigation() {
         ? isTradingOperator
             ? [
                 { icon: Home, label: 'Markets', path: '/trading/markets' },
-                { icon: ShieldCheck, label: 'Ops', path: '/admin/dashboard' },
-                { icon: Briefcase, label: 'Deals', path: '/admin/deal-ops' },
-                { icon: Users, label: 'Investors', path: '/admin/investor-ops' },
-                { icon: Settings, label: 'Reconcile', path: '/admin/reconciliation' },
+                { icon: ShieldCheck, label: 'Ops', path: '/trading/operator/dashboard' },
+                { icon: Briefcase, label: 'Deals', path: '/trading/operator/deal-oversight' },
+                { icon: Users, label: 'Investors', path: '/trading/operator/investor-kyc' },
+                { icon: Settings, label: 'Reconcile', path: '/trading/operator/reconciliation' },
             ]
             : [
             { icon: Home, label: 'Markets', path: '/trading/markets' },
             { icon: FileText, label: 'Trade', path: '/secondary-trading' },
-            { icon: Users, label: 'Portfolio', path: '/investor/portfolio' },
+            { icon: Users, label: 'Portfolio', path: '/trading/portfolio' },
             { icon: MessageSquare, label: 'Watchlist', path: '/trading/watchlist' },
             { icon: Settings, label: 'Security', path: '/trading/security' },
         ]
