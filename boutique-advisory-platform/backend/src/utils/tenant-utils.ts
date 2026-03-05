@@ -15,6 +15,17 @@ export function getTenantId(req: Request): string {
   // Use Express-trusted hostname only (avoid direct trust in forwarded headers).
   const host = String(req.hostname || '').trim().toLowerCase();
 
+  // Platform domains share the default tenant identity.
+  // Without this guard, `trade.cambobia.com` is interpreted as tenant "trade",
+  // which breaks shared operator/trader authentication.
+  if (
+    host === 'cambobia.com' ||
+    host === 'www.cambobia.com' ||
+    host === 'trade.cambobia.com'
+  ) {
+    return process.env.TRADING_TENANT_ID || 'default';
+  }
+
   const isLocalHost = host.includes('localhost') || host.includes('127.0.0.1');
   const isRailwayHost = host.endsWith('railway.app');
 

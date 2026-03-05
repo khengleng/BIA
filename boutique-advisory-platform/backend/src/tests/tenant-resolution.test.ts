@@ -56,6 +56,18 @@ test('Tenant resolution - local/railway host falls back to default in production
       headers: {},
     } as unknown as MinimalReq;
     assert.strictEqual(getTenantId(localhostReq as any), 'default');
+
+    const coreHostReq = {
+      hostname: 'www.cambobia.com',
+      headers: {},
+    } as unknown as MinimalReq;
+    assert.strictEqual(getTenantId(coreHostReq as any), 'default');
+
+    const tradingHostReq = {
+      hostname: 'trade.cambobia.com',
+      headers: {},
+    } as unknown as MinimalReq;
+    assert.strictEqual(getTenantId(tradingHostReq as any), 'default');
   });
 });
 
