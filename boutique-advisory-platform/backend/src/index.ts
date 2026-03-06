@@ -101,6 +101,7 @@ import adminDataGovernanceRoutes from './routes/admin-data-governance';
 import adminReconciliationRoutes from './routes/admin-reconciliation';
 import adminSecurityRoutes from './routes/admin-security';
 import walletRoutes from './routes/wallet';
+import launchpadRoutes from './routes/launchpad';
 
 // Core Feature Routes
 import authRoutes from './routes/auth';
@@ -764,23 +765,28 @@ if (isTradingService) {
   app.use('/api/duediligence', authenticateToken, dueDiligenceRoutes);
   app.use('/api/deal-due-diligence', authenticateToken, dealDueDiligenceRoutes);
   app.use('/api/community', authenticateToken, communityRoutes);
-  app.use('/api/notifications', authenticateToken, notificationRoutes);
-  app.use('/api/push', authenticateToken, notificationRoutes); // Alias for push subscription endpoints
-  app.use('/api/dashboard', authenticateToken, dashboardRoutes);
-  app.use('/api/pipeline', authenticateToken, pipelineRoutes);
-  app.use('/api/matches', authenticateToken, matchesRoutes);
-  app.use('/api/messages', authenticateToken, messagesRoutes);
-  app.use('/api/calendar', authenticateToken, calendarRoutes);
-  app.use('/api/report', authenticateToken, reportRoutes);
-  app.use('/api/reports', authenticateToken, reportRoutes);
-  app.use('/api/dataroom', authenticateToken, dataroomRoutes);
-  app.use('/api/audit', authenticateToken, auditRoutes);
-  app.use('/api/advisory', authenticateToken, advisoryRoutes);
-  app.use('/api/advisory-services', authenticateToken, advisoryRoutes);
-  app.use('/api/advisors', authenticateToken, advisoryRoutes);
-  app.use('/api/analytics', authenticateToken, analyticsRoutes);
-  app.use('/api/payments', authenticateToken, paymentRoutes);
-  app.use('/api/cashflow', authenticateToken, cashflowRoutes);
+  // Define allowed roles for route access based heavily on RBAC Matrices and Service mode
+  const adminRoles = ['SUPER_ADMIN', 'PLATFORM_OPERATOR', 'TENANT_OWNER'];
+  const unifiedOperationalRoles = ['SUPER_ADMIN', 'PLATFORM_OPERATOR', 'TENANT_OWNER', 'COMPLIANCE_OFFICER'];
+  const pmoRoles = [...unifiedOperationalRoles, 'PORTFOLIO_MANAGER', 'DEAL_LEADER'];
+  const standardUserRoles = [...pmoRoles, 'ADVISOR', 'SME', 'INVESTOR', 'SUPPORT_AGENT'];
+  const strictTradingRoles = ['SUPER_ADMIN', 'PLATFORM_OPERATOR', 'INVESTOR']; // Ensure SMEs and non-trading users don't break strict boundary
+
+  // Apply strict service boundaries (Ensures trade.cambobia.com stays separate if needed)
+  if (isTradingService) {
+    app.use('/api/secondary-trading', authenticateToken, authorizeRoles(...strictTradingRoles), secondaryTradingRoutes);
+    app.use('/api/wallet', authenticateToken, authorizeRoles(...strictTradingRoles), walletRoutes);
+    app.use('/api/launchpad', launchpadRoutes);
+  } else {
+    app.use('/api/dashboard', authenticateToken, authorizeRoles(...standardUserRoles), dashboardRoutes);
+    app.use('/api/sme', authenticateToken, authorizeRoles(...standardUserRoles), smeRoutes);
+    app.use('/api/pipeline', authenticateToken, authorizeRoles(...pmoRoles), pipelineRoutes);
+    app.use('/api/reports', authenticateToken, authorizeRoles(...pmoRoles), reportRoutes);
+    app.use('/api/advisory', authenticateToken, authorizeRoles(...standardUserRoles), advisoryRoutes);
+    app.use('/api/ai', authenticateToken, authorizeRoles(...standardUserRoles), aiRoutes);
+    app.use('/api/operations', authenticateToken, authorizeRoles(...unifiedOperationalRoles, 'OPERATIONAL_MANAGER'), operationsRoutes);
+    app.use('/api/launchpad', launchpadRoutes); // For Advisor to publish Deal
+  } app.use('/api/cashflow', authenticateToken, cashflowRoutes);
   app.use('/api/admin', authenticateToken, adminRoutes);
   app.use('/api/ai', authenticateToken, aiRoutes);
   app.use('/api/disputes', authenticateToken, disputeRoutes);
