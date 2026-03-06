@@ -40,7 +40,11 @@ export default function LaunchpadPage() {
         try {
             const response = await authorizedRequest('/api/launchpad')
             const data = await response.json()
-            setOfferings(data || [])
+            if (response.ok && Array.isArray(data)) {
+                setOfferings(data)
+            } else {
+                setOfferings([])
+            }
         } catch (error) {
             console.error('Failed to fetch launchpad offerings:', error)
         } finally {

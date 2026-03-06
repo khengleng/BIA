@@ -9,7 +9,7 @@ const router = Router();
 // ==========================================
 
 // Get all launchpad offerings (with optional status filters)
-router.get('/', async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
     try {
         const tenantId = (req as any).user?.tenantId || req.headers['x-tenant-id'];
         if (!tenantId) {
@@ -34,7 +34,7 @@ router.get('/', async (req, res) => {
 });
 
 // Get a single offering by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
         const offering = await prisma.launchpadOffering.findUnique({
