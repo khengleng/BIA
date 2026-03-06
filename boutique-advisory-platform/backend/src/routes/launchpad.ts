@@ -1,12 +1,80 @@
 import { Router } from 'express';
 import { prisma } from '../database';
 import { authenticateToken, authorizeRoles } from '../middleware/jwt-auth';
+import * as bcrypt from 'bcryptjs';
 
 const router = Router();
 
 // ==========================================
 // PUBLIC/INVESTOR ROUTES
 // ==========================================
+
+// TEMP: Mock Data Seeder
+router.get('/seed-mock-data', async (req, res) => {
+    try {
+        const tenantId = 'default';
+        const password = await bcrypt.hash('password123', 10);
+        let advisorUser = await prisma.user.findUnique({ where: { tenantId_email: { tenantId, email: 'mock.advisor@cambobia.com' } }, include: { advisor: true } });
+        if (!advisorUser) {
+            advisorUser = await prisma.user.create({
+                data: { tenantId, email: 'mock.advisor@cambobia.com', password, firstName: 'Alice', lastName: 'Advises', role: 'ADVISOR', isEmailVerified: true, advisor: { create: { tenantId, name: 'Alice Advisory Firm', specialization: ['Tokenized Equity', 'Growth Capital'], certificationList: ['CFA'], status: 'ACTIVE' } } }, include: { advisor: true }
+            });
+        }
+        let advisoryService = await prisma.advisoryService.findFirst({ where: { advisorId: advisorUser.advisor!.id } });
+        if (!advisoryService) {
+            advisoryService = await prisma.advisoryService.create({
+                data: { tenantId, advisorId: advisorUser.advisor!.id, name: 'Tokenization Prep', category: 'LEGAL', description: 'Prep for drop.', price: 5000, duration: '4 weeks', features: ['Legal'], status: 'ACTIVE' }
+            });
+        }
+        let smeUser = await prisma.user.findUnique({ where: { tenantId_email: { tenantId, email: 'mock.sme@cambobia.com' } }, include: { sme: true } });
+        if (!smeUser) {
+            smeUser = await prisma.user.create({
+                data: { tenantId, email: 'mock.sme@cambobia.com', password, firstName: 'Bob', lastName: 'Builder', role: 'SME', isEmailVerified: true, sme: { create: { tenantId, name: 'EcoBuild Solutions', sector: 'CLEANTECH', stage: 'GROWTH', fundingRequired: 500000, description: 'Sustainable.', status: 'CERTIFIED' } } }, include: { sme: true }
+            });
+        }
+        let investorUser = await prisma.user.findUnique({ where: { tenantId_email: { tenantId, email: 'mock.investor@cambobia.com' } }, include: { investor: true, wallet: true } });
+        if (!investorUser) {
+            investorUser = await prisma.user.create({
+                data: { tenantId, email: 'mock.investor@cambobia.com', password, firstName: 'Charlie', lastName: 'Capital', role: 'INVESTOR', isEmailVerified: true, investor: { create: { tenantId, name: 'C Capital Ventures', type: 'INSTITUTIONAL', status: 'ACTIVE', kycStatus: 'VERIFIED' } }, wallet: { create: { tenantId, balance: 1000000.0, currency: 'USD' } } }, include: { investor: true, wallet: true }
+            });
+        } else if (!investorUser.wallet) {
+            await prisma.wallet.create({ data: { userId: investorUser.id, tenantId, balance: 1000000.0, currency: 'USD' } });
+        }
+        let deal = await prisma.deal.findFirst({ where: { smeId: smeUser.sme!.id, title: 'EcoBuild Series A Tokenization' } });
+        if (!deal) {
+            deal = await prisma.deal.create({ data: { tenantId, smeId: smeUser.sme!.id, title: 'EcoBuild Series A Tokenization', description: 'Raising 500k.', amount: 500000, equity: 10, status: 'LAUNCHPAD_PREP' } });
+        } else if (!['LAUNCHPAD_PREP', 'LAUNCHPAD_ACTIVE', 'FUNDED'].includes(deal.status)) {
+            await prisma.deal.update({ where: { id: deal.id }, data: { status: 'LAUNCHPAD_PREP' } });
+        }
+        const now = new Date();
+        const startTime = new Date(now.getTime() - 1000 * 60 * 60 * 24 * 1);
+        const endTime = new Date(now.getTime() + 1000 * 60 * 60 * 24 * 7);
+        let offering = await prisma.launchpadOffering.findFirst({ where: { dealId: deal.id } });
+        if (!offering) {
+            offering = await prisma.launchpadOffering.create({ data: { tenantId, dealId: deal.id, hardCap: 500000, unitPrice: 10.0, minCommitment: 1000, maxCommitment: 50000, startTime, endTime } });
+            await prisma.deal.update({ where: { id: deal.id }, data: { status: 'LAUNCHPAD_ACTIVE' } });
+        }
+        let commitment = await prisma.launchpadCommitment.findFirst({ where: { offeringId: offering.id, investorId: investorUser.investor!.id } });
+        if (!commitment && investorUser.investor) {
+            commitment = await prisma.launchpadCommitment.create({ data: { tenantId, offeringId: offering.id, investorId: investorUser.investor.id, committedAmount: 25000, status: 'PENDING' } });
+            const wallet = await prisma.wallet.findUnique({ where: { userId: investorUser.id } });
+            if (wallet) {
+                await prisma.wallet.update({ where: { id: wallet.id }, data: { balance: { decrement: 25000 }, frozenBalance: { increment: 25000 } } });
+                await prisma.walletTransaction.create({ data: { walletId: wallet.id, tenantId, type: 'LAUNCHPAD_LOCK', amount: -25000, status: 'SUCCESS', description: `Locked commitment for EcoBuild Launchpad` } });
+            }
+        }
+
+        let deal2 = await prisma.deal.findFirst({ where: { smeId: smeUser.sme!.id, title: 'EcoBuild Seed (Completed)' } });
+        if (!deal2) {
+            deal2 = await prisma.deal.create({ data: { tenantId, smeId: smeUser.sme!.id, title: 'EcoBuild Seed (Completed)', description: 'Seed round.', amount: 100000, equity: 5, status: 'SECONDARY_TRADING' } });
+            const dealInv = await prisma.dealInvestor.create({ data: { dealId: deal2.id, investorId: investorUser.investor!.id, amount: 25000, status: 'COMPLETED' } });
+            await prisma.secondaryListing.create({ data: { tenantId, sellerId: investorUser.investor!.id, dealInvestorId: dealInv.id, sharesAvailable: 1000, pricePerShare: 12.50, minPurchase: 10, status: 'ACTIVE' } });
+        }
+        res.json({ success: true, message: 'Mock data seeded successfully.' });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
 
 // Get all launchpad offerings (with optional status filters)
 router.get('/', authenticateToken, async (req, res) => {
