@@ -51815,7 +51815,7 @@ $2(a,b){var s=this.a.OL()
 if(s!=null)s.iH(a,b)},
 $S:43}
 A.yn.prototype={
-apW(){var s,r=A.bbI("https://www.cambobia.com/api",B.t5,B.t5),q=new A.Wd(A.b([B.Jx],t.i6))
+apW(){var s,r=A.bbI("https://cambobia.com/api",B.t5,B.t5),q=new A.Wd(A.b([B.Jx],t.i6))
 q.a_(q,B.Tx)
 s=new A.ahj($,q,$,new A.akV(51200),!1)
 s.ae6$=r
