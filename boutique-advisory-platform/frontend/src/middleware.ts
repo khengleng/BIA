@@ -8,7 +8,7 @@ import {
 const mode = process.env.NEXT_PUBLIC_PLATFORM_MODE === 'trading' ? 'trading' : 'core';
 const isTradingHost = (hostname: string) => hostname === 'trade.cambobia.com';
 
-const tradingProtectedPrefixes = ['/secondary-trading', '/trading'];
+const tradingProtectedPrefixes = ['/secondary-trading', '/trading', '/admin/bot'];
 
 const tradingSessionCookieNames = [
   'tr_token',
