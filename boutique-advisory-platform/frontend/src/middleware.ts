@@ -41,13 +41,15 @@ const staticTradingPrefixes = [
 ];
 
 export function middleware(req: NextRequest) {
-  const runtimeTradingMode = mode === 'trading' || isTradingHost(req.nextUrl.hostname);
+  const { pathname } = req.nextUrl;
 
-  if (!runtimeTradingMode) {
+  // 1. Permanent Whitelist for health checks (bypasses all logic)
+  if (pathname === '/api/health') {
     return NextResponse.next();
   }
 
-  const { pathname } = req.nextUrl;
+  const runtimeTradingMode = mode === 'trading' || isTradingHost(req.nextUrl.hostname);
+
   const isAuthenticated = hasTradingSessionCookie(req);
 
   if (pathname === '/') {
