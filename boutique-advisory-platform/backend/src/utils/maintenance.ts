@@ -31,7 +31,7 @@ async function processLogRetention() {
         // Check if retention table exists (failsafe against missing migrations)
         const rules = await prisma.dataRetentionRule.findMany({
             where: {
-                module: 'ACTIVITY_LOG_RETENTION' as any, // Using the correct enum name if it has one, or casting
+                module: 'ACTIVITY_LOGS',
                 status: 'ACTIVE'
             }
         }).catch(() => []);
