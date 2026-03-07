@@ -1,25 +1,19 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Send,
     Users,
-    Wifi,
-    WifiOff,
     AlertCircle,
     CheckCircle2,
     MessageSquare,
     Loader2,
-    Database,
-    ExternalLink,
     Settings,
     ShieldCheck,
     Lock,
     RefreshCw,
     Terminal,
-    Bell,
-    Info,
-    ChevronRight
+    Info
 } from 'lucide-react';
 import { authorizedRequest } from '@/lib/api';
 import DashboardLayout from '@/components/layout/DashboardLayout';

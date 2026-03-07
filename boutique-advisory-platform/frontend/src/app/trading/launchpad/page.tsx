@@ -6,17 +6,12 @@ import { useTranslations } from '@/hooks/useTranslations'
 import {
     Rocket,
     Clock,
-    TrendingUp,
-    Users,
     Building2,
     ChevronRight,
-    Activity,
     Plus,
-    Settings,
-    LayoutDashboard,
-    ShieldCheck,
     AlertCircle,
-    Info
+    Info,
+    Loader2
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -43,7 +38,7 @@ interface Offering {
 }
 
 export default function LaunchpadPage() {
-    const { t } = useTranslations()
+    // const { t } = useTranslations() --- removed as unused
     const router = useRouter()
     const [offerings, setOfferings] = useState<Offering[]>([])
     const [isLoading, setIsLoading] = useState(true)
@@ -59,7 +54,7 @@ export default function LaunchpadPage() {
                 if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
                     setIsAdmin(true)
                 }
-            } catch (e) { }
+            } catch (_err) { }
         }
         fetchOfferings()
     }, [])
