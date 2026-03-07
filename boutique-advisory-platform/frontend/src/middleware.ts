@@ -37,6 +37,7 @@ const staticTradingPrefixes = [
   '/favicon.ico',
   '/robots.txt',
   '/sitemap.xml',
+  '/api/health',
 ];
 
 export function middleware(req: NextRequest) {
