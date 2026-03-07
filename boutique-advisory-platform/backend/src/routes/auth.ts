@@ -539,7 +539,7 @@ router.post('/login', async (req: Request, res: Response, next: NextFunction) =>
     }
 
     // Issue Access & Refresh tokens
-    await issueTokensAndSetCookies(res, user, req);
+    const tokens = await issueTokensAndSetCookies(res, user, req);
 
     // SECURITY: Login Anomaly Detection (New IP)
     const previousSuccessLogin = await prisma.activityLog.findFirst({
@@ -587,6 +587,8 @@ router.post('/login', async (req: Request, res: Response, next: NextFunction) =>
 
     return res.status(200).json({
       message: 'Login successful',
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
       user: {
         id: user.id,
         email: user.email,

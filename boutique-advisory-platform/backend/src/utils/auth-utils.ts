@@ -188,4 +188,6 @@ export async function issueTokensAndSetCookies(res: Response, user: any, req: Re
         domain: cookieDomain,
         maxAge: 15 * 60 * 1000
     });
+
+    return { accessToken, refreshToken };
 }
