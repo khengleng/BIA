@@ -229,7 +229,8 @@ router.get('/portfolio/stats', authorize('investor.read', { getOwnerId: (req) =>
           realizedRoi: 0,
           totalPerformance: 0,
           startDate,
-          kycStatus: 'VERIFIED'
+          kycStatus: 'VERIFIED',
+          role: userRole
         },
         sectors,
         items: topDeals
@@ -289,7 +290,8 @@ router.get('/portfolio/stats', authorize('investor.read', { getOwnerId: (req) =>
           activePositions: 0,
           realizedRoi: 0,
           startDate: new Date(),
-          kycStatus: investor.kycStatus
+          kycStatus: investor.kycStatus,
+          role: userRole
         },
         sectors: [],
         items: []
@@ -425,15 +427,16 @@ router.get('/portfolio/stats', authorize('investor.read', { getOwnerId: (req) =>
         realizedRoi,
         totalPerformance,
         startDate,
-        kycStatus: investor.kycStatus
+        kycStatus: investor.kycStatus,
+        role: userRole
       },
       sectors: sectors,
       items: portfolioItems
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Get portfolio stats error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: 'Internal server error', details: error.message, stack: error.stack });
   }
 });
 
