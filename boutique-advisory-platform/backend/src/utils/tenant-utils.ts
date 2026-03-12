@@ -17,8 +17,8 @@ export function getTenantId(req: Request): string {
   // Railway/front-proxy requests can arrive at the backend with an internal hostname
   // while preserving the original public host in X-Forwarded-Host.
   const readHeaderValue = (value: string | string[] | undefined): string => {
-    if (Array.isArray(value)) return (value[0] || '').trim().toLowerCase();
-    return (value || '').trim().toLowerCase();
+    const raw = Array.isArray(value) ? (value[0] || '') : (value || '');
+    return raw.split(',')[0].trim().toLowerCase();
   };
 
   const host = (
