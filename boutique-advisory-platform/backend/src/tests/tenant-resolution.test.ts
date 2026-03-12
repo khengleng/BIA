@@ -99,6 +99,20 @@ test('Tenant resolution - forwarded host chain prefers public trading host', () 
   });
 });
 
+test('Tenant resolution - internal and IP hosts fall back to core tenant in production', () => {
+  withEnv({ NODE_ENV: 'production', CORE_TENANT_ID: 'default', TRADING_TENANT_ID: 'trade' }, () => {
+    const internalReq = {
+      hostname: '0.0.0.0',
+      headers: {
+        'x-forwarded-host': '0.0.0.0:8080',
+        host: 'backend.railway.internal:8080',
+      },
+    } as unknown as MinimalReq;
+
+    assert.strictEqual(getTenantId(internalReq as any), 'default');
+  });
+});
+
 test('Tenant resolution - development can use x-tenant-id override', () => {
   withEnv({ NODE_ENV: 'development' }, () => {
     const req = {

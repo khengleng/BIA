@@ -4,6 +4,20 @@ function normalizeHostValue(value: string): string {
   return String(value || '').trim().toLowerCase().replace(/:\d+$/, '');
 }
 
+function isIpv4Host(host: string): boolean {
+  return /^\d{1,3}(?:\.\d{1,3}){3}$/.test(host);
+}
+
+function isInternalServiceHost(host: string): boolean {
+  return host === '0.0.0.0'
+    || host === '::1'
+    || host === '[::1]'
+    || host.endsWith('.internal')
+    || host.endsWith('.railway.internal')
+    || host === 'backend'
+    || host === 'frontend';
+}
+
 function extractHostCandidates(value: string | string[] | undefined): string[] {
   const rawValues = Array.isArray(value) ? value : [value];
   return rawValues
@@ -52,8 +66,14 @@ export function getTenantId(req: Request): string {
 
   const isLocalHost = host.includes('localhost') || host.includes('127.0.0.1');
   const isRailwayHost = host.endsWith('railway.app');
+  const isIpAddress = isIpv4Host(host);
+  const isInternalHost = isInternalServiceHost(host);
 
-  if (host.includes('.') && !isLocalHost && !isRailwayHost) {
+  if (isLocalHost || isRailwayHost || isIpAddress || isInternalHost) {
+    return coreTenantId;
+  }
+
+  if (host.includes('.')) {
     const parts = host.split('.').filter(Boolean);
 
     // Canonical domain handling: tenant.cambobia.com
