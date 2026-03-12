@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { apiRequest } from '@/lib/api'
-import { resolveTradingRuntime } from '@/lib/platform'
 
 export default function SsoLaunchPage() {
   const router = useRouter()
@@ -12,11 +11,6 @@ export default function SsoLaunchPage() {
 
   useEffect(() => {
     const launch = async () => {
-      if (typeof window !== 'undefined' && resolveTradingRuntime(window.location.hostname, window.location.pathname)) {
-        router.replace('/auth/login')
-        return
-      }
-
       const params = new URLSearchParams(window.location.search)
       const prompt = params.get('prompt')
       if (prompt === 'login') {

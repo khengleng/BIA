@@ -7,7 +7,7 @@ import PWAInstallPrompt from './PWAInstallPrompt'
 import BottomNavigation from './BottomNavigation'
 import PushNotifications from './PushNotifications'
 import { SocketProvider } from '../contexts/SocketContext'
-import { resolveTradingRuntime } from '@/lib/platform'
+
 
 interface Props {
     children: React.ReactNode
@@ -19,7 +19,7 @@ export default function ClientProviders({ children }: Props) {
 
     useEffect(() => {
         setMounted(true)
-        setIsTradingRuntime(resolveTradingRuntime(window.location.hostname, window.location.pathname))
+        setIsTradingRuntime(false)
 
         // Force unregister service workers on localhost to prevent "no-response" errors
         if (typeof window !== 'undefined' &&

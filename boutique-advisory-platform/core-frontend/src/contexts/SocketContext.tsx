@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { io, Socket } from 'socket.io-client'
-import { resolveTradingRuntime } from '@/lib/platform'
+
 import { authorizedRequest } from '@/lib/api'
 
 interface SocketContextType {
@@ -68,8 +68,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
             : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003')
 
         const isAuthRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/auth/')
-        const isTradingRuntime = typeof window !== 'undefined'
-            && resolveTradingRuntime(window.location.hostname, window.location.pathname)
+        const isTradingRuntime = false;
 
         // Enabled for both Core and Trading platforms to support real-time updates.
 

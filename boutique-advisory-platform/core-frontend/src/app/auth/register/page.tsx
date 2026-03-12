@@ -6,12 +6,12 @@ import { useTranslations } from '../../../hooks/useTranslations'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, Mail, Lock, User, Building2, Users, Handshake } from 'lucide-react'
-import { IS_TRADING_PLATFORM, resolveTradingRuntime } from '@/lib/platform'
+import { IS_TRADING_PLATFORM } from '@/lib/platform'
 
 export default function RegisterPage() {
   const { t } = useTranslations()
   const router = useRouter()
-  const [isTradingRuntime, setIsTradingRuntime] = useState(IS_TRADING_PLATFORM)
+  const [isTradingRuntime, setIsTradingRuntime] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -32,19 +32,11 @@ export default function RegisterPage() {
     { value: 'INVESTOR', label: 'Investor', icon: Users, description: 'Individual or institutional investor' },
     { value: 'ADVISOR', label: 'Advisor', icon: Handshake, description: 'Professional advisory services' }
   ]
-  const availableRoles = isTradingRuntime
-    ? roles.filter((role) => role.value === 'INVESTOR')
-    : roles
+  const availableRoles = roles
 
   useEffect(() => {
-    if (typeof window === 'undefined') return
-    setIsTradingRuntime(resolveTradingRuntime(window.location.hostname, window.location.pathname))
+    setIsTradingRuntime(false)
   }, [])
-
-  useEffect(() => {
-    if (!isTradingRuntime) return
-    setFormData((prev) => (prev.role === 'INVESTOR' ? prev : { ...prev, role: 'INVESTOR' }))
-  }, [isTradingRuntime])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target

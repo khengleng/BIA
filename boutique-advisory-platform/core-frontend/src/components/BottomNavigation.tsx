@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from 'next/navigation'
 import { Home, Users, FileText, MessageSquare, Settings, ShieldCheck, Briefcase, Wallet } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { IS_TRADING_PLATFORM, resolveTradingRuntime } from '@/lib/platform'
+import { IS_TRADING_PLATFORM } from '@/lib/platform'
 import { isTradingOperatorRole, normalizeRole } from '@/lib/roles'
 import { usePermissions } from '@/hooks/usePermissions'
 import { hasPermission } from '@/lib/permissions'
@@ -13,12 +13,12 @@ export default function BottomNavigation() {
     const router = useRouter()
     const [isVisible, setIsVisible] = useState(true)
     const [lastScrollY, setLastScrollY] = useState(0)
-    const [isTradingRuntime, setIsTradingRuntime] = useState(IS_TRADING_PLATFORM)
+    const [isTradingRuntime, setIsTradingRuntime] = useState(false)
     const { user } = usePermissions()
     const role = useMemo(() => normalizeRole(user?.role), [user?.role])
 
     useEffect(() => {
-        setIsTradingRuntime(resolveTradingRuntime(window.location.hostname, pathname || window.location.pathname))
+        setIsTradingRuntime(false)
     }, [pathname])
 
     // Hide/show on scroll

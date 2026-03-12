@@ -21,7 +21,6 @@ import {
 } from 'lucide-react'
 import { useTranslations } from '../../hooks/useTranslations'
 import { authorizedRequest } from '../../lib/api'
-import { resolveTradingRuntime } from '@/lib/platform'
 import { TRADING_OPERATOR_HOME } from '@/lib/tradingOperatorRoutes'
 import { hasPermission } from '@/lib/permissions'
 import { normalizeRole } from '@/lib/roles'
@@ -66,8 +65,7 @@ export default function DashboardPage() {
         localStorage.setItem('user', JSON.stringify(normalizedUser))
 
         if (hasPermission(normalizedUser.role, 'admin.read')) {
-          const isTradingRuntime = resolveTradingRuntime(window.location.hostname, window.location.pathname)
-          router.replace(isTradingRuntime ? TRADING_OPERATOR_HOME : '/admin/dashboard')
+          router.replace('/admin/dashboard')
           return
         }
 

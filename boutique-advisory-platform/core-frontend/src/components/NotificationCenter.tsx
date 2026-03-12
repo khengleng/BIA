@@ -17,7 +17,6 @@ import {
 } from 'lucide-react'
 import { authorizedRequest } from '@/lib/api'
 import { useSocket } from '@/hooks/useSocket'
-import { resolveTradingRuntime } from '@/lib/platform'
 
 interface Notification {
     id: string
@@ -41,8 +40,7 @@ export default function NotificationCenter() {
     const dropdownRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
-        if (typeof window === 'undefined') return
-        setIsTradingRuntime(resolveTradingRuntime(window.location.hostname, window.location.pathname))
+        setIsTradingRuntime(false)
     }, [])
 
     useEffect(() => {

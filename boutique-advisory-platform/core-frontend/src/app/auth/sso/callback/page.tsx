@@ -5,7 +5,7 @@ import { Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { apiRequest } from '@/lib/api'
-import { CORE_FRONTEND_URL, resolveTradingRuntime } from '@/lib/platform'
+import { CORE_FRONTEND_URL } from '@/lib/platform'
 import { isTradingOperatorRole, normalizeRole } from '@/lib/roles'
 import { TRADING_OPERATOR_HOME } from '@/lib/tradingOperatorRoutes'
 
@@ -16,11 +16,6 @@ function SsoCallbackContent() {
 
   useEffect(() => {
     const completeSso = async () => {
-      if (typeof window !== 'undefined' && !resolveTradingRuntime(window.location.hostname, window.location.pathname)) {
-        router.replace('/auth/login')
-        return
-      }
-
       const code = searchParams.get('code')
       if (!code) {
         setError('Missing SSO code. Please start again from Cambobia.')

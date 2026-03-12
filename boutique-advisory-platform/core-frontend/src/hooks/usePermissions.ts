@@ -25,7 +25,6 @@ import {
 } from '../lib/permissions';
 import { authorizedRequest } from '../lib/api';
 import { normalizeRole } from '../lib/roles';
-import { resolveTradingRuntime } from '../lib/platform';
 
 /**
  * Get current user from localStorage
@@ -96,8 +95,7 @@ export function usePermissions(): PermissionHelpers & {
             }
         };
 
-        const isTradingContext = typeof window !== 'undefined'
-            && resolveTradingRuntime(window.location.hostname, window.location.pathname);
+        const isTradingContext = false;
 
         // Trading runtime should not optimistically render cached persona data.
         void loadUser(isTradingContext);

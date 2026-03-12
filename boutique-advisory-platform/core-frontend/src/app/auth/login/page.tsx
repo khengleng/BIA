@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, Mail, Lock, Building2, CandlestickChart } from 'lucide-react'
 import { apiRequest } from '../../../lib/api'
-import { CORE_FRONTEND_URL, IS_TRADING_PLATFORM, resolveTradingRuntime } from '@/lib/platform'
+import { CORE_FRONTEND_URL, IS_TRADING_PLATFORM } from '@/lib/platform'
 import { isTradingOperatorRole, normalizeRole } from '@/lib/roles'
 import { TRADING_OPERATOR_HOME } from '@/lib/tradingOperatorRoutes'
 import { hasPermission } from '@/lib/permissions'
@@ -22,7 +22,7 @@ export default function LoginPage() {
   const [showResendVerification, setShowResendVerification] = useState(false)
   const [resendStatus, setResendStatus] = useState('')
   const [nextPath, setNextPath] = useState('')
-  const [isTradingRuntime, setIsTradingRuntime] = useState(IS_TRADING_PLATFORM)
+  const [isTradingRuntime, setIsTradingRuntime] = useState(false)
   const [isSsoLoading, setIsSsoLoading] = useState(false)
 
   const [formData, setFormData] = useState({
@@ -33,10 +33,7 @@ export default function LoginPage() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const getPostLoginPath = (role?: string) => {
     const normalizedRole = normalizeRole(role)
-    if (!isTradingRuntime) {
-      return hasPermission(normalizedRole, 'admin.read') ? '/admin/dashboard' : '/dashboard'
-    }
-    return isTradingOperatorRole(normalizedRole) ? TRADING_OPERATOR_HOME : '/secondary-trading'
+    return hasPermission(normalizedRole, 'admin.read') ? '/admin/dashboard' : '/dashboard'
   }
 
   const syncSessionUser = async (fallbackUser?: any, expectedEmail?: string) => {
@@ -81,7 +78,7 @@ export default function LoginPage() {
       setNextPath(next)
     }
 
-    setIsTradingRuntime(resolveTradingRuntime(window.location.hostname, window.location.pathname))
+    setIsTradingRuntime(false)
   }, [])
 
   const handleTradingSso = async () => {
