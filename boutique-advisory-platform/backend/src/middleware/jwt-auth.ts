@@ -20,10 +20,13 @@ interface JwtPayload {
 
 export const authenticateToken = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     const cookieNames = getAuthCookieNames(req);
-    const authHeader = req.headers['authorization'];
-    let token = (authHeader && authHeader.split(' ')[1])
-        || (req.cookies && req.cookies[cookieNames.accessToken])
-        || (req.cookies && req.cookies[cookieNames.token]);
+    let token = req.cookies?.[cookieNames.accessToken] || req.headers.authorization?.split(' ')[1];
+
+    // Fallback for trading: If we are on the trading platform but don't have a tr_ cookie,
+    // try the core cookie name. This allows seamless transitions if cookies share a domain/proxy.
+    if (!token && cookieNames.accessToken === 'tr_accessToken') {
+        token = req.cookies?.['accessToken'];
+    }
 
     if (!token) {
         // No access token, try refresh token logic immediately?
@@ -72,6 +75,9 @@ export const authenticateToken = async (req: AuthenticatedRequest, res: Response
                 path: req.originalUrl || req.url,
                 requestTenantId,
                 userTenantId: user.tenantId,
+                userRole: user.role,
+                isTradingContext,
+                isAuthorizedCrossTenant,
                 forwardedHost: req.headers['x-forwarded-host'],
                 host: req.headers['host'],
                 hostname: req.hostname,
@@ -98,7 +104,11 @@ export const authenticateToken = async (req: AuthenticatedRequest, res: Response
  */
 async function handleRefresh(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     const cookieNames = getAuthCookieNames(req);
-    let refreshToken = req.cookies[cookieNames.refreshToken];
+    let refreshToken = req.cookies?.[cookieNames.refreshToken];
+
+    if (!refreshToken && cookieNames.refreshToken === 'tr_refreshToken') {
+        refreshToken = req.cookies?.['refreshToken'];
+    }
 
     if (!refreshToken) {
         res.status(401).json({ error: 'Session expired. Please login again.' });

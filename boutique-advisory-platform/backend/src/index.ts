@@ -699,12 +699,14 @@ const { invalidCsrfTokenError, generateCsrfToken, doubleCsrfProtection } = doubl
 
 // Apply CSRF protection to API routes (excluding webhooks and token endpoint)
 app.use('/api', (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const fullPath = req.originalUrl || req.url;
+  
   if (req.path === '/csrf-token' || req.path.startsWith('/webhooks')) {
     return next();
   }
 
   // Pre-auth endpoints don't need CSRF and can fail behind proxy cookie desync.
-  // Keep CSRF for authenticated sessions and all non-auth API namespaces.
+  // We use both req.path (relative to /api) and fullPath for robustness.
   const isPreAuthRoute = req.path.startsWith('/auth/login')
     || req.path.startsWith('/auth/register')
     || req.path.startsWith('/auth/verify-email')
@@ -713,12 +715,25 @@ app.use('/api', (req: express.Request, res: express.Response, next: express.Next
     || req.path.startsWith('/auth/reset-password')
     || req.path.startsWith('/auth/sso/trading/exchange')
     || req.path.startsWith('/auth/logout')
-    // Internal service-to-service exchange endpoint authenticated by x-sso-internal-key.
-    || req.path.startsWith('/auth/sso/trading/consume');
+    || req.path.startsWith('/auth/sso/trading/consume')
+    || fullPath.includes('/auth/login')
+    || fullPath.includes('/auth/logout');
+
   if (isPreAuthRoute) {
+    if (fullPath.includes('logout') || req.method !== 'GET') {
+        console.log(`[CSRF-SKIP] Bypassing CSRF for ${req.method} ${fullPath} (host: ${req.headers.host})`);
+    }
     return next();
   }
-  doubleCsrfProtection(req, res, next);
+
+  doubleCsrfProtection(req, res, (err: any) => {
+    if (err && err.code === 'EBADCSRFTOKEN') {
+      console.warn(`[CSRF] Invalid token for ${req.method} ${req.originalUrl || req.url}`);
+      res.status(403).json({ error: 'DIAGNOSTIC: Invalid CSRF token' });
+      return;
+    }
+    return next(err);
+  });
 });
 
 // Health check moved to the top of middleware stack

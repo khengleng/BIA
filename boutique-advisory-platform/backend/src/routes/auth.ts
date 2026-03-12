@@ -83,7 +83,21 @@ function getTradingFrontendBaseUrl(): string {
 }
 
 function isTradingRequest(req: Request): boolean {
-  return getAuthCookieNames(req).accessToken.startsWith('tr_');
+  // Check cookie naming first
+  if (getAuthCookieNames(req).accessToken.startsWith('tr_')) return true;
+  
+  // Hard check on host for login requests or when cookies aren't set yet
+  const hostCandidates = [
+    String(req.headers['x-forwarded-host'] || '').split(',')[0].trim(),
+    String(req.headers['host'] || '').trim(),
+    req.hostname
+  ];
+  return hostCandidates.some(h => h && (
+    h === 'trade.cambobia.com' || 
+    h.endsWith('.trade.cambobia.com') || 
+    h.includes('trading.railway') || 
+    h.includes('trade-')
+  ));
 }
 
 function getCoreSuperadminEmail(): string {
@@ -566,15 +580,10 @@ router.post('/login', async (req: Request, res: Response, next: NextFunction) =>
     const tradingRequest = isTradingRequest(req);
 
     if (isAdminLikeRole(normalizedUserRole) || tradingLocalAllowedRoles.has(normalizedUserRole)) {
-      if (!tradingRequest && sanitizedEmail === tradingSuperadminEmail) {
-        return res.status(403).json({
-          error: 'This operator account belongs to trade.cambobia.com. Please sign in on the trading platform.'
-        });
-      }
-
       if (tradingRequest && sanitizedEmail === coreSuperadminEmail) {
+        console.warn(`[AUTH] Login 403: Core superadmin ${sanitizedEmail} attempted login on trading platform`);
         return res.status(403).json({
-          error: 'This operator account belongs to cambobia.com. Please sign in on the main platform.'
+          error: 'DIAGNOSTIC: This operator account belongs to cambobia.com. Please sign in on the main platform.'
         });
       }
     }
@@ -583,6 +592,7 @@ router.post('/login', async (req: Request, res: Response, next: NextFunction) =>
     // Investors access the trading exchange through core-platform SSO only.
     if (isTradingRequest(req)) {
       if (!tradingLocalAllowedRoles.has(normalizedUserRole)) {
+        console.warn(`[AUTH] Login 403: Role ${normalizedUserRole} for ${sanitizedEmail} not allowed on trading platform`);
         await logAuditEvent({
           userId: user.id,
           action: 'LOGIN_BLOCKED',
@@ -593,9 +603,10 @@ router.post('/login', async (req: Request, res: Response, next: NextFunction) =>
           errorMessage: 'Role not allowed in trading runtime'
         });
         return res.status(403).json({
-          error: 'Access denied. Investor trading accounts must enter via cambobia.com SSO.'
+          error: 'DIAGNOSTIC: Access denied. Investor trading accounts must enter via cambobia.com SSO.'
         });
       }
+      // If it's an INVESTOR, we allow them to proceed with local login now (added to tradingLocalAllowedRoles)
     }
 
     // SECURITY: Check if email is verified
