@@ -80,6 +80,10 @@ function getTradingFrontendBaseUrl(): string {
   return (process.env.TRADING_FRONTEND_URL || 'https://trade.cambobia.com').replace(/\/+$/, '');
 }
 
+function getEmailDeliveryFailureMessage(): string {
+  return 'Verification email could not be sent right now. Please try again shortly or contact support.';
+}
+
 // Register endpoint
 router.post('/register', async (req: Request, res: Response) => {
   try {
@@ -249,9 +253,39 @@ router.post('/register', async (req: Request, res: Response) => {
       });
     }
 
-    // Send Verification Email (don't block registration if email fails)
-    sendVerificationEmail(user.email, verificationToken)
-      .catch(error => console.error('Failed to send verification email:', error));
+    const verificationEmailResult = await sendVerificationEmail(user.email, verificationToken);
+    if (!verificationEmailResult.success) {
+      await logAuditEvent({
+        userId: user.id,
+        action: 'VERIFICATION_EMAIL_FAILED',
+        resource: 'auth',
+        details: {
+          email: user.email,
+          role: user.role
+        },
+        ipAddress: clientIp,
+        success: false,
+        errorMessage: verificationEmailResult.error instanceof Error
+          ? verificationEmailResult.error.message
+          : String(verificationEmailResult.error || 'Unknown email delivery failure')
+      });
+
+      clearAuthCookies(res, req);
+
+      return res.status(503).json({
+        error: getEmailDeliveryFailureMessage(),
+        requiresEmailVerification: true,
+        emailDeliveryFailed: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          isEmailVerified: false
+        }
+      });
+    }
 
     // Do NOT create an authenticated session before email verification.
     // Also clear any stale cookies in case user had a previous session.
@@ -357,9 +391,28 @@ router.post('/resend-verification', async (req: Request, res: Response) => {
       }
     });
 
-    // Send email
-    sendVerificationEmail(user.email, verificationToken)
-      .catch(error => console.error('Failed to send verification email:', error));
+    const verificationEmailResult = await sendVerificationEmail(user.email, verificationToken);
+    if (!verificationEmailResult.success) {
+      await logAuditEvent({
+        userId: user.id,
+        action: 'VERIFICATION_EMAIL_FAILED',
+        resource: 'auth',
+        details: {
+          email: user.email,
+          type: 'resend'
+        },
+        ipAddress: clientIp,
+        success: false,
+        errorMessage: verificationEmailResult.error instanceof Error
+          ? verificationEmailResult.error.message
+          : String(verificationEmailResult.error || 'Unknown email delivery failure')
+      });
+
+      return res.status(503).json({
+        error: getEmailDeliveryFailureMessage(),
+        emailDeliveryFailed: true
+      });
+    }
 
     // Record attempt for rate limiting
     await recordFailedAttempt(`resend_${sanitizedEmail}`);
@@ -622,6 +675,27 @@ router.post('/login', async (req: Request, res: Response, next: NextFunction) =>
     });
     return next(error);
   }
+});
+
+router.get('/email-health', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  const role = normalizeRole(req.user?.role);
+  if (!isAdminLikeRole(role)) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+
+  const hasResendApiKey = Boolean(process.env.RESEND_API_KEY);
+  const emailFrom = process.env.EMAIL_FROM || 'contact@cambobia.com';
+  const frontendUrl = process.env.FRONTEND_URL || null;
+
+  return res.json({
+    success: true,
+    service: 'resend',
+    configured: hasResendApiKey,
+    hasResendApiKey,
+    emailFrom,
+    frontendUrl,
+    mode: serviceMode
+  });
 });
 
 router.get('/sso/trading-link', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
