@@ -138,6 +138,9 @@ import {
 } from './middleware/securityMiddleware';
 
 
+const DEFAULT_CORE_SUPERADMIN_EMAIL = 'contact@cambobia.com';
+const DEFAULT_TRADING_SUPERADMIN_EMAIL = 'trading-admin@cambobia.com';
+
 // Helper to ensure admin account is synced with .env
 async function ensureAdminAccount() {
   const legacyAdminEmail = 'admin@boutique-advisory.com';
@@ -147,7 +150,10 @@ async function ensureAdminAccount() {
   const configuredAdminEmail = isTradingService
     ? process.env.DEFAULT_TRADING_SUPERADMIN_EMAIL
     : process.env.DEFAULT_SUPERADMIN_EMAIL;
-  const adminEmail = (configuredAdminEmail || 'contact@cambobia.com').toLowerCase();
+  const adminEmail = (
+    configuredAdminEmail ||
+    (isTradingService ? DEFAULT_TRADING_SUPERADMIN_EMAIL : DEFAULT_CORE_SUPERADMIN_EMAIL)
+  ).toLowerCase();
   let adminPassword = isTradingService
     ? process.env.INITIAL_TRADING_ADMIN_PASSWORD || process.env.INITIAL_ADMIN_PASSWORD
     : process.env.INITIAL_ADMIN_PASSWORD;

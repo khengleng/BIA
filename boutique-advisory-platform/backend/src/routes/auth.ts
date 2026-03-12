@@ -36,6 +36,8 @@ const coreTenantId = process.env.CORE_TENANT_ID || 'default';
 const ssoTokenTtlSeconds = Number(process.env.SSO_TOKEN_TTL_SECONDS || 120);
 const ssoAllowedRoles = new Set(['INVESTOR']);
 const tradingLocalAllowedRoles = new Set(['SUPER_ADMIN', 'ADMIN', 'FINOPS', 'CX', 'AUDITOR', 'COMPLIANCE', 'SUPPORT']);
+const defaultCoreSuperadminEmail = 'contact@cambobia.com';
+const defaultTradingSuperadminEmail = 'trading-admin@cambobia.com';
 
 router.use((_req: Request, res: Response, next: NextFunction) => {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -78,6 +80,18 @@ function getTradingFrontendBaseUrl(): string {
     throw new Error('TRADING_FRONTEND_URL not configured');
   }
   return (process.env.TRADING_FRONTEND_URL || 'https://trade.cambobia.com').replace(/\/+$/, '');
+}
+
+function isTradingRequest(req: Request): boolean {
+  return getAuthCookieNames(req).accessToken.startsWith('tr_');
+}
+
+function getCoreSuperadminEmail(): string {
+  return (process.env.DEFAULT_SUPERADMIN_EMAIL || defaultCoreSuperadminEmail).toLowerCase();
+}
+
+function getTradingSuperadminEmail(): string {
+  return (process.env.DEFAULT_TRADING_SUPERADMIN_EMAIL || defaultTradingSuperadminEmail).toLowerCase();
 }
 
 function getEmailDeliveryFailureMessage(): string {
@@ -507,10 +521,31 @@ router.post('/login', async (req: Request, res: Response, next: NextFunction) =>
       });
     }
 
+    const normalizedUserRole = normalizeRole(user.role);
+    const coreSuperadminEmail = getCoreSuperadminEmail();
+    const tradingSuperadminEmail = getTradingSuperadminEmail();
+
+    // Keep operator identities platform-specific so core and trading do not share the
+    // same superadmin/operator login namespace.
+    const tradingRequest = isTradingRequest(req);
+
+    if (isAdminLikeRole(normalizedUserRole) || tradingLocalAllowedRoles.has(normalizedUserRole)) {
+      if (!tradingRequest && sanitizedEmail === tradingSuperadminEmail) {
+        return res.status(403).json({
+          error: 'This operator account belongs to trade.cambobia.com. Please sign in on the trading platform.'
+        });
+      }
+
+      if (tradingRequest && sanitizedEmail === coreSuperadminEmail) {
+        return res.status(403).json({
+          error: 'This operator account belongs to cambobia.com. Please sign in on the main platform.'
+        });
+      }
+    }
+
     // Trading runtime accepts only dedicated platform-operator roles via local login.
     // Investors access the trading exchange through core-platform SSO only.
     if (isTradingService) {
-      const normalizedUserRole = normalizeRole(user.role);
       if (!tradingLocalAllowedRoles.has(normalizedUserRole)) {
         await logAuditEvent({
           userId: user.id,
