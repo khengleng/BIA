@@ -308,8 +308,12 @@ export async function recordFailedAttempt(identifier: string): Promise<void> {
  * Clear failed attempts after successful login
  */
 export async function clearFailedAttempts(identifier: string): Promise<void> {
-    const key = `bia:lockout:${identifier}`;
-    await redis.del(key);
+    try {
+        const key = `bia:lockout:${identifier}`;
+        await redis.del(key);
+    } catch (error) {
+        console.error('Clear Failed Attempts Error:', error);
+    }
 }
 
 // ============================================
