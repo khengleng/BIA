@@ -54,7 +54,16 @@ export const authenticateToken = async (req: AuthenticatedRequest, res: Response
         }
 
         const requestTenantId = getTenantId(req);
-        if (requestTenantId !== user.tenantId) {
+        const coreTenantId = process.env.CORE_TENANT_ID || 'default';
+        const tradingTenantId = process.env.TRADING_TENANT_ID || 'trade';
+        const serviceMode = (process.env.SERVICE_MODE || 'core').toLowerCase();
+        const isTradingService = serviceMode === 'trading';
+
+        const isAuthorizedCrossTenant = isTradingService && 
+            user.tenantId === coreTenantId && 
+            requestTenantId === tradingTenantId;
+
+        if (requestTenantId !== user.tenantId && !isAuthorizedCrossTenant) {
             console.warn('[AUTH] Tenant access denied', {
                 path: req.originalUrl || req.url,
                 requestTenantId,
@@ -62,7 +71,7 @@ export const authenticateToken = async (req: AuthenticatedRequest, res: Response
                 forwardedHost: req.headers['x-forwarded-host'],
                 host: req.headers['host'],
                 hostname: req.hostname,
-                serviceMode: process.env.SERVICE_MODE || 'core',
+                serviceMode,
             });
             res.status(403).json({ error: 'Tenant access denied' });
             return;
@@ -106,7 +115,16 @@ async function handleRefresh(req: AuthenticatedRequest, res: Response, next: Nex
         }
 
         const requestTenantId = getTenantId(req);
-        if (requestTenantId !== storedToken.user.tenantId) {
+        const coreTenantId = process.env.CORE_TENANT_ID || 'default';
+        const tradingTenantId = process.env.TRADING_TENANT_ID || 'trade';
+        const serviceMode = (process.env.SERVICE_MODE || 'core').toLowerCase();
+        const isTradingService = serviceMode === 'trading';
+
+        const isAuthorizedCrossTenant = isTradingService && 
+            storedToken.user.tenantId === coreTenantId && 
+            requestTenantId === tradingTenantId;
+
+        if (requestTenantId !== storedToken.user.tenantId && !isAuthorizedCrossTenant) {
             console.warn('[AUTH] Tenant access denied during refresh', {
                 path: req.originalUrl || req.url,
                 requestTenantId,
@@ -114,7 +132,7 @@ async function handleRefresh(req: AuthenticatedRequest, res: Response, next: Nex
                 forwardedHost: req.headers['x-forwarded-host'],
                 host: req.headers['host'],
                 hostname: req.hostname,
-                serviceMode: process.env.SERVICE_MODE || 'core',
+                serviceMode,
             });
             res.status(403).json({ error: 'Tenant access denied' });
             return;
