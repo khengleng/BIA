@@ -6,7 +6,14 @@ import {
 } from '@/lib/tradingOperatorRoutes';
 
 const mode = process.env.NEXT_PUBLIC_PLATFORM_MODE === 'trading' ? 'trading' : 'core';
-const isTradingHost = (hostname: string) => hostname === 'trade.cambobia.com';
+const isTradingHost = (hostname: string) => {
+  const host = String(hostname || '').toLowerCase().trim();
+  return host === 'trade.cambobia.com'
+    || host.endsWith('.trade.cambobia.com')
+    || host.includes('trade.cambobia.com')
+    || host.includes('trading.railway')
+    || host.includes('trade-');
+};
 
 const tradingProtectedPrefixes = ['/secondary-trading', '/trading', '/admin/bot'];
 const redirectToCorePrefixes = [

@@ -49,9 +49,13 @@ function readHostFromRequest(req?: Request | null): string {
 
 function isTradingHostname(hostname: string): boolean {
     if (!hostname) return false;
-    if (hostname === 'trade.cambobia.com') return true;
-    if (hostname.startsWith('trade.')) return true;
-    return false;
+    const host = String(hostname || '').toLowerCase().trim();
+    return host === 'trade.cambobia.com'
+        || host.endsWith('.trade.cambobia.com')
+        || host.includes('trade.cambobia.com')
+        || host.includes('trading.railway')
+        || host.includes('trade-')
+        || host.startsWith('trade.');
 }
 
 function resolveTradingCookieScope(req?: Request | null): boolean {
