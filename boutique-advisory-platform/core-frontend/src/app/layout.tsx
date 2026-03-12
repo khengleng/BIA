@@ -62,6 +62,37 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  const swCleanupScript = `
+    (function () {
+      try {
+        if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+        var host = window.location.hostname;
+        var shouldReset = host === 'www.cambobia.com' || host === 'cambobia.com' || host === 'trade.cambobia.com';
+        if (!shouldReset) return;
+        var resetKey = host + '-sw-hard-reset-v7';
+        if (window.localStorage.getItem(resetKey) === '1') return;
+        Promise.resolve(navigator.serviceWorker.getRegistrations())
+          .then(function (registrations) {
+            return Promise.all(registrations.map(function (registration) {
+              return registration.unregister();
+            }));
+          })
+          .then(function () {
+            if (!('caches' in window)) return Promise.resolve();
+            return caches.keys().then(function (keys) {
+              return Promise.all(keys.map(function (key) { return caches.delete(key); }));
+            });
+          })
+          .finally(function () {
+            window.localStorage.setItem(resetKey, '1');
+            window.location.reload();
+          });
+      } catch (error) {
+        console.warn('Service worker cleanup skipped', error);
+      }
+    })();
+  `;
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -71,6 +102,7 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <script dangerouslySetInnerHTML={{ __html: swCleanupScript }} />
       </head>
       <body className={inter.className}>
         <OneSignalLoader />

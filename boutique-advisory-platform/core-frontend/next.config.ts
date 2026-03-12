@@ -4,7 +4,10 @@ import withSerwistInit from "@serwist/next";
 const withSerwist = withSerwistInit({
   swSrc: "src/app/sw.ts",
   swDest: "public/sw.js",
-  disable: process.env.NODE_ENV === "development" || process.env.NEXT_PUBLIC_API_URL?.includes('localhost'),
+  disable:
+    process.env.NEXT_PUBLIC_ENABLE_PWA !== 'true' ||
+    process.env.NODE_ENV === "development" ||
+    process.env.NEXT_PUBLIC_API_URL?.includes('localhost'),
 });
 
 const nextConfig: NextConfig = {
