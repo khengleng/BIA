@@ -14,8 +14,18 @@ export function getTenantId(req: Request): string {
 
   const isProduction = process.env.NODE_ENV === 'production';
 
-  // Use Express-trusted hostname only (avoid direct trust in forwarded headers).
-  const host = String(req.hostname || '').trim().toLowerCase();
+  // Railway/front-proxy requests can arrive at the backend with an internal hostname
+  // while preserving the original public host in X-Forwarded-Host.
+  const readHeaderValue = (value: string | string[] | undefined): string => {
+    if (Array.isArray(value)) return (value[0] || '').trim().toLowerCase();
+    return (value || '').trim().toLowerCase();
+  };
+
+  const host = (
+    readHeaderValue(req.headers['x-forwarded-host'])
+    || readHeaderValue(req.headers['host'])
+    || String(req.hostname || '').trim().toLowerCase()
+  ).replace(/:\d+$/, '');
 
   // Platform domains map to explicit core/trading tenants.
   if (host === 'cambobia.com' || host === 'www.cambobia.com') {
