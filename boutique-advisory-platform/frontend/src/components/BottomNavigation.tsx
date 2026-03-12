@@ -73,9 +73,33 @@ export default function BottomNavigation() {
                 { icon: MessageSquare, label: 'Cases', path: '/admin/cases' },
                 { icon: Settings, label: 'Settings', path: '/settings' },
             ]
+            : role === 'SME'
+                ? [
+                    { icon: Home, label: 'Home', path: '/dashboard' },
+                    { icon: Briefcase, label: 'Business', path: '/smes' },
+                    { icon: Wallet, label: 'Funding', path: '/deals' },
+                    { icon: FileText, label: 'Data Room', path: '/dataroom' },
+                    { icon: Settings, label: 'Settings', path: '/settings' },
+                ]
+                : role === 'ADVISOR'
+                    ? [
+                        { icon: Home, label: 'Home', path: '/dashboard' },
+                        { icon: Users, label: 'SMEs', path: '/smes' },
+                        { icon: Briefcase, label: 'Pipeline', path: '/pipeline' },
+                        { icon: MessageSquare, label: 'Messages', path: '/messages' },
+                        { icon: Settings, label: 'Settings', path: '/settings' },
+                    ]
+                    : role === 'INVESTOR'
+                        ? [
+                            { icon: Home, label: 'Home', path: '/dashboard' },
+                            { icon: Users, label: 'SMEs', path: '/smes' },
+                            { icon: Briefcase, label: 'Portfolio', path: '/investor/portfolio' },
+                            { icon: MessageSquare, label: 'Messages', path: '/messages' },
+                            { icon: Settings, label: 'Settings', path: '/settings' },
+                        ]
             : [
                 { icon: Home, label: 'Home', path: '/dashboard' },
-                { icon: Users, label: 'Network', path: '/investors' },
+                { icon: Users, label: 'Network', path: '/smes' },
                 { icon: FileText, label: 'Deals', path: '/deals' },
                 { icon: MessageSquare, label: 'Messages', path: '/messages' },
                 { icon: Settings, label: 'Settings', path: '/settings' },

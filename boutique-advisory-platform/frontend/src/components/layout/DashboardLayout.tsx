@@ -150,36 +150,50 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     const operatorRoles = [...TRADING_OPERATOR_ROLES]
     const coreNavSections = [
         {
-            label: 'Exchange & Trading',
-            roles: ['INVESTOR', 'SME', 'ADVISOR'],
-            items: [
-                { href: '/trading/launchpad', label: 'Token Launchpad', icon: Rocket, roles: ['INVESTOR', 'SME', 'ADVISOR'] },
-                { href: '/secondary-trading', label: 'Secondary Market', icon: ArrowLeftRight, roles: ['INVESTOR', 'SME', 'ADVISOR'] },
-            ]
-        },
-        {
             label: 'Workspace',
             roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
             items: [
                 { href: '/dashboard', label: t('navigation.dashboard'), icon: BarChart3, roles: ['ADVISOR', 'INVESTOR', 'SME'] },
                 { href: '/calendar', label: 'Calendar', icon: Calendar, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
                 { href: '/messages', label: 'Messages', icon: MessageSquare, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
-                { href: '/dataroom', label: 'Data Room', icon: FolderLock, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
                 { href: '/reports', label: t('navigation.reports'), icon: FileText, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
-                { href: '/analytics', label: t('home.features.analytics.title'), icon: TrendingUp, roles: ['ADMIN', 'ADVISOR', 'INVESTOR'] },
-                { href: '/wallet', label: 'My Wallet', icon: Wallet, roles: ['ADVISOR', 'INVESTOR', 'SME'] },
             ]
         },
         {
-            label: 'Deals & Network',
-            roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
+            label: 'SME Workspace',
+            roles: ['SME'],
             items: [
-                { href: '/smes', label: t('navigation.smes'), icon: Building2, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
-                { href: '/investors', label: t('navigation.investors'), icon: Users, roles: ['ADMIN', 'ADVISOR', 'SME'] },
-                { href: '/pipeline', label: t('navigation.deals'), icon: KanbanSquare, roles: ['ADMIN', 'ADVISOR'] },
-                { href: '/sme-pipeline', label: t('advisory.pipeline'), icon: ClipboardCheck, roles: ['ADMIN', 'ADVISOR'] },
-                { href: '/matchmaking', label: 'AI Matching', icon: Sparkles, roles: ['ADMIN', 'ADVISOR'] },
+                { href: '/smes', label: 'My Business', icon: Building2, roles: ['SME'] },
+                { href: '/deals', label: 'Fundraising', icon: Briefcase, roles: ['SME'] },
+                { href: '/investors', label: 'Investor Network', icon: Users, roles: ['SME'] },
+                { href: '/dataroom', label: 'Data Room', icon: FolderLock, roles: ['SME'] },
+                { href: '/documents', label: 'Documents', icon: FileText, roles: ['SME'] },
+                { href: '/advisory', label: 'Advisory Support', icon: Award, roles: ['SME'] },
+                { href: '/payments', label: 'Payments', icon: Wallet, roles: ['SME'] },
+            ]
+        },
+        {
+            label: 'Investor Workspace',
+            roles: ['INVESTOR'],
+            items: [
+                { href: '/smes', label: 'SME Listings', icon: Building2, roles: ['INVESTOR'] },
                 { href: '/investor/portfolio', label: 'My Portfolio', icon: Briefcase, roles: ['INVESTOR'] },
+                { href: '/syndicates', label: 'Syndicates', icon: UsersRound, roles: ['INVESTOR'] },
+                { href: '/advisory', label: t('navigation.advisory'), icon: Award, roles: ['INVESTOR'] },
+                { href: '/wallet', label: 'My Wallet', icon: Wallet, roles: ['INVESTOR'] },
+            ]
+        },
+        {
+            label: 'Advisor Workspace',
+            roles: ['ADVISOR'],
+            items: [
+                { href: '/smes', label: t('navigation.smes'), icon: Building2, roles: ['ADVISOR'] },
+                { href: '/investors', label: t('navigation.investors'), icon: Users, roles: ['ADVISOR'] },
+                { href: '/pipeline', label: t('navigation.deals'), icon: KanbanSquare, roles: ['ADVISOR'] },
+                { href: '/sme-pipeline', label: t('advisory.pipeline'), icon: ClipboardCheck, roles: ['ADVISOR'] },
+                { href: '/matchmaking', label: 'AI Matching', icon: Sparkles, roles: ['ADVISOR'] },
+                { href: '/dataroom', label: 'Data Room', icon: FolderLock, roles: ['ADVISOR'] },
+                { href: '/advisory/manage', label: 'Manage Services', icon: Settings, roles: ['ADVISOR'] },
             ]
         },
         {
@@ -187,7 +201,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             roles: operatorRoles,
             items: [
                 { href: '/admin/dashboard', label: 'Control Tower', icon: LayoutDashboard, roles: ['SUPER_ADMIN', 'ADMIN', 'AUDITOR'], permission: 'admin.read' },
-                { href: '/trading/launchpad', label: 'Launchpad', icon: Rocket, roles: ['SUPER_ADMIN', 'ADMIN'] },
                 { href: '/admin/users', label: 'User Management', icon: UserCog, roles: ['ADMIN', 'SUPER_ADMIN'] },
                 { href: '/settings', label: 'Account Security', icon: ShieldCheck, roles: ['SUPER_ADMIN', 'ADMIN'] },
                 { href: '/admin/role-lifecycle', label: 'Role Lifecycle', icon: Shield, roles: ['SUPER_ADMIN', 'ADMIN', 'COMPLIANCE'], permission: 'role_grant.list' },
@@ -236,9 +249,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             label: 'Products',
             roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'],
             items: [
-                { href: '/advisory', label: t('navigation.advisory'), icon: Award, roles: ['ADMIN', 'SME', 'INVESTOR'] },
-                { href: '/advisory/manage', label: 'Manage Services', icon: Settings, roles: ['ADMIN', 'ADVISOR'] },
-                { href: '/syndicates', label: 'Syndicates', icon: UsersRound, roles: ['ADMIN', 'ADVISOR', 'INVESTOR'] },
+                { href: '/advisory', label: t('navigation.advisory'), icon: Award, roles: ['ADMIN'] },
+                { href: '/advisory/manage', label: 'Manage Services', icon: Settings, roles: ['ADMIN'] },
+                { href: '/syndicates', label: 'Syndicates', icon: UsersRound, roles: ['ADMIN', 'ADVISOR'] },
                 { href: '/due-diligence', label: t('advisory.assessment'), icon: Shield, roles: ['ADMIN', 'ADVISOR'] },
                 { href: '/community', label: 'Community', icon: MessagesSquare, roles: ['ADMIN', 'ADVISOR', 'INVESTOR', 'SME'] },
             ]
@@ -459,7 +472,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                         <Building2 className="w-5 h-5 text-white" />
                     </div>
-                    <span className="font-bold text-white text-lg tracking-tight">{isTradingRuntime ? 'CamboBia Trading' : 'BIA Platform'}</span>
+                    <span className="font-bold text-white text-lg tracking-tight">{isTradingRuntime ? 'CamboBia Trading' : 'CamboBia Platform'}</span>
                 </div>
                 <div className="flex items-center space-x-3">
                     <LanguageSwitcher />
@@ -484,7 +497,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                         <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                             <Building2 className="w-6 h-6 text-white" />
                         </div>
-                        <h1 className="text-xl font-bold text-white">{isTradingRuntime ? 'CamboBia Trading' : 'Boutique Advisory'}</h1>
+                        <h1 className="text-xl font-bold text-white">{isTradingRuntime ? 'CamboBia Trading' : 'CamboBia Platform'}</h1>
                     </div>
                     {!isTradingRuntime && <LanguageSwitcher />}
                 </div>
