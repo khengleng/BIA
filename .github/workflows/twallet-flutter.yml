@@ -16,7 +16,9 @@ jobs:
     name: Flutter Analyze & Test
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
+      pages: write
+      id-token: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -58,11 +60,14 @@ jobs:
         working-directory: twallet-app
         run: flutter build web --release
 
-      - name: Deploy web preview to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Upload web artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: twallet-app/build/web
+          path: twallet-app/build/web
+
+      - name: Deploy web preview to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
 
       - name: Print preview URL
-        run: echo "Preview will be available (after Pages is enabled) at https://khengleng.github.io/BIA/"
+        run: echo "Preview will be available at ${{ steps.deploy.outputs.page_url }}"
