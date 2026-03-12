@@ -9,6 +9,26 @@ const mode = process.env.NEXT_PUBLIC_PLATFORM_MODE === 'trading' ? 'trading' : '
 const isTradingHost = (hostname: string) => hostname === 'trade.cambobia.com';
 
 const tradingProtectedPrefixes = ['/secondary-trading', '/trading', '/admin/bot'];
+const redirectToCorePrefixes = [
+  '/dashboard',
+  '/smes',
+  '/investors',
+  '/deals',
+  '/pipeline',
+  '/sme-pipeline',
+  '/advisory',
+  '/dataroom',
+  '/documents',
+  '/wallet',
+  '/messages',
+  '/calendar',
+  '/community',
+  '/matchmaking',
+  '/due-diligence',
+  '/payments',
+  '/reports',
+  '/analytics',
+];
 
 const tradingSessionCookieNames = [
   'tr_token',
@@ -59,19 +79,29 @@ export function middleware(req: NextRequest) {
   }
 
   if (runtimeTradingMode) {
+    const mappedLegacyPath = mapLegacyTradingPath(pathname);
+    if (mappedLegacyPath) {
+      const url = req.nextUrl.clone();
+      url.pathname = mappedLegacyPath;
+      return NextResponse.redirect(url);
+    }
+
+    const shouldRedirectToCore = redirectToCorePrefixes.some((prefix) => pathname.startsWith(prefix))
+      && !pathname.startsWith('/trading')
+      && !pathname.startsWith('/secondary-trading');
+    if (shouldRedirectToCore) {
+      const coreUrl = new URL(process.env.NEXT_PUBLIC_CORE_FRONTEND_URL || 'https://www.cambobia.com');
+      const redirectUrl = new URL(pathname, coreUrl.origin);
+      redirectUrl.search = req.nextUrl.search;
+      return NextResponse.redirect(redirectUrl);
+    }
+
     const mappedAdminPath = mapAdminPathToTradingOperator(pathname);
     if (mappedAdminPath) {
       const url = req.nextUrl.clone();
       url.pathname = mappedAdminPath;
       return NextResponse.redirect(url);
     }
-  }
-
-  const mappedLegacyPath = mapLegacyTradingPath(pathname);
-  if (mappedLegacyPath) {
-    const url = req.nextUrl.clone();
-    url.pathname = mappedLegacyPath;
-    return NextResponse.redirect(url);
   }
 
   if (tradingProtectedPrefixes.some((prefix) => pathname.startsWith(prefix))) {

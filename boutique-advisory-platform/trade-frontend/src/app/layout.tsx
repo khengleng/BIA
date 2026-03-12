@@ -1,16 +1,14 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
 import './globals.css'
 import ClientProviders from '../components/ClientProviders'
 import OneSignalLoader from '../components/OneSignalLoader'
 
-// const inter = Inter({ subsets: ['latin'] })
 const inter = { className: 'sans-serif' }
 
-const APP_NAME = 'Boutique Advisory Platform'
-const APP_DEFAULT_TITLE = 'BIA - Boutique Advisory'
+const APP_NAME = 'CamboBia Trading'
+const APP_DEFAULT_TITLE = 'CamboBia Trading'
 const APP_TITLE_TEMPLATE = '%s | BIA'
-const APP_DESCRIPTION = 'Connecting SMEs with investors through boutique advisory services'
+const APP_DESCRIPTION = 'Secondary market trading for eligible CamboBia tokenized units.'
 
 export const metadata: Metadata = {
   applicationName: APP_NAME,
@@ -49,8 +47,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#3b82f6' },
-    { media: '(prefers-color-scheme: dark)', color: '#0f172a' },
+    { media: '(prefers-color-scheme: light)', color: '#2563eb' },
+    { media: '(prefers-color-scheme: dark)', color: '#020617' },
   ],
   width: 'device-width',
   initialScale: 1,
@@ -76,9 +74,7 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         <OneSignalLoader />
-        <ClientProviders>
-          {children}
-        </ClientProviders>
+        <ClientProviders>{children}</ClientProviders>
       </body>
     </html>
   )

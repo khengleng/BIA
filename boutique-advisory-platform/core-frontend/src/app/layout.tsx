@@ -1,16 +1,14 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
 import './globals.css'
 import ClientProviders from '../components/ClientProviders'
 import OneSignalLoader from '../components/OneSignalLoader'
 
-// const inter = Inter({ subsets: ['latin'] })
 const inter = { className: 'sans-serif' }
 
-const APP_NAME = 'Boutique Advisory Platform'
-const APP_DEFAULT_TITLE = 'BIA - Boutique Advisory'
+const APP_NAME = 'CamboBia Platform'
+const APP_DEFAULT_TITLE = 'CamboBia Platform'
 const APP_TITLE_TEMPLATE = '%s | BIA'
-const APP_DESCRIPTION = 'Connecting SMEs with investors through boutique advisory services'
+const APP_DESCRIPTION = 'SME fundraising, investor access, advisory coordination, and platform operations on CamboBia.'
 
 export const metadata: Metadata = {
   applicationName: APP_NAME,
@@ -76,9 +74,7 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         <OneSignalLoader />
-        <ClientProviders>
-          {children}
-        </ClientProviders>
+        <ClientProviders>{children}</ClientProviders>
       </body>
     </html>
   )

@@ -4,12 +4,11 @@ import { useEffect, useState } from 'react'
 import { useTranslations } from '../../../hooks/useTranslations'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Eye, EyeOff, Mail, Lock, Building2, CandlestickChart } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, CandlestickChart } from 'lucide-react'
 import { apiRequest } from '../../../lib/api'
-import { CORE_FRONTEND_URL, IS_TRADING_PLATFORM, resolveTradingRuntime } from '@/lib/platform'
+import { CORE_FRONTEND_URL } from '@/lib/platform'
 import { isTradingOperatorRole, normalizeRole } from '@/lib/roles'
 import { TRADING_OPERATOR_HOME } from '@/lib/tradingOperatorRoutes'
-import { hasPermission } from '@/lib/permissions'
 
 export default function LoginPage() {
   const { t } = useTranslations()
@@ -22,7 +21,6 @@ export default function LoginPage() {
   const [showResendVerification, setShowResendVerification] = useState(false)
   const [resendStatus, setResendStatus] = useState('')
   const [nextPath, setNextPath] = useState('')
-  const [isTradingRuntime, setIsTradingRuntime] = useState(IS_TRADING_PLATFORM)
   const [isSsoLoading, setIsSsoLoading] = useState(false)
 
   const [formData, setFormData] = useState({
@@ -33,9 +31,6 @@ export default function LoginPage() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const getPostLoginPath = (role?: string) => {
     const normalizedRole = normalizeRole(role)
-    if (!isTradingRuntime) {
-      return hasPermission(normalizedRole, 'admin.read') ? '/admin/dashboard' : '/dashboard'
-    }
     return isTradingOperatorRole(normalizedRole) ? TRADING_OPERATOR_HOME : '/secondary-trading'
   }
 
@@ -80,8 +75,6 @@ export default function LoginPage() {
     if (next && next.startsWith('/') && !next.startsWith('//')) {
       setNextPath(next)
     }
-
-    setIsTradingRuntime(resolveTradingRuntime(window.location.hostname, window.location.pathname))
   }, [])
 
   const handleTradingSso = async () => {
@@ -206,15 +199,12 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      if (isTradingRuntime) {
-        // Clear stale cookie/local state before cross-account login attempts.
-        await apiRequest('/api/auth/logout', {
-          method: 'POST',
-          credentials: 'include',
-        }).catch(() => null)
-        localStorage.removeItem('user')
-        window.dispatchEvent(new Event('auth:changed'))
-      }
+      await apiRequest('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      }).catch(() => null)
+      localStorage.removeItem('user')
+      window.dispatchEvent(new Event('auth:changed'))
 
       const response = await apiRequest('/api/auth/login', {
         method: 'POST',
@@ -278,21 +268,17 @@ export default function LoginPage() {
         <section className="w-full">
           <div className="rounded-2xl border border-slate-700/70 bg-slate-900/78 p-6 shadow-2xl backdrop-blur sm:p-8">
             <div className="mx-auto mb-6 h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
-              {isTradingRuntime ? (
-                <CandlestickChart className="h-6 w-6 text-white" />
-              ) : (
-                <Building2 className="h-6 w-6 text-white" />
-              )}
+              <CandlestickChart className="h-6 w-6 text-white" />
             </div>
             <h2 className="text-center text-3xl font-bold text-white">
-              {step === '2fa' ? 'Two-Factor Authentication' : (isTradingRuntime ? 'CamboBia Trading Login' : t('auth.login'))}
+              {step === '2fa' ? 'Two-Factor Authentication' : 'CamboBia Trading Login'}
             </h2>
             <p className="mt-2 text-center text-sm text-slate-300">
               {step === '2fa'
                 ? 'Enter the 6-digit code from your authenticator app'
-                : (isTradingRuntime ? 'Access secondary market listings, live orders, and trade history.' : 'Sign in to your Boutique Advisory account')}
+                : 'Access secondary market listings, live orders, and trade history.'}
             </p>
-            {step !== '2fa' && isTradingRuntime && (
+            {step !== '2fa' && (
               <div className="mt-4 rounded-lg border border-blue-400/30 bg-blue-500/10 px-4 py-3 text-xs text-blue-200">
                 Trade CamboBia token units on the regulated secondary marketplace.
               </div>
@@ -386,13 +372,11 @@ export default function LoginPage() {
               <p className="text-green-400 text-sm">{resendStatus}</p>
             </div>
           )}
-          {isTradingRuntime && (
-            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-              <p className="text-blue-300 text-sm">
-                If you normally sign in on cambobia.com, use SSO below. Direct password login on this trading site is for trading-local credentials only.
-              </p>
-            </div>
-          )}
+          <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+            <p className="text-blue-300 text-sm">
+              If you normally sign in on cambobia.com, use SSO below. Direct password login on this trading site is for trading-local credentials only.
+            </p>
+          </div>
 
           <div className="space-y-4">
             <div>
@@ -484,18 +468,16 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {isTradingRuntime && (
-            <div>
-              <button
-                type="button"
-                onClick={handleTradingSso}
-                disabled={isSsoLoading || isLoading}
-                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-semibold rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-              >
-                {isSsoLoading ? 'Redirecting to SSO...' : 'Continue with CamboBia Account (SSO)'}
-              </button>
-            </div>
-          )}
+          <div>
+            <button
+              type="button"
+              onClick={handleTradingSso}
+              disabled={isSsoLoading || isLoading}
+              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-semibold rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+            >
+              {isSsoLoading ? 'Redirecting to SSO...' : 'Continue with CamboBia Account (SSO)'}
+            </button>
+          </div>
 
           <div>
             <button
@@ -508,9 +490,7 @@ export default function LoginPage() {
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                   Signing in...
                 </div>
-              ) : (
-                isTradingRuntime ? 'Sign in with trading password' : t('auth.login')
-              )}
+              ) : 'Sign in with trading password'}
             </button>
           </div>
 

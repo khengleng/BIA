@@ -14,14 +14,19 @@ const ADMIN_TO_TRADING_OPERATOR_PREFIX: Array<{ from: string; to: string }> = [
   { from: '/admin/data-governance', to: '/trading/operator/data-governance' },
   { from: '/admin/advisor-ops', to: '/trading/operator/advisor-ops' },
   { from: '/admin/audit', to: '/trading/operator/audit' },
+  { from: '/admin/disputes', to: '/trading/operator/cases' },
+  { from: '/admin/settings', to: '/trading/operator/security' },
+  { from: '/admin/bot', to: '/trading/operator/operations' },
 ];
 
 const LEGACY_TRADING_PREFIX_REDIRECTS: Array<{ from: string; to: string }> = [
+  { from: '/dashboard', to: '/secondary-trading' },
   { from: '/investor/portfolio', to: '/trading/portfolio' },
   { from: '/settings/sessions', to: '/trading/sessions' },
   { from: '/reports', to: '/trading/operator/reports' },
   { from: '/analytics', to: '/trading/operator/analytics' },
   { from: '/notifications', to: '/trading/notifications' },
+  { from: '/wallet', to: '/trading/wallet' },
 ];
 
 function mapByPrefix(
@@ -45,6 +50,5 @@ export function mapAdminPathToTradingOperator(pathname: string): string | null {
 }
 
 export function mapLegacyTradingPath(pathname: string): string | null {
-  if (pathname === '/dashboard') return '/secondary-trading';
   return mapByPrefix(pathname, LEGACY_TRADING_PREFIX_REDIRECTS);
 }

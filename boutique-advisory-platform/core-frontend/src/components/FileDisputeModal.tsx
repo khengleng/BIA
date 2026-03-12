@@ -84,7 +84,7 @@ export default function FileDisputeModal({ dealId, dealTitle, onClose, onSuccess
                         <div className="text-sm">
                             <p className="text-amber-200 font-bold mb-1">Mediation Notice</p>
                             <p className="text-amber-200/70 leading-relaxed">
-                                Disputes are reviewed by Boutique Advisory administrators. Filing a false or malicious dispute may result in account suspension.
+                                Disputes are reviewed by CamboBia platform administrators. Filing a false or malicious dispute may result in account suspension.
                             </p>
                         </div>
                     </div>

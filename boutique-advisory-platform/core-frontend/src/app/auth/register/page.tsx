@@ -1,28 +1,24 @@
 'use client'
 import { apiRequest } from '@/lib/api'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslations } from '../../../hooks/useTranslations'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, Mail, Lock, User, Building2, Users, Handshake } from 'lucide-react'
-import { IS_TRADING_PLATFORM } from '@/lib/platform'
-
 export default function RegisterPage() {
   const { t } = useTranslations()
   const router = useRouter()
-  const [isTradingRuntime, setIsTradingRuntime] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const defaultRole = isTradingRuntime ? 'INVESTOR' : 'SME'
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
     password: '',
     confirmPassword: '',
-    role: defaultRole,
+    role: 'SME',
     agreeToTerms: false
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -33,10 +29,6 @@ export default function RegisterPage() {
     { value: 'ADVISOR', label: 'Advisor', icon: Handshake, description: 'Professional advisory services' }
   ]
   const availableRoles = roles
-
-  useEffect(() => {
-    setIsTradingRuntime(false)
-  }, [])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
@@ -136,9 +128,7 @@ export default function RegisterPage() {
             {t('auth.register')}
           </h2>
           <p className="mt-2 text-center text-sm text-gray-300">
-            {isTradingRuntime
-              ? 'Create your CamboBia Trading investor account'
-              : 'Create your Boutique Advisory account'}
+            Create your CamboBia Platform account
           </p>
         </div>
 
@@ -187,11 +177,6 @@ export default function RegisterPage() {
                   </label>
                 ))}
               </div>
-              {isTradingRuntime && (
-                <p className="mt-2 text-xs text-gray-400">
-                  Trading platform registrations are limited to investor accounts.
-                </p>
-              )}
             </div>
 
             {/* Name Fields */}

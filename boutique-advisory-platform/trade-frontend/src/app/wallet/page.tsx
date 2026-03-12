@@ -1,1 +1,5 @@
-export { default } from '../trading/wallet/page';
+import { redirect } from 'next/navigation'
+
+export default function TradeWalletRedirectPage() {
+  redirect('/trading/wallet')
+}

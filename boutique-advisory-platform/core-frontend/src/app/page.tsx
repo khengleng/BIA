@@ -1,279 +1,99 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Building2, Users, Handshake, Shield, TrendingUp } from 'lucide-react'
+import { ArrowRight, BarChart3, Building2, FileText, ShieldCheck, Users } from 'lucide-react'
 import LanguageSwitcher from '../components/LanguageSwitcher'
-import { useTranslations } from '../hooks/useTranslations'
-import { IS_TRADING_PLATFORM } from '@/lib/platform'
+import { TRADING_FRONTEND_URL } from '@/lib/platform'
 
 export default function HomePage() {
-  const { t } = useTranslations()
-  const [isTradingRuntime, setIsTradingRuntime] = useState(false)
-
-  useEffect(() => {
-    setIsTradingRuntime(false)
-  }, [])
-
-  if (isTradingRuntime) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-        <header className="bg-white/10 backdrop-blur-md border-b border-white/20">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center py-4">
-              <div className="flex items-center space-x-4">
-                <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                  <Building2 className="w-6 h-6 text-white" />
-                </div>
-                <h1 className="text-2xl font-bold text-white">CamboBia Trading</h1>
-              </div>
-              <div className="flex items-center space-x-4">
-                <LanguageSwitcher />
-                <Link
-                  href="/auth/login"
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
-                >
-                  {t('auth.login', 'Login')}
-                </Link>
-                <Link
-                  href="/auth/register"
-                  className="bg-white/10 hover:bg-white/20 text-white px-6 py-2 rounded-lg font-medium border border-white/20 transition-colors"
-                >
-                  {t('auth.register', 'Register')}
-                </Link>
-              </div>
-            </div>
-          </div>
-        </header>
-        <section className="py-20 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-4xl mx-auto text-center">
-            <h1 className="text-5xl md:text-6xl font-bold text-white mb-6">
-              CamboBia Token <span className="text-blue-400">Trading</span>
-            </h1>
-            <p className="text-xl text-gray-300 mb-8">
-              A separate marketplace for investors to buy and sell eligible tokenized positions.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                href="/secondary-trading"
-                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-medium text-lg transition-colors"
-              >
-                Open Marketplace
-              </Link>
-              <Link
-                href="/auth/register"
-                className="bg-white/10 hover:bg-white/20 text-white px-8 py-3 rounded-lg font-medium text-lg border border-white/20 transition-colors"
-              >
-                Create Investor Account
-              </Link>
-            </div>
-          </div>
-        </section>
-      </div>
-    )
-  }
-
-  const features = [
-    {
-      icon: Building2,
-      title: t('home.features.sme.title', 'SME Platform'),
-      description: t('home.features.sme.description', 'Connect SMEs with investors through our comprehensive platform')
-    },
-    {
-      icon: Users,
-      title: t('home.features.investor.title', 'Investor Portal'),
-      description: t('home.features.investor.description', 'Find and invest in verified SMEs with transparent processes')
-    },
-    {
-      icon: Handshake,
-      title: t('home.features.advisory.title', 'Advisory Services'),
-      description: t('home.features.advisory.description', 'Professional advisory services for investment readiness')
-    },
-    {
-      icon: Shield,
-      title: t('home.features.security.title', 'Security & Compliance'),
-      description: t('home.features.security.description', 'Multi-tenant architecture with DID-based authentication')
-    },
-    {
-      icon: TrendingUp,
-      title: t('home.features.analytics.title', 'Analytics & Reporting'),
-      description: t('home.features.analytics.description', 'Comprehensive dashboards and performance tracking')
-    }
-  ]
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      {/* Header */}
-      <header className="bg-white/10 backdrop-blur-md border-b border-white/20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-4">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <Building2 className="w-6 h-6 text-white" />
-              </div>
-              <h1 className="text-2xl font-bold text-white">Boutique Advisory</h1>
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.18),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.18),transparent_28%),linear-gradient(180deg,#020617,#0f172a)]">
+      <header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-purple-600">
+              <Building2 className="h-6 w-6 text-white" />
             </div>
-
-            <div className="flex items-center space-x-4">
-              <LanguageSwitcher />
-
-              <Link
-                href="/auth/login"
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
-              >
-                {t('auth.login', 'Login')}
-              </Link>
-
-              <Link
-                href="/auth/register"
-                className="bg-white/10 hover:bg-white/20 text-white px-6 py-2 rounded-lg font-medium border border-white/20 transition-colors"
-              >
-                {t('auth.register', 'Register')}
-              </Link>
+            <div>
+              <h1 className="text-2xl font-bold text-white">CamboBia Platform</h1>
+              <p className="text-sm text-slate-400">SME fundraising, investor access, and platform operations</p>
             </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <LanguageSwitcher />
+            <Link href="/auth/login" className="rounded-lg bg-blue-600 px-5 py-2.5 font-medium text-white transition-colors hover:bg-blue-700">
+              Login
+            </Link>
+            <Link href="/auth/register" className="rounded-lg border border-slate-700 bg-slate-900 px-5 py-2.5 font-medium text-white transition-colors hover:border-slate-500">
+              Register
+            </Link>
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto text-center">
-          <h1 className="text-5xl md:text-6xl font-bold text-white mb-6">
-            {t('home.hero.title', 'Bridging')} <span className="text-blue-400">{t('home.hero.sme', 'SMEs')}</span> {t('home.hero.and', 'and')}{' '}
-            <span className="text-purple-400">{t('home.hero.investors', 'Investors')}</span>
-          </h1>
-          <p className="text-xl text-gray-300 mb-8 max-w-3xl mx-auto">
-            {t('home.hero.description', 'A comprehensive platform connecting Small and Medium Enterprises with qualified investors, featuring advanced DID integration, multi-tenant architecture, and professional advisory services.')}
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              href="/auth/register"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-medium text-lg transition-colors"
-            >
-              {t('home.hero.getStarted', 'Get Started')}
-            </Link>
-            <Link
-              href="/dashboard"
-              className="bg-white/10 hover:bg-white/20 text-white px-8 py-3 rounded-lg font-medium text-lg border border-white/20 transition-colors"
-            >
-              {t('home.hero.viewDemo', 'View Demo')}
-            </Link>
+      <main className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[1.15fr_0.85fr] lg:px-8 lg:py-24">
+        <section className="space-y-8">
+          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1 text-sm text-emerald-300">
+            <ShieldCheck className="h-4 w-4" />
+            Primary portal for SME owners, investors, advisors, and platform operators
           </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-white mb-4">Platform Features</h2>
-            <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-              Comprehensive tools and services designed to facilitate successful SME-investor connections
+          <div className="space-y-5">
+            <h2 className="text-5xl font-bold tracking-tight text-white sm:text-6xl">
+              Raise capital, manage diligence, and run your funding journey in one place.
+            </h2>
+            <p className="max-w-3xl text-lg leading-8 text-slate-300">
+              CamboBia Platform is the main operating portal for SME owners to present their business, prepare investor materials,
+              coordinate advisory workflows, and manage fundraising with qualified investors.
             </p>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {features.map((feature, index) => (
-              <div key={index} className="bg-white/5 backdrop-blur-sm rounded-lg p-6 border border-white/10 hover:border-white/20 transition-colors">
-                <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center mb-4">
-                  <feature.icon className="w-6 h-6 text-white" />
-                </div>
-                <h3 className="text-xl font-semibold text-white mb-2">{feature.title}</h3>
-                <p className="text-gray-300">{feature.description}</p>
+          <div className="flex flex-wrap gap-4">
+            <Link href="/auth/register" className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white transition hover:bg-blue-700">
+              Create SME account
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link href="/auth/login" className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/80 px-6 py-3 font-semibold text-white transition hover:border-slate-500">
+              Sign in
+            </Link>
+            <Link href={TRADING_FRONTEND_URL} className="inline-flex items-center gap-2 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-6 py-3 font-semibold text-cyan-200 transition hover:bg-cyan-500/20">
+              Visit secondary market
+            </Link>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            {[
+              ['SME fundraising', 'Publish your business profile, financials, milestones, and investor narrative.'],
+              ['Investor access', 'Review SME opportunities, diligence materials, and network activity in one portal.'],
+              ['Operations ready', 'Run onboarding, compliance, messaging, and reporting from the same platform.'],
+            ].map(([title, body]) => (
+              <div key={title} className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+                <h3 className="text-lg font-semibold text-white">{title}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-400">{body}</p>
               </div>
             ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Integration Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white/5">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-white mb-4">Advanced Integrations</h2>
-            <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-              Seamlessly integrated with existing DID, CM, and RWA infrastructure
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Shield className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-xl font-semibold text-white mb-2">DID Infrastructure</h3>
-              <p className="text-gray-300">Decentralized Identity for secure authentication and verifiable credentials</p>
-            </div>
-
-            <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Users className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-xl font-semibold text-white mb-2">Case Management</h3>
-              <p className="text-gray-300">Comprehensive case tracking and workflow management</p>
-            </div>
-
-            <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-r from-orange-500 to-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <TrendingUp className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-xl font-semibold text-white mb-2">RWA Platform</h3>
-              <p className="text-gray-300">Real World Assets tokenization and investment management</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-black/20 border-t border-white/10 py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-              <div className="flex items-center space-x-2 mb-4">
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                  <Building2 className="w-4 h-4 text-white" />
+        <aside className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6 shadow-2xl shadow-blue-950/20">
+          <h3 className="text-xl font-semibold text-white">What belongs in CamboBia Platform</h3>
+          <div className="mt-6 space-y-5">
+            {[
+              [Building2, 'My Business', 'Company profile, funding story, diligence readiness, and issuer operations.'],
+              [Users, 'Investor Network', 'Qualified investor discovery, relationship tracking, and engagement workflows.'],
+              [FileText, 'Data Room & documents', 'Secure file sharing, checklists, and fundraising materials.'],
+              [BarChart3, 'Advisory & operations', 'Advisor collaboration, admin oversight, compliance and platform operations.'],
+            ].map(([Icon, title, body]) => (
+              <div key={title} className="flex gap-4 rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4">
+                <div className="mt-1 rounded-xl bg-blue-600/15 p-2 text-blue-300">
+                  <Icon className="h-5 w-5" />
                 </div>
-                <span className="text-xl font-bold text-white">Boutique Advisory</span>
+                <div>
+                  <h4 className="font-medium text-white">{title}</h4>
+                  <p className="mt-1 text-sm text-slate-400">{body}</p>
+                </div>
               </div>
-              <p className="text-gray-300">
-                Connecting SMEs with investors through innovative technology and professional services.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-white font-semibold mb-4">Platform</h3>
-              <ul className="space-y-2 text-gray-300">
-                <li><Link href="/dashboard" className="hover:text-white transition-colors">Dashboard</Link></li>
-                <li><Link href="/auth/login" className="hover:text-white transition-colors">Login</Link></li>
-                <li><Link href="/auth/register" className="hover:text-white transition-colors">Register</Link></li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-white font-semibold mb-4">Services</h3>
-              <ul className="space-y-2 text-gray-300">
-                <li>SME Onboarding</li>
-                <li>Investor Matching</li>
-                <li>Advisory Services</li>
-                <li>Compliance Management</li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-white font-semibold mb-4">Contact</h3>
-              <ul className="space-y-2 text-gray-300">
-                <li>contact@cambobia.com</li>
-                <li>+855 12875798</li>
-                <li>24/7 Support Available</li>
-              </ul>
-            </div>
+            ))}
           </div>
-
-          <div className="border-t border-white/10 mt-8 pt-8 text-center text-gray-300">
-            <p>&copy; 2024 Boutique Advisory Platform. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+        </aside>
+      </main>
     </div>
   )
 }

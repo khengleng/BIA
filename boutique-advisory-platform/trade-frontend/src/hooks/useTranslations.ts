@@ -107,7 +107,7 @@ const translations = {
       successRate: "Success Rate"
     },
     advisory: {
-      scorecard: "Boutique Advisory Scorecard",
+      scorecard: "CamboBia Trading Listing Scorecard",
       assessment: "Due Diligence Assessment",
       finalize: "FINALIZE & CERTIFY",
       saveDraft: "SAVE DRAFT",

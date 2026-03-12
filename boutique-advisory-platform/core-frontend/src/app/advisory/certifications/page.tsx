@@ -192,7 +192,7 @@ export default function AdvisorCertificationsPage() {
                 <div className="flex gap-4">
                     <ShieldCheck className="w-8 h-8 text-indigo-400 shrink-0" />
                     <div>
-                        <h4 className="text-white font-bold mb-2 text-lg uppercase tracking-tight">The Boutique Advisory Standard</h4>
+                        <h4 className="text-white font-bold mb-2 text-lg uppercase tracking-tight">The CamboBia Standard</h4>
                         <p className="text-gray-400 text-sm leading-relaxed">
                             Your certification is the bedrock of trust in this ecosystem. When you approve an SME, you are testifying to the validity of their
                             financials and business model. Approved SMEs get priority visibility for top-tier investors.

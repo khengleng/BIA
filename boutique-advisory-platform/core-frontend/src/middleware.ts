@@ -8,6 +8,11 @@ import {
 const mode = process.env.NEXT_PUBLIC_PLATFORM_MODE === 'core' ? 'core' : 'trading';
 
 const coreProtectedPrefixes = ['/dashboard', '/portfolio', '/smes', '/investors', '/advisory'];
+const redirectToTradingPrefixes = [
+  '/secondary-trading',
+  '/trading',
+  '/admin/trading-ops',
+];
 
 const coreSessionCookieNames = [
   'token',
@@ -52,6 +57,13 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  if (redirectToTradingPrefixes.some((prefix) => pathname.startsWith(prefix))) {
+    const tradingUrl = new URL(process.env.NEXT_PUBLIC_TRADING_FRONTEND_URL || 'https://trade.cambobia.com');
+    const redirectUrl = new URL(pathname, tradingUrl.origin);
+    redirectUrl.search = req.nextUrl.search;
+    return NextResponse.redirect(redirectUrl);
+  }
+
   // Static Assets and Auth paths
   if (staticCorePrefixes.some((prefix) => pathname.startsWith(prefix))) {
     return NextResponse.next();
@@ -69,9 +81,9 @@ export function middleware(req: NextRequest) {
 
   // Fallback
   if (!isAuthenticated && !pathname.startsWith('/auth')) {
-      const url = req.nextUrl.clone();
-      url.pathname = '/auth/login';
-      return NextResponse.redirect(url);
+    const url = req.nextUrl.clone();
+    url.pathname = '/auth/login';
+    return NextResponse.redirect(url);
   }
 
   return NextResponse.next();

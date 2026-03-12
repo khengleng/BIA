@@ -535,7 +535,7 @@ export default function InvestorProfilePage() {
               <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                 <Building2 className="w-6 h-6 text-white" />
               </div>
-              <h1 className="text-2xl font-bold text-white">Boutique Advisory</h1>
+              <h1 className="text-2xl font-bold text-white">CamboBia Platform</h1>
             </div>
 
             <div className="flex items-center space-x-4">

@@ -163,7 +163,7 @@ export default function AssessmentPage() {
                             <Shield className="w-8 h-8 text-blue-400" />
                             Due Diligence Assessment
                         </h1>
-                        <p className="text-gray-400">Evaluating <span className="text-white font-medium">{sme?.name}</span> for Boutique Advisory Certification</p>
+                        <p className="text-gray-400">Evaluating <span className="text-white font-medium">{sme?.name}</span> for CamboBia certification</p>
                     </div>
                 </div>
 

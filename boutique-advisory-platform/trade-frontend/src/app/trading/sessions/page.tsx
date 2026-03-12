@@ -1,1 +1,5 @@
-export { default } from '@/app/settings/sessions/page';
+import { redirect } from 'next/navigation'
+
+export default function TradeSessionsRedirectPage() {
+  redirect('/trading/security')
+}

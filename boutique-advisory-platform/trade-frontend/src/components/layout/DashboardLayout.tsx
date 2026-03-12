@@ -126,7 +126,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 items: [
                     {
                         href: CORE_FRONTEND_URL,
-                        label: 'Back to Advisory Portal',
+                        label: 'Back to Main Portal',
                         icon: LayoutDashboard,
                         roles: ['INVESTOR']
                     }
@@ -161,7 +161,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 items: [
                     {
                         href: `${CORE_FRONTEND_URL}/admin/dashboard`,
-                        label: 'Back to Admin Portal',
+                        label: 'Back to CamboBia Admin',
                         icon: LayoutDashboard,
                         roles: operatorRoles
                     }

@@ -3,8 +3,7 @@
 import { usePathname, useRouter } from 'next/navigation'
 import { Home, Users, FileText, MessageSquare, Settings, ShieldCheck, Briefcase, Wallet } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { IS_TRADING_PLATFORM } from '@/lib/platform'
-import { isTradingOperatorRole, normalizeRole } from '@/lib/roles'
+import { normalizeRole } from '@/lib/roles'
 import { usePermissions } from '@/hooks/usePermissions'
 import { hasPermission } from '@/lib/permissions'
 
@@ -13,13 +12,8 @@ export default function BottomNavigation() {
     const router = useRouter()
     const [isVisible, setIsVisible] = useState(true)
     const [lastScrollY, setLastScrollY] = useState(0)
-    const [isTradingRuntime, setIsTradingRuntime] = useState(false)
     const { user } = usePermissions()
     const role = useMemo(() => normalizeRole(user?.role), [user?.role])
-
-    useEffect(() => {
-        setIsTradingRuntime(false)
-    }, [pathname])
 
     // Hide/show on scroll
     useEffect(() => {
@@ -46,64 +40,47 @@ export default function BottomNavigation() {
         return null
     }
 
-    const isTradingOperator = isTradingOperatorRole(role)
-    const isCoreOperator = !isTradingRuntime && hasPermission(role, 'admin.read')
+    const isCoreOperator = hasPermission(role, 'admin.read')
 
-    const navItems = isTradingRuntime
-        ? isTradingOperator
+    const navItems = isCoreOperator
+        ? [
+            { icon: Home, label: 'Admin', path: '/admin/dashboard' },
+            { icon: Users, label: 'Users', path: '/admin/users' },
+            { icon: FileText, label: 'Ops', path: '/admin/business-ops' },
+            { icon: MessageSquare, label: 'Cases', path: '/admin/cases' },
+            { icon: Settings, label: 'Settings', path: '/settings' },
+        ]
+        : role === 'SME'
             ? [
-                { icon: Home, label: 'Markets', path: '/trading/markets' },
-                { icon: ShieldCheck, label: 'Ops', path: '/trading/operator/dashboard' },
-                { icon: Briefcase, label: 'Deals', path: '/trading/operator/deal-oversight' },
-                { icon: Users, label: 'Investors', path: '/trading/operator/investor-kyc' },
-                { icon: Settings, label: 'Reconcile', path: '/trading/operator/reconciliation' },
-            ]
-            : [
-                { icon: Home, label: 'Markets', path: '/trading/markets' },
-                { icon: Wallet, label: 'Wallet', path: '/trading/wallet' },
-                { icon: FileText, label: 'Trade', path: '/secondary-trading' },
-                { icon: Users, label: 'Portfolio', path: '/trading/portfolio' },
-                { icon: Settings, label: 'Security', path: '/trading/security' },
-            ]
-        : isCoreOperator
-            ? [
-                { icon: Home, label: 'Admin', path: '/admin/dashboard' },
-                { icon: Users, label: 'Users', path: '/admin/users' },
-                { icon: FileText, label: 'Ops', path: '/admin/business-ops' },
-                { icon: MessageSquare, label: 'Cases', path: '/admin/cases' },
+                { icon: Home, label: 'Home', path: '/dashboard' },
+                { icon: Briefcase, label: 'Business', path: '/smes' },
+                { icon: Wallet, label: 'Funding', path: '/deals' },
+                { icon: FileText, label: 'Data Room', path: '/dataroom' },
                 { icon: Settings, label: 'Settings', path: '/settings' },
             ]
-            : role === 'SME'
+            : role === 'ADVISOR'
                 ? [
                     { icon: Home, label: 'Home', path: '/dashboard' },
-                    { icon: Briefcase, label: 'Business', path: '/smes' },
-                    { icon: Wallet, label: 'Funding', path: '/deals' },
-                    { icon: FileText, label: 'Data Room', path: '/dataroom' },
+                    { icon: Users, label: 'SMEs', path: '/smes' },
+                    { icon: Briefcase, label: 'Pipeline', path: '/pipeline' },
+                    { icon: MessageSquare, label: 'Messages', path: '/messages' },
                     { icon: Settings, label: 'Settings', path: '/settings' },
                 ]
-                : role === 'ADVISOR'
+                : role === 'INVESTOR'
                     ? [
                         { icon: Home, label: 'Home', path: '/dashboard' },
                         { icon: Users, label: 'SMEs', path: '/smes' },
-                        { icon: Briefcase, label: 'Pipeline', path: '/pipeline' },
+                        { icon: Briefcase, label: 'Portfolio', path: '/investor/portfolio' },
                         { icon: MessageSquare, label: 'Messages', path: '/messages' },
                         { icon: Settings, label: 'Settings', path: '/settings' },
                     ]
-                    : role === 'INVESTOR'
-                        ? [
-                            { icon: Home, label: 'Home', path: '/dashboard' },
-                            { icon: Users, label: 'SMEs', path: '/smes' },
-                            { icon: Briefcase, label: 'Portfolio', path: '/investor/portfolio' },
-                            { icon: MessageSquare, label: 'Messages', path: '/messages' },
-                            { icon: Settings, label: 'Settings', path: '/settings' },
-                        ]
-            : [
-                { icon: Home, label: 'Home', path: '/dashboard' },
-                { icon: Users, label: 'Network', path: '/smes' },
-                { icon: FileText, label: 'Deals', path: '/deals' },
-                { icon: MessageSquare, label: 'Messages', path: '/messages' },
-                { icon: Settings, label: 'Settings', path: '/settings' },
-            ]
+                    : [
+                        { icon: Home, label: 'Home', path: '/dashboard' },
+                        { icon: Users, label: 'Network', path: '/smes' },
+                        { icon: FileText, label: 'Deals', path: '/deals' },
+                        { icon: MessageSquare, label: 'Messages', path: '/messages' },
+                        { icon: Settings, label: 'Settings', path: '/settings' },
+                    ]
 
     const handleNavigate = (path: string) => {
         // Haptic feedback

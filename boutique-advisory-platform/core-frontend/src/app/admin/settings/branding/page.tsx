@@ -118,7 +118,7 @@ export default function BrandingSettingsPage() {
                                         value={formData.platformName}
                                         onChange={(e) => setFormData({ ...formData, platformName: e.target.value })}
                                         className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                                        placeholder="Boutique Advisory Platform"
+                                        placeholder="CamboBia Platform"
                                     />
                                 </div>
 
