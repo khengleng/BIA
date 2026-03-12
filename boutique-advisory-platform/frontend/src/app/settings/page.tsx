@@ -1,5 +1,6 @@
 'use client'
 import { authorizedRequest } from '@/lib/api'
+import { hasPermission } from '@/lib/permissions'
 import { useState, useEffect } from 'react'
 import DashboardLayout from '../../components/layout/DashboardLayout'
 import {
@@ -9,7 +10,6 @@ import {
   Bell as BellIcon,
   Globe,
   Save,
-  Send
 } from 'lucide-react'
 import TelegramLink from '../../components/TelegramLink'
 
@@ -53,6 +53,28 @@ export default function SettingsPage() {
     timezone: 'UTC+7',
     currency: 'USD'
   })
+
+  const isOperator = !!user?.role && hasPermission(user.role, 'admin.read')
+  const securityPageTitle = user?.role === 'SUPER_ADMIN' ? 'Superadmin Security Center' : isOperator ? 'Operator Security Center' : 'Settings'
+  const securityPageSubtitle = isOperator
+    ? 'Manage privileged account security, MFA, sessions, and platform operator preferences.'
+    : 'Manage your account settings and preferences'
+  const profileHeading = isOperator ? 'Operator Profile' : 'Profile Information'
+  const securityHeading = isOperator ? 'Operator Security Controls' : 'Security Settings'
+  const passwordHeading = isOperator ? 'Update Operator Password' : 'Change Password'
+  const twoFactorHeading = isOperator ? 'Privileged Account MFA / 2FA' : 'Two-Factor Authentication (2FA)'
+  const twoFactorEnabledTitle = isOperator ? 'Operator MFA is Enabled' : '2FA is Enabled'
+  const twoFactorEnabledDescription = isOperator
+    ? 'Your privileged operator account is protected with an authenticator app.'
+    : 'Your account is secured with an authenticator app.'
+  const twoFactorDisabledDescription = isOperator
+    ? 'Protect this operator account with an extra authentication factor before accessing platform controls.'
+    : 'Protect your account with an extra layer of security.'
+  const twoFactorDisabledSubtext = isOperator
+    ? 'Require a code from your mobile device before privileged actions and sign-in.'
+    : 'Require a code from your mobile device to sign in.'
+  const notificationsHeading = isOperator ? 'Operator Notification Preferences' : 'Notification Preferences'
+  const preferencesHeading = isOperator ? 'Operator Preferences' : 'General Preferences'
 
   const handleUpdatePassword = async () => {
     if (newPassword !== confirmPassword) {
@@ -235,44 +257,42 @@ export default function SettingsPage() {
   }
 
   useEffect(() => {
-    // Get user data from localStorage
     const fetchUser = async () => {
       try {
-        const userData = localStorage.getItem('user')
+        const meResponse = await authorizedRequest('/api/auth/me')
 
-        if (!userData) {
+        if (!meResponse.ok) {
           window.location.href = '/auth/login'
           return
         }
 
-        // Parse user data from localStorage
-        const parsedUser = JSON.parse(userData)
-        setUser(parsedUser)
+        const meData = await meResponse.json()
+        const currentUser = meData.user || null
+
+        if (!currentUser) {
+          window.location.href = '/auth/login'
+          return
+        }
+
+        setUser(currentUser)
+        localStorage.setItem('user', JSON.stringify(currentUser))
 
         // Load preferences if available
-        if (parsedUser.preferences) {
-          setPreferences(prev => ({ ...prev, ...parsedUser.preferences }))
+        if (currentUser.preferences) {
+          setPreferences(prev => ({ ...prev, ...currentUser.preferences }))
         }
-        if (parsedUser.language) {
-          setPreferences(prev => ({ ...prev, language: parsedUser.language }))
+        if (currentUser.language) {
+          setPreferences(prev => ({ ...prev, language: currentUser.language }))
         }
 
-        // Fetch fresh status including 2FA
-        const meResponse = await authorizedRequest('/api/auth/me')
-
-        if (meResponse.ok) {
-          const meData = await meResponse.json()
-          if (meData.user?.twoFactorEnabled !== undefined) {
-            setIs2faEnabled(meData.user.twoFactorEnabled)
-          } else {
-            setIs2faEnabled(!!parsedUser.twoFactorEnabled)
-          }
+        if (currentUser.twoFactorEnabled !== undefined) {
+          setIs2faEnabled(currentUser.twoFactorEnabled)
         } else {
-          setIs2faEnabled(!!parsedUser.twoFactorEnabled)
+          setIs2faEnabled(false)
         }
-
       } catch (error) {
         console.error('Error fetching user:', error)
+        window.location.href = '/auth/login'
       } finally {
         setIsLoading(false)
       }
@@ -305,8 +325,8 @@ export default function SettingsPage() {
     <DashboardLayout>
       <main>
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white">Settings</h1>
-          <p className="text-gray-400 mt-2">Manage your account settings and preferences</p>
+          <h1 className="text-3xl font-bold text-white">{securityPageTitle}</h1>
+          <p className="text-gray-400 mt-2">{securityPageSubtitle}</p>
         </div>
 
         <div className="bg-gray-800 rounded-lg">
@@ -331,7 +351,7 @@ export default function SettingsPage() {
           <div className="p-6">
             {activeTab === 'profile' && (
               <div className="space-y-6">
-                <h2 className="text-xl font-semibold text-white">Profile Information</h2>
+                <h2 className="text-xl font-semibold text-white">{profileHeading}</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">First Name</label>
@@ -379,7 +399,7 @@ export default function SettingsPage() {
 
             {activeTab === 'security' && (
               <div className="space-y-6">
-                <h2 className="text-xl font-semibold text-white">Security Settings</h2>
+                <h2 className="text-xl font-semibold text-white">{securityHeading}</h2>
 
                 {/* Password Section */}
                 <form
@@ -399,7 +419,7 @@ export default function SettingsPage() {
                     aria-hidden="true"
                     className="sr-only"
                   />
-                  <h3 className="text-lg font-medium text-white mb-4">Change Password</h3>
+                  <h3 className="text-lg font-medium text-white mb-4">{passwordHeading}</h3>
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-300 mb-2">Current Password</label>
@@ -444,7 +464,7 @@ export default function SettingsPage() {
                 <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
                   <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
                     <Shield className="w-5 h-5 text-blue-400" />
-                    Two-Factor Authentication (2FA)
+                    {twoFactorHeading}
                   </h3>
 
                   {is2faEnabled ? (
@@ -454,8 +474,8 @@ export default function SettingsPage() {
                           <Shield className="w-6 h-6 text-green-400" />
                         </div>
                         <div>
-                          <p className="text-white font-medium">2FA is Enabled</p>
-                          <p className="text-sm text-gray-400">Your account is secured with an authenticator app.</p>
+                          <p className="text-white font-medium">{twoFactorEnabledTitle}</p>
+                          <p className="text-sm text-gray-400">{twoFactorEnabledDescription}</p>
                         </div>
                       </div>
                       <button
@@ -468,8 +488,8 @@ export default function SettingsPage() {
                   ) : (
                     <div className="flex items-center justify-between bg-gray-700/30 p-4 rounded-lg">
                       <div>
-                        <p className="text-gray-300">Protect your account with an extra layer of security.</p>
-                        <p className="text-sm text-gray-500">Require a code from your mobile device to sign in.</p>
+                        <p className="text-gray-300">{twoFactorDisabledDescription}</p>
+                        <p className="text-sm text-gray-500">{twoFactorDisabledSubtext}</p>
                       </div>
                       <button
                         onClick={handleEnable2FA}
@@ -512,7 +532,7 @@ export default function SettingsPage() {
 
             {activeTab === 'notifications' && (
               <div className="space-y-6">
-                <h2 className="text-xl font-semibold text-white">Notification Preferences</h2>
+                <h2 className="text-xl font-semibold text-white">{notificationsHeading}</h2>
                 <div className="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
                   {[
                     {
@@ -570,7 +590,7 @@ export default function SettingsPage() {
 
             {activeTab === 'preferences' && (
               <div className="space-y-6">
-                <h2 className="text-xl font-semibold text-white">General Preferences</h2>
+                <h2 className="text-xl font-semibold text-white">{preferencesHeading}</h2>
 
                 <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 space-y-6">
                   <div>
