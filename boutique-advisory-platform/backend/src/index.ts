@@ -707,31 +707,21 @@ app.use('/api', (req: express.Request, res: express.Response, next: express.Next
     return next();
   }
 
-  // Pre-auth endpoints don't need CSRF and can fail behind proxy cookie desync.
-  // We use both req.path (relative to /api) and fullPath for robustness.
-  const isPreAuthRoute = req.path.startsWith('/auth/login')
-    || req.path.startsWith('/auth/register')
-    || req.path.startsWith('/auth/verify-email')
-    || req.path.startsWith('/auth/resend-verification')
-    || req.path.startsWith('/auth/forgot-password')
-    || req.path.startsWith('/auth/reset-password')
-    || req.path.startsWith('/auth/sso/trading/exchange')
+  // FORCE BYPASS for critical auth routes that fail in cross-platform/proxy setups
+  const isBypassRoute = req.path.startsWith('/auth/login')
     || req.path.startsWith('/auth/logout')
-    || req.path.startsWith('/auth/sso/trading/consume')
+    || req.path.startsWith('/auth/sso')
     || fullPath.includes('/auth/login')
     || fullPath.includes('/auth/logout');
 
-  if (isPreAuthRoute) {
-    if (fullPath.includes('logout') || req.method !== 'GET') {
-        console.log(`[CSRF-SKIP] Bypassing CSRF for ${req.method} ${fullPath} (host: ${req.headers.host})`);
-    }
+  if (isBypassRoute) {
     return next();
   }
 
   doubleCsrfProtection(req, res, (err: any) => {
     if (err && err.code === 'EBADCSRFTOKEN') {
-      console.warn(`[CSRF] Invalid token for ${req.method} ${req.originalUrl || req.url}`);
-      res.status(403).json({ error: 'DIAGNOSTIC: Invalid CSRF token' });
+      console.warn(`[CSRF] Invalid token for ${req.method} ${fullPath} (host: ${req.headers.host})`);
+      res.status(403).json({ error: 'DIAGNOSTIC: Invalid CSRF token. Path: ' + fullPath });
       return;
     }
     return next(err);
@@ -849,12 +839,12 @@ const migrationAuthMiddleware = (req: express.Request, res: express.Response, ne
     }
 
     if (decoded.role !== 'SUPER_ADMIN') {
-      return res.status(403).json({ error: 'Migration endpoints require SUPER_ADMIN role' });
+      return res.status(403).json({ error: 'DIAGNOSTIC: Migration endpoints require SUPER_ADMIN role' });
     }
 
     next();
   } catch (error) {
-    return res.status(403).json({ error: 'Invalid token for migration access' });
+    return res.status(403).json({ error: 'DIAGNOSTIC: Invalid token for migration access' });
   }
 };
 

@@ -624,7 +624,7 @@ router.post('/login', async (req: Request, res: Response, next: NextFunction) =>
         errorMessage: 'Email not verified'
       });
       return res.status(403).json({
-        error: 'Please verify your email address before logging in. Check your inbox for the verification link.'
+        error: 'DIAGNOSTIC: Please verify your email address before logging in. Check your inbox for the verification link.'
       });
     }
 
@@ -641,8 +641,8 @@ router.post('/login', async (req: Request, res: Response, next: NextFunction) =>
       });
 
       const message = user.status === 'PENDING'
-        ? 'Please verify your email address before logging in.'
-        : 'Account is not active. Please contact support.';
+        ? 'DIAGNOSTIC: Please verify your email address before logging in.'
+        : 'DIAGNOSTIC: Account is not active. Please contact support. Status: ' + user.status;
 
       return res.status(403).json({ error: message });
     }
@@ -904,7 +904,7 @@ router.post('/sso/trading/exchange', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid SSO claims payload' });
     }
     if (sourceTenantId !== coreTenantId) {
-      return res.status(403).json({ error: 'Trading SSO only accepts identities from core platform investors' });
+      return res.status(403).json({ error: 'DIAGNOSTIC: Trading SSO only accepts identities from core platform investors' });
     }
     if (claims?.status !== 'ACTIVE') {
       return res.status(403).json({ error: 'Source account is not active' });
@@ -1872,7 +1872,7 @@ router.post('/switch-role', authenticateToken, async (req: AuthenticatedRequest,
         success: false,
         errorMessage: 'Operator roles cannot use role switching'
       });
-      return res.status(403).json({ error: 'Role switching is only available for SME and Investor accounts.' });
+      return res.status(403).json({ error: 'DIAGNOSTIC: Role switching is only available for SME and Investor accounts.' });
     }
 
     if (normalizedCurrentRole === normalizedTargetRole) {
