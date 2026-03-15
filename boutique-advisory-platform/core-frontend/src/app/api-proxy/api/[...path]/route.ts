@@ -289,3 +289,8 @@ export async function OPTIONS(req: NextRequest, context: RouteParams): Promise<N
   const { path } = await context.params;
   return proxy(req, path);
 }
+
+
+export const __proxyTestUtils = {
+  sanitizeBaseUrl,
+};
