@@ -46,10 +46,24 @@ export function getTenantId(req: Request): string {
     return headerTenantId;
   }
 
-  const hostCandidates = [
+  const serverHostCandidates = [
     ...extractHostCandidates(req.hostname),
     ...extractHostCandidates(req.headers['host']),
-    ...extractHostCandidates(req.headers['x-forwarded-host']),
+  ];
+
+  const primaryServerHost = serverHostCandidates[0] || '';
+  const shouldTrustForwardedHost =
+    !isProduction
+    || !primaryServerHost
+    || primaryServerHost.includes('localhost')
+    || primaryServerHost.includes('127.0.0.1')
+    || primaryServerHost.endsWith('railway.app')
+    || isIpv4Host(primaryServerHost)
+    || isInternalServiceHost(primaryServerHost);
+
+  const hostCandidates = [
+    ...serverHostCandidates,
+    ...(shouldTrustForwardedHost ? extractHostCandidates(req.headers['x-forwarded-host']) : []),
   ];
 
   // Prefer any explicit public Cambobia host in the forwarded chain.
