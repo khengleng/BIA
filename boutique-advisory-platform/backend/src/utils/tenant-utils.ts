@@ -40,10 +40,16 @@ export function getTenantId(req: Request): string {
 
   const isProduction = process.env.NODE_ENV === 'production';
 
+  // Development/testing override only.
+  const headerTenantId = req.headers['x-tenant-id'];
+  if (!isProduction && headerTenantId && typeof headerTenantId === 'string') {
+    return headerTenantId;
+  }
+
   const hostCandidates = [
-    ...extractHostCandidates(req.headers['x-forwarded-host']),
-    ...extractHostCandidates(req.headers['host']),
     ...extractHostCandidates(req.hostname),
+    ...extractHostCandidates(req.headers['host']),
+    ...extractHostCandidates(req.headers['x-forwarded-host']),
   ];
 
   // Prefer any explicit public Cambobia host in the forwarded chain.
@@ -91,12 +97,6 @@ export function getTenantId(req: Request): string {
         return subdomain;
       }
     }
-  }
-
-  // Development/testing override only.
-  const headerTenantId = req.headers['x-tenant-id'];
-  if (!isProduction && headerTenantId && typeof headerTenantId === 'string') {
-    return headerTenantId;
   }
 
   return coreTenantId;
