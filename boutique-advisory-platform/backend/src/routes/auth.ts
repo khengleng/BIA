@@ -1211,9 +1211,6 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
               ? emailResult.error
               : 'Password reset email failed'
         });
-        return res.status(503).json({
-          error: 'Password reset email could not be sent right now. Please try again shortly.'
-        });
       }
     } else {
       // Log attempt for non-existent user (for security monitoring)

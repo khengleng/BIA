@@ -57,9 +57,17 @@ export const authenticateToken = async (req: AuthenticatedRequest, res: Response
         }
 
         if (!decoded.tenantId || decoded.tenantId !== user.tenantId) {
+            console.warn('[AUTH] Invalid token tenant context', {
+                path: req.originalUrl || req.url,
+                tokenTenantId: decoded.tenantId,
+                userTenantId: user.tenantId,
+                userId: user.id,
+                forwardedHost: req.headers['x-forwarded-host'],
+                host: req.headers['host'],
+                hostname: req.hostname,
+            });
             res.status(401).json({ 
-                error: 'DIAGNOSTIC: Invalid token tenant context',
-                details: `Token tenant: ${decoded.tenantId}, User tenant: ${user.tenantId}`
+                error: 'Unauthorized'
             });
             return;
         }
@@ -91,7 +99,7 @@ export const authenticateToken = async (req: AuthenticatedRequest, res: Response
                 hostname: req.hostname,
                 serviceMode,
             });
-            res.status(403).json({ error: 'DIAGNOSTIC: Tenant access denied. Path: ' + (req.originalUrl || req.url) });
+            res.status(403).json({ error: 'Forbidden' });
             return;
         }
 
@@ -105,8 +113,7 @@ export const authenticateToken = async (req: AuthenticatedRequest, res: Response
 
         console.error('[AUTH] Token verification failed:', error.message);
         res.status(401).json({ 
-            error: 'DIAGNOSTIC: Invalid token',
-            details: error.message 
+            error: 'Unauthorized'
         });
     }
 };
@@ -123,7 +130,7 @@ async function handleRefresh(req: AuthenticatedRequest, res: Response, next: Nex
     }
 
     if (!refreshToken) {
-        res.status(401).json({ error: 'DIAGNOSTIC: Session expired. No refresh token found.' });
+        res.status(401).json({ error: 'Unauthorized' });
         return;
     }
 
@@ -135,18 +142,18 @@ async function handleRefresh(req: AuthenticatedRequest, res: Response, next: Nex
         });
 
         if (!storedToken) {
-            res.status(401).json({ error: 'DIAGNOSTIC: Invalid session. Refresh token not found in database.' });
+            res.status(401).json({ error: 'Unauthorized' });
             return;
         }
 
         if (storedToken.expiresAt < new Date()) {
             await prisma.refreshToken.delete({ where: { id: storedToken.id } });
-            res.status(401).json({ error: 'DIAGNOSTIC: Session expired. Refresh token expired at ' + storedToken.expiresAt.toISOString() });
+            res.status(401).json({ error: 'Unauthorized' });
             return;
         }
 
         if (storedToken.revoked) {
-            res.status(401).json({ error: 'DIAGNOSTIC: Session revoked. Please login again.' });
+            res.status(401).json({ error: 'Unauthorized' });
             return;
         }
 
@@ -172,7 +179,7 @@ async function handleRefresh(req: AuthenticatedRequest, res: Response, next: Nex
                 hostname: req.hostname,
                 serviceMode,
             });
-            res.status(403).json({ error: 'Tenant access denied' });
+            res.status(403).json({ error: 'Forbidden' });
             return;
         }
 
@@ -186,8 +193,7 @@ async function handleRefresh(req: AuthenticatedRequest, res: Response, next: Nex
     } catch (err: any) {
         console.error('Auto-refresh error:', err);
         res.status(401).json({ 
-            error: 'DIAGNOSTIC: Authentication failed during refresh',
-            details: err.message 
+            error: 'Unauthorized'
         });
     }
 }

@@ -105,9 +105,16 @@ export function validateCsrfToken(sessionId: string, token: string): boolean {
         csrfTokens.delete(sessionId);
         return false;
     }
+    const storedBuffer = Buffer.from(stored.token);
+    const inputBuffer = Buffer.from(token);
+
+    if (storedBuffer.length !== inputBuffer.length) {
+        return false;
+    }
+
     return crypto.timingSafeEqual(
-        Buffer.from(stored.token),
-        Buffer.from(token)
+        storedBuffer,
+        inputBuffer
     );
 }
 
