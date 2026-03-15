@@ -21,7 +21,7 @@ Create an incremental path to microservices and canary deployment without destab
      - optional main promotion via `AUTO_PROMOTE_MAIN=true`.
      - optional local-only deploy mode via `SKIP_GIT_SYNC=true` (useful when your working tree has unrelated local edits).
 3. **Boundary guardrail for non-monolithic evolution**
-   - Added `scripts/check-platform-boundaries.mjs` to fail when frontends/backend import each other's source trees directly.
+   - Added `scripts/check-platform-boundaries.mjs` to fail on cross-platform source coupling (direct imports, alias imports, and relative path traversals).
    - Added npm shortcut: `npm run check:boundaries`.
 
 4. **NPM script shortcuts**
@@ -41,3 +41,8 @@ Create an incremental path to microservices and canary deployment without destab
 ### Phase 4: True canary rollout
 - Introduce weighted traffic split and per-service progressive rollout policy.
 - Add automatic rollback triggers on health/error SLO breaches.
+
+## Platform separation enforcement notes
+- Deploy `core-frontend` and `trade-frontend` as separate services/environments with independent release cadence.
+- Keep backend as API boundary only; never import UI source into backend runtime code.
+- Run `npm run check:boundaries` as a required pre-merge check to prevent monolithic coupling regressions.
