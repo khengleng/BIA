@@ -25,7 +25,22 @@ function sanitizeBaseUrl(baseUrl: string | undefined): string | null {
   try {
     const parsed = new URL(trimmed);
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
-    return `${parsed.origin}${parsed.pathname.replace(/\/+$/, '')}`;
+    const pathname = parsed.pathname.replace(/\/+$/, '');
+
+    // Environment variables occasionally get configured to point at frontend proxy
+    // paths (for example /api-proxy or /api-proxy/api). In that case we only want
+    // the backend origin here, otherwise requests become self-referential and can
+    // return 404 "Application not found" from the edge router.
+    if (
+      pathname === '/api-proxy'
+      || pathname.startsWith('/api-proxy/')
+      || pathname === '/api'
+      || pathname.startsWith('/api/')
+    ) {
+      return parsed.origin;
+    }
+
+    return `${parsed.origin}${pathname}`;
   } catch {
     return null;
   }
