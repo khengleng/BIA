@@ -185,9 +185,6 @@ async function proxy(req: NextRequest, pathParts: string[]): Promise<NextRespons
   const requestBody =
     method === 'GET' || method === 'HEAD' ? undefined : Buffer.from(await req.arrayBuffer());
 
-  let lastStatus: number | null = null;
-  let lastError: string | null = null;
-
   for (let i = 0; i < targets.length; i += 1) {
     const targetBase = targets[i];
     const upstreamUrl = `${targetBase}${upstreamPath}`;
@@ -195,7 +192,7 @@ async function proxy(req: NextRequest, pathParts: string[]): Promise<NextRespons
 
     try {
 
-      console.log(`📡 [Proxy] ${method} -> ${upstreamUrl}`);
+      console.log(`📡 [Proxy] ${method} -> ${targetBase}/api/${pathParts.join('/')}`);
       const upstream = await fetch(upstreamUrl, {
         method,
         headers,
@@ -203,9 +200,6 @@ async function proxy(req: NextRequest, pathParts: string[]): Promise<NextRespons
         cache: 'no-store',
         redirect: 'manual'
       });
-
-      lastStatus = upstream.status;
-
 
       if (!TRANSIENT_STATUSES.has(upstream.status) || isLastTarget) {
         // Read full body buffer to avoid streaming/decoding issues during content forwarding
@@ -220,13 +214,11 @@ async function proxy(req: NextRequest, pathParts: string[]): Promise<NextRespons
         response.headers.delete('content-length');
         response.headers.delete('transfer-encoding');
 
-        response.headers.set('x-proxy-target', targetBase);
-        response.headers.set('x-proxy-attempt', String(i + 1));
         return response;
       }
     } catch (error: any) {
-      lastError = error?.message || 'Proxy connection failed';
-      console.warn(`⚠️ [Proxy Error] Attempt ${i + 1} failed: ${lastError}`);
+      const errMessage = error?.message || 'Proxy connection failed';
+      console.warn(`⚠️ [Proxy Error] Attempt ${i + 1} failed: ${errMessage}`);
       if (isLastTarget) break;
     }
   }
@@ -234,10 +226,7 @@ async function proxy(req: NextRequest, pathParts: string[]): Promise<NextRespons
   console.error(`❌ [Proxy Failed] Exhausted all ${targets.length} targets for ${upstreamPath}`);
   return NextResponse.json(
     {
-      error: 'Service temporarily unavailable. Please try again in a few seconds.',
-      proxyStatus: lastStatus,
-      proxyError: lastError,
-      targetsAttempted: targets.length
+      error: 'Service temporarily unavailable. Please try again in a few seconds.'
     },
     { status: 503 }
   );
