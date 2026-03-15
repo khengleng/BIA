@@ -18,6 +18,7 @@
         "test:smoke:railway": "node scripts/railway-smoke-security.mjs --base-url $SMOKE_BASE_URL",
         "test:security:gate": "npm run test:backend && npm run test:core && npm run test:trade",
         "deploy:backend:canary": "bash scripts/deploy-backend-canary.sh",
-        "deploy:backend:canary:local": "SKIP_GIT_SYNC=true bash scripts/deploy-backend-canary.sh \"$HOME/BIA\""
+        "deploy:backend:canary:local": "SKIP_GIT_SYNC=true bash scripts/deploy-backend-canary.sh \"$HOME/BIA\"",
+        "check:boundaries": "node scripts/check-platform-boundaries.mjs"
     }
 }

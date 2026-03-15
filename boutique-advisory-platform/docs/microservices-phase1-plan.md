@@ -20,9 +20,14 @@ Create an incremental path to microservices and canary deployment without destab
      - deploy backend
      - optional main promotion via `AUTO_PROMOTE_MAIN=true`.
      - optional local-only deploy mode via `SKIP_GIT_SYNC=true` (useful when your working tree has unrelated local edits).
-3. **NPM script shortcuts**
+3. **Boundary guardrail for non-monolithic evolution**
+   - Added `scripts/check-platform-boundaries.mjs` to fail when frontends/backend import each other's source trees directly.
+   - Added npm shortcut: `npm run check:boundaries`.
+
+4. **NPM script shortcuts**
    - `npm run deploy:backend:canary`
    - `npm run deploy:backend:canary:local`
+   - `npm run check:boundaries`
 
 ## Next phases (recommended)
 ### Phase 2: Service boundary extraction
