@@ -1,11 +1,5 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import {
-  mapAdminPathToTradingOperator,
-  mapLegacyTradingPath,
-} from '@/lib/tradingOperatorRoutes';
-
-const mode = process.env.NEXT_PUBLIC_PLATFORM_MODE === 'core' ? 'core' : 'trading';
 
 const coreProtectedPrefixes = ['/dashboard', '/portfolio', '/smes', '/investors', '/advisory'];
 const redirectToTradingPrefixes = [
