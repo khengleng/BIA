@@ -19,6 +19,7 @@ Create an incremental path to microservices and canary deployment without destab
      - sync `work`
      - deploy backend
      - optional main promotion via `AUTO_PROMOTE_MAIN=true`.
+     - optional local-only deploy mode via `SKIP_GIT_SYNC=true` (useful when your working tree has unrelated local edits).
 3. **NPM script shortcuts**
    - `npm run deploy:backend:canary`
    - `npm run deploy:backend:canary:local`

@@ -10,6 +10,7 @@ set -euo pipefail
 #   AUTO_PROMOTE_MAIN=true   # default: false
 #   PUSH_WORK=true           # default: true
 #   DRY_RUN=true             # default: false
+#   SKIP_GIT_SYNC=true       # default: false
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEFAULT_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null || true)"
@@ -24,6 +25,7 @@ ROOT="$(cd "$INPUT_ROOT" && pwd)"
 AUTO_PROMOTE_MAIN="${AUTO_PROMOTE_MAIN:-false}"
 PUSH_WORK="${PUSH_WORK:-true}"
 DRY_RUN="${DRY_RUN:-false}"
+SKIP_GIT_SYNC="${SKIP_GIT_SYNC:-false}"
 
 run() {
   if [[ "$DRY_RUN" == "true" ]]; then
@@ -38,7 +40,7 @@ if ! command -v git >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! command -v railway >/dev/null 2>&1; then
+if [[ "$DRY_RUN" != "true" ]] && ! command -v railway >/dev/null 2>&1; then
   echo "❌ railway CLI is required (https://docs.railway.com/develop/cli)" >&2
   exit 1
 fi
@@ -59,30 +61,34 @@ GIT_ROOT="$(git -C "$PLATFORM_DIR" rev-parse --show-toplevel)"
 
 cd "$GIT_ROOT"
 
-echo "==> Verifying clean repository state"
-if [[ -n "$(git status --porcelain)" ]]; then
-  echo "❌ Working tree is dirty. Commit/stash before deploy." >&2
-  git status --short
-  exit 1
-fi
-
-echo "==> Syncing work branch"
-run git fetch origin
-run git checkout work
-run git pull --ff-only origin work
-if [[ "$PUSH_WORK" == "true" ]]; then
-  run git push origin work
-fi
-
-if [[ "$AUTO_PROMOTE_MAIN" == "true" ]]; then
-  echo "==> AUTO_PROMOTE_MAIN enabled: fast-forwarding main from work"
-  run git checkout main
-  run git pull --ff-only origin main
-  run git merge --ff-only work
-  run git push origin main
-  run git checkout work
+if [[ "$SKIP_GIT_SYNC" == "true" ]]; then
+  echo "==> SKIP_GIT_SYNC enabled: deploying current working tree without branch sync"
 else
-  echo "==> AUTO_PROMOTE_MAIN disabled: skipping main branch promotion"
+  echo "==> Verifying clean repository state"
+  if [[ -n "$(git status --porcelain)" ]]; then
+    echo "❌ Working tree is dirty. Commit/stash before deploy." >&2
+    git status --short
+    exit 1
+  fi
+
+  echo "==> Syncing work branch"
+  run git fetch origin
+  run git checkout work
+  run git pull --ff-only origin work
+  if [[ "$PUSH_WORK" == "true" ]]; then
+    run git push origin work
+  fi
+
+  if [[ "$AUTO_PROMOTE_MAIN" == "true" ]]; then
+    echo "==> AUTO_PROMOTE_MAIN enabled: fast-forwarding main from work"
+    run git checkout main
+    run git pull --ff-only origin main
+    run git merge --ff-only work
+    run git push origin main
+    run git checkout work
+  else
+    echo "==> AUTO_PROMOTE_MAIN disabled: skipping main branch promotion"
+  fi
 fi
 
 echo "==> Deploying backend (canary-ready baseline)"
