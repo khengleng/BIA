@@ -146,6 +146,19 @@ function buildUpstreamHeaders(req: NextRequest): Headers {
   return headers;
 }
 
+
+async function shouldRetryForPlatformNotFound(upstream: Response): Promise<boolean> {
+  if (upstream.status !== 404) return false;
+  const contentType = upstream.headers.get('content-type') || '';
+  if (!contentType.includes('text/html') && !contentType.includes('application/json')) {
+    return false;
+  }
+
+  const bodyText = await upstream.clone().text();
+  const normalized = bodyText.toLowerCase();
+  return normalized.includes('application not found');
+}
+
 function copyUpstreamHeaders(upstream: Response, response: NextResponse): void {
   upstream.headers.forEach((value, key) => {
     const lower = key.toLowerCase();
@@ -201,7 +214,10 @@ async function proxy(req: NextRequest, pathParts: string[]): Promise<NextRespons
         redirect: 'manual'
       });
 
-      if (!TRANSIENT_STATUSES.has(upstream.status) || isLastTarget) {
+      const shouldRetry = TRANSIENT_STATUSES.has(upstream.status)
+        || (await shouldRetryForPlatformNotFound(upstream));
+
+      if (!shouldRetry || isLastTarget) {
         // Read full body buffer to avoid streaming/decoding issues during content forwarding
         const bodyBuffer = await upstream.arrayBuffer();
         const response = new NextResponse(bodyBuffer, { status: upstream.status });
