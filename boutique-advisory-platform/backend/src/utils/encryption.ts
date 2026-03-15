@@ -2,9 +2,14 @@ import crypto from 'crypto';
 
 // Use a consistent encryption key from environment in production
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
+const NODE_ENV = (process.env.NODE_ENV || 'development').toLowerCase();
 
 if (!ENCRYPTION_KEY) {
-    console.warn('⚠️ WARNING: ENCRYPTION_KEY is not defined. Using a dummy key. Data encryption is insecure! Please set ENCRYPTION_KEY in production.');
+    if (NODE_ENV === 'test') {
+        console.warn('⚠️ WARNING: ENCRYPTION_KEY is not defined in test environment. Using a deterministic test key.');
+    } else {
+        throw new Error('ENCRYPTION_KEY is required outside test environments. Refusing to start with insecure fallback key.');
+    }
 }
 const ACTIVE_KEY = ENCRYPTION_KEY || '0000000000000000000000000000000000000000000000000000000000000000';
 
