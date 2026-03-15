@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "rm -rf .test-dist && tsc -p tsconfig.test.json && node --test .test-dist/src/tests/**/*.test.js"
+    "test": "rm -rf .test-dist && tsc -p tsconfig.test.json && node --test $(find .test-dist/src/tests -name '*.test.js' -type f)"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.7",

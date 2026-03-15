@@ -23,6 +23,7 @@ const port = process.env.PORT || 3005;
 const SERVICE_VERSION = process.env.SERVICE_VERSION || '1.0.0-unspecified';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-bia';
+const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || 'dev-internal-key';
 
 let bot: TelegramBot;
 let isTokenValid = false;
@@ -237,6 +238,11 @@ app.post('/api/mobile/register-push', async (req, res) => {
 
 app.post('/api/internal/notify', async (req, res) => {
     try {
+        const apiKey = req.headers['x-api-key'];
+        if (process.env.NODE_ENV === 'production' && apiKey !== INTERNAL_API_KEY) {
+            return res.status(403).json({ error: 'Unauthorized: Invalid API Key' });
+        }
+
         const { userId, userIds, broadcast, title, message } = req.body;
         const targetUserIds = broadcast ? (userIds || []) : [userId];
 

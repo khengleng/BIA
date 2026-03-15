@@ -32,7 +32,7 @@
     "@aws-sdk/s3-request-presigner": "^3.984.0",
     "@google-cloud/storage": "^7.19.0",
     "@google/generative-ai": "^0.24.1",
-    "@prisma/client": "^5.7.1",
+    "@prisma/client": "^5.22.0",
     "@types/crypto-js": "^4.2.2",
     "@types/qrcode": "^1.5.6",
     "@types/speakeasy": "^2.0.10",
@@ -51,7 +51,6 @@
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
-    "prisma": "5.7.1",
     "qrcode": "^1.5.4",
     "rate-limit-redis": "^4.3.1",
     "resend": "^6.9.1",
@@ -71,7 +70,9 @@
     "@types/multer": "^1.4.13",
     "@types/node": "^20.10.5",
     "nodemon": "^3.0.2",
+    "prisma": "^5.22.0",
     "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
     "typescript": "^5.3.3"
   },
   "overrides": {
