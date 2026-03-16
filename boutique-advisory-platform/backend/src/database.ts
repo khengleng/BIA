@@ -1,50 +1,93 @@
 import { PrismaClient } from '@prisma/client'
 
-// Primary Client (Read/Write)
-export const prisma = new PrismaClient({
-  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-  datasources: {
-    db: {
-      url: process.env.DATABASE_URL
+type PrismaClientLike = PrismaClient
+
+type LazyPrismaClient = {
+  client: PrismaClientLike
+  hasInstance: () => boolean
+}
+
+function createPrismaClient(url?: string, log: ('query' | 'error' | 'warn')[] = ['error']): PrismaClientLike {
+  return new PrismaClient({
+    log,
+    datasources: {
+      db: {
+        url
+      }
+    }
+  })
+}
+
+function createLazyPrismaClient(factory: () => PrismaClientLike): LazyPrismaClient {
+  let instance: PrismaClientLike | null = null
+  let initError: unknown = null
+
+  const getInstance = (): PrismaClientLike => {
+    if (instance) return instance
+    if (initError) throw initError
+
+    try {
+      instance = factory()
+      return instance
+    } catch (error) {
+      initError = error
+      throw error
     }
   }
-})
+
+  const clientProxy = new Proxy({}, {
+    get(_target, prop) {
+      const client = getInstance() as any
+      const value = client[prop]
+      return typeof value === 'function' ? value.bind(client) : value
+    }
+  }) as PrismaClientLike
+
+  return {
+    client: clientProxy,
+    hasInstance: () => instance !== null
+  }
+}
+
+const primaryClient = createLazyPrismaClient(() =>
+  createPrismaClient(
+    process.env.DATABASE_URL,
+    process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error']
+  )
+)
+
+const replicaClient = createLazyPrismaClient(() =>
+  createPrismaClient(process.env.DATABASE_URL_REPLICA || process.env.DATABASE_URL, ['error'])
+)
+
+// Primary Client (Read/Write)
+export const prisma = primaryClient.client
 
 // Replica Client (Read Only)
 // Falls back to primary if replica URL is not configured
-const replicaUrl = process.env.DATABASE_URL_REPLICA || process.env.DATABASE_URL
-
-export const prismaReplica = new PrismaClient({
-  log: ['error'],
-  datasources: {
-    db: {
-      url: replicaUrl
-    }
-  }
-})
+export const prismaReplica = replicaClient.client
 
 export async function connectDatabase() {
   try {
-    // Connect access to primary
     await prisma.$connect()
     console.log('✅ Primary Database connected successfully')
 
-    // Connect access to replica if distinct
     if (process.env.DATABASE_URL_REPLICA) {
       await prismaReplica.$connect()
       console.log('✅ Replica Database connected successfully')
     }
   } catch (error) {
     console.error('❌ Database connection failed:', error)
-    // Critical failure if primary cannot connect
     throw error
   }
 }
 
 export async function disconnectDatabase() {
   try {
-    await prisma.$disconnect()
-    if (process.env.DATABASE_URL_REPLICA) {
+    if (primaryClient.hasInstance()) {
+      await prisma.$disconnect()
+    }
+    if (process.env.DATABASE_URL_REPLICA && replicaClient.hasInstance()) {
       await prismaReplica.$disconnect()
     }
     console.log('✅ Database disconnected successfully')
@@ -53,17 +96,20 @@ export async function disconnectDatabase() {
   }
 }
 
-// Graceful shutdown
-process.on('beforeExit', async () => {
-  await disconnectDatabase()
-})
+const isTestRuntime = process.env.NODE_ENV === 'test' || process.argv.includes('--test')
 
-process.on('SIGINT', async () => {
-  await disconnectDatabase()
-  process.exit(0)
-})
+if (!isTestRuntime) {
+  process.on('beforeExit', async () => {
+    await disconnectDatabase()
+  })
 
-process.on('SIGTERM', async () => {
-  await disconnectDatabase()
-  process.exit(0)
-})
+  process.on('SIGINT', async () => {
+    await disconnectDatabase()
+    process.exit(0)
+  })
+
+  process.on('SIGTERM', async () => {
+    await disconnectDatabase()
+    process.exit(0)
+  })
+}

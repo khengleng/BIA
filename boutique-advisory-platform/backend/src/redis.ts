@@ -1,7 +1,8 @@
 import Redis from 'ioredis';
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
-const isTest = process.env.NODE_ENV === 'test';
+const isTest = process.env.NODE_ENV === 'test' || process.argv.includes('--test');
+const shouldLogRedisErrors = process.env.REDIS_LOG_ERRORS === 'true' || (process.env.NODE_ENV === 'production' && process.env.REDIS_LOG_ERRORS !== 'false');
 const maxRetryAttempts = isTest ? 0 : 10;
 
 const redis = new Redis(REDIS_URL, {
@@ -22,7 +23,7 @@ const redis = new Redis(REDIS_URL, {
 
 
 redis.on('error', (err) => {
-    if (isTest) return;
+    if (isTest || !shouldLogRedisErrors) return;
     console.error('Redis connection error:', err);
 });
 

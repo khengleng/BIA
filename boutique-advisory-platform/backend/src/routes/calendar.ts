@@ -103,7 +103,7 @@ router.get('/', authorize('calendar.read'), async (req: AuthenticatedRequest, re
       orderBy: { timestamp: 'asc' }
     });
 
-    const events = logs.map((log) => {
+    const events = logs.map((log: any) => {
       const metadata = (log.metadata ?? {}) as Record<string, unknown>;
       return {
         id: log.id,
