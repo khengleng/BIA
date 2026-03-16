@@ -180,7 +180,7 @@ export function authorize(
             });
         }
 
-        next();
+        return next();
     };
 }
 

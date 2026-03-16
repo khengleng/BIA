@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import TelegramBot from 'node-telegram-bot-api';
 import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
@@ -76,7 +76,7 @@ app.use(express.json());
 app.use(cors());
 
 // Health Check for Railway
-app.get('/health', (req, res) => res.json({
+app.get('/health', (req: Request, res: Response) => res.json({
     ok: true,
     version: SERVICE_VERSION,
     botInstance: isTokenValid ? (process.env.DISABLE_POLLING === 'true' ? 'notification-only' : 'polling') : 'api-only',
@@ -86,7 +86,7 @@ app.get('/health', (req, res) => res.json({
 /**
  * Reload Token from Admin UI
  */
-app.post('/api/internal/reload-token', async (req, res) => {
+app.post('/api/internal/reload-token', async (req: Request, res: Response) => {
     const { token } = req.body;
     console.log('🔄 Received Token Reload Request');
     await initializeBot(token);
@@ -94,10 +94,10 @@ app.post('/api/internal/reload-token', async (req, res) => {
 });
 
 function setupBotHandlers(botInstance: TelegramBot) {
-    botInstance.onText(/\/start ?(.*)/, async (msg, match) => handleStart(msg, match, botInstance));
-    botInstance.onText(/\/portfolio/, async (msg) => handlePortfolio(msg, botInstance));
-    botInstance.onText(/\/deals/, async (msg) => handleDeals(msg, botInstance));
-    botInstance.onText(/\/link/, async (msg) => {
+    botInstance.onText(/\/start ?(.*)/, async (msg: TelegramBot.Message, match: RegExpExecArray | null) => handleStart(msg, match, botInstance));
+    botInstance.onText(/\/portfolio/, async (msg: TelegramBot.Message) => handlePortfolio(msg, botInstance));
+    botInstance.onText(/\/deals/, async (msg: TelegramBot.Message) => handleDeals(msg, botInstance));
+    botInstance.onText(/\/link/, async (msg: TelegramBot.Message) => {
         botInstance.sendMessage(msg.chat.id, "🔗 *To link your account:*\n\nPlease log in to the BIA Web Portal and go to *Settings > Telegram* to generate a secure linking link.", { parse_mode: 'Markdown' });
     });
 }
@@ -179,7 +179,7 @@ async function handlePortfolio(msg: any, botInstance: TelegramBot) {
 
     let summary = `💼 *Portfolio for ${user.firstName}*\n\n`;
     let totalInv = 0;
-    investor.dealInvestments.forEach(inv => {
+    investor.dealInvestments.forEach((inv: any) => {
         summary += `🔹 *${inv.deal.title}*\n   Allocation: $${inv.amount.toLocaleString()}\n   Status: ${inv.status}\n\n`;
         totalInv += inv.amount;
     });
@@ -197,7 +197,7 @@ async function handleDeals(msg: any, botInstance: TelegramBot) {
             return;
         }
         let response = "🔥 *Featured Deals:*\n\n";
-        deals.forEach((d, idx) => {
+        deals.forEach((d: any, idx: number) => {
             const smeName = (d as any).sme?.name || 'SME';
             response += `${idx + 1}. *${d.title}*\n🏢 SME: ${smeName}\n💰 Amount: $${d.amount.toLocaleString()}\n━━━━━━━━━━━━━━━\n`;
         });
@@ -209,7 +209,7 @@ async function handleDeals(msg: any, botInstance: TelegramBot) {
 
 // ==================== MOBILE API ENDPOINTS ====================
 
-app.post('/api/mobile/register-push', async (req, res) => {
+app.post('/api/mobile/register-push', async (req: Request, res: Response) => {
     try {
         const { userId, fcmToken, deviceType } = req.body;
         if (!userId || !fcmToken) return res.status(400).json({ error: 'Missing userId or fcmToken' });
@@ -236,7 +236,7 @@ app.post('/api/mobile/register-push', async (req, res) => {
     }
 });
 
-app.post('/api/internal/notify', async (req, res) => {
+app.post('/api/internal/notify', async (req: Request, res: Response) => {
     try {
         const apiKey = req.headers['x-api-key'];
         if (process.env.NODE_ENV === 'production' && apiKey !== INTERNAL_API_KEY) {

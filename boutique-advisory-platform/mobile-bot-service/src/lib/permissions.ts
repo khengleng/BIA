@@ -8,7 +8,7 @@
  * - Owner-based access control
  * - Audit logging support
  */
-import { normalizeRole } from './roles';
+import { normalizeRole } from './roles.js';
 
 // Role types
 export type UserRole =
@@ -336,9 +336,9 @@ export const PERMISSIONS: Record<string, string[]> = {
 export interface PermissionContext {
     userId: string;
     userRole: UserRole | string;
-    tenantId?: string;
-    resourceOwnerId?: string;
-    resourceId?: string;
+    tenantId?: string | undefined;
+    resourceOwnerId?: string | undefined;
+    resourceId?: string | undefined;
 }
 
 /**

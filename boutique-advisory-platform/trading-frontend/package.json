@@ -1,9 +1,5 @@
 {
-<<<<<<<< HEAD:boutique-advisory-platform/trading-frontend/package.json
   "name": "trading-frontend",
-========
-  "name": "trade-frontend",
->>>>>>>> origin/codex/review-source-code-3e131v:boutique-advisory-platform/trade-frontend/package.json
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -21,11 +17,7 @@
     "@stripe/react-stripe-js": "^5.6.0",
     "@stripe/stripe-js": "^8.7.0",
     "@sumsub/websdk-react": "^2.6.1",
-<<<<<<<< HEAD:boutique-advisory-platform/trading-frontend/package.json
     "axios": "^1.7.9",
-========
-    "axios": "^1.13.6",
->>>>>>>> origin/codex/review-source-code-3e131v:boutique-advisory-platform/trade-frontend/package.json
     "i18next": "^25.4.2",
     "i18next-browser-languagedetector": "^8.2.0",
     "i18next-http-backend": "^3.0.2",
