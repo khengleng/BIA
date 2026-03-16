@@ -20,6 +20,7 @@ Create an incremental path to microservices and canary deployment without destab
      - deploy backend
      - optional main promotion via `AUTO_PROMOTE_MAIN=true`.
      - optional local-only deploy mode via `SKIP_GIT_SYNC=true` (useful when your working tree has unrelated local edits).
+     - preflight checks now fail early if `origin` / `work` (and `main` when auto-promoting) are missing, with actionable messages.
 3. **Boundary guardrail for non-monolithic evolution**
    - Added `scripts/check-platform-boundaries.mjs` to fail on cross-platform source coupling (direct imports, alias imports, and relative path traversals).
    - Script now resolves repo root from its own path and fails fast if it is run from the wrong root/missing scopes.

@@ -40,6 +40,37 @@ if ! command -v git >/dev/null 2>&1; then
   exit 1
 fi
 
+
+has_remote() {
+  git remote get-url "$1" >/dev/null 2>&1
+}
+
+has_branch_ref() {
+  git show-ref --verify --quiet "$1"
+}
+
+ensure_git_sync_prerequisites() {
+  if [[ "$DRY_RUN" == "true" ]]; then
+    echo "==> DRY_RUN enabled: skipping strict git remote/branch prerequisite checks"
+    return
+  fi
+
+  if ! has_remote origin; then
+    echo "❌ Git remote 'origin' is not configured. Set origin or use SKIP_GIT_SYNC=true for local-only deploys." >&2
+    exit 1
+  fi
+
+  if ! has_branch_ref refs/heads/work && ! has_branch_ref refs/remotes/origin/work; then
+    echo "❌ Missing 'work' branch (local or origin/work)." >&2
+    exit 1
+  fi
+
+  if [[ "$AUTO_PROMOTE_MAIN" == "true" ]] && ! has_branch_ref refs/heads/main && ! has_branch_ref refs/remotes/origin/main; then
+    echo "❌ AUTO_PROMOTE_MAIN=true requires 'main' branch (local or origin/main)." >&2
+    exit 1
+  fi
+}
+
 if [[ "$DRY_RUN" != "true" ]] && ! command -v railway >/dev/null 2>&1; then
   echo "❌ railway CLI is required (https://docs.railway.com/develop/cli)" >&2
   exit 1
@@ -64,6 +95,8 @@ cd "$GIT_ROOT"
 if [[ "$SKIP_GIT_SYNC" == "true" ]]; then
   echo "==> SKIP_GIT_SYNC enabled: deploying current working tree without branch sync"
 else
+  ensure_git_sync_prerequisites
+
   echo "==> Verifying clean repository state"
   if [[ -n "$(git status --porcelain)" ]]; then
     echo "❌ Working tree is dirty. Commit/stash before deploy." >&2
