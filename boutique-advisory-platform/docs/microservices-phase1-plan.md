@@ -1,0 +1,50 @@
+# Microservices Phase 1 (Execution Baseline)
+
+This repository currently runs as a multi-app monorepo with:
+- `backend` API service
+- `core-frontend` web portal (`cambobia.com`)
+- `trade-frontend` web portal (`trade.cambobia.com`)
+- mobile apps (`mobile_app`, `twallet-app`)
+- `mobile-bot-service`
+
+## Goal
+Create an incremental path to microservices and canary deployment without destabilizing production auth/tenant flows.
+
+## Phase 1 delivered in-repo
+1. **Railway upload hardening**
+   - Added repo `.railwayignore` plus `backend/.railwayignore` to reduce payload size and avoid Cloudflare 413 on `railway up`.
+2. **Canary-ready deployment script**
+   - Added `scripts/deploy-backend-canary.sh`.
+   - Script now auto-detects repo layout, supports dry-run, and defaults to safe behavior:
+     - sync `work`
+     - deploy backend
+     - optional main promotion via `AUTO_PROMOTE_MAIN=true`.
+     - optional local-only deploy mode via `SKIP_GIT_SYNC=true` (useful when your working tree has unrelated local edits).
+     - preflight checks now fail early if `origin` / `work` (and `main` when auto-promoting) are missing, with actionable messages.
+3. **Boundary guardrail for non-monolithic evolution**
+   - Added `scripts/check-platform-boundaries.mjs` to fail on cross-platform source coupling (direct imports, alias imports, and relative path traversals).
+   - Script now resolves repo root from its own path and fails fast if it is run from the wrong root/missing scopes.
+   - Added npm shortcut: `npm run check:boundaries`.
+
+4. **NPM script shortcuts**
+   - `npm run deploy:backend:canary`
+   - `npm run deploy:backend:canary:local`
+   - `npm run check:boundaries`
+
+## Next phases (recommended)
+### Phase 2: Service boundary extraction
+- Extract domain APIs out of `backend` into separately deployable services (start with least-coupled modules).
+- Keep current frontends calling API-proxy during transition.
+
+### Phase 3: Contract and observability hardening
+- Add shared request/response contracts and service auth claims.
+- Add distributed tracing across gateway + services.
+
+### Phase 4: True canary rollout
+- Introduce weighted traffic split and per-service progressive rollout policy.
+- Add automatic rollback triggers on health/error SLO breaches.
+
+## Platform separation enforcement notes
+- Deploy `core-frontend` and `trade-frontend` as separate services/environments with independent release cadence.
+- Keep backend as API boundary only; never import UI source into backend runtime code.
+- Run `npm run check:boundaries` as a required pre-merge check to prevent monolithic coupling regressions.

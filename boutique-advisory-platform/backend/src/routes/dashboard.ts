@@ -42,7 +42,7 @@ router.get('/stats', authorize('dashboard.read'), async (req: AuthenticatedReque
                     ]);
 
                     const deals = await prisma.deal.findMany({ where: { smeId: sme.id, tenantId } });
-                    const totalFunding = deals.reduce((acc, deal) => acc + deal.amount, 0);
+                    const totalFunding = deals.reduce((acc: number, deal: any) => acc + deal.amount, 0);
 
                     // Calculate Profile Completeness
                     let filledFields = 0;
@@ -119,8 +119,8 @@ router.get('/stats', authorize('dashboard.read'), async (req: AuthenticatedReque
                         })
                     ]);
 
-                    const dealPortfolioValue = completedDealInvestments.reduce((sum, d_inv) => sum + d_inv.amount, 0);
-                    const syndicatePortfolioValue = syndicateInvestments.reduce((sum, s_inv) => sum + s_inv.amount, 0);
+                    const dealPortfolioValue = completedDealInvestments.reduce((sum: number, d_inv: any) => sum + d_inv.amount, 0);
+                    const syndicatePortfolioValue = syndicateInvestments.reduce((sum: number, s_inv: any) => sum + s_inv.amount, 0);
                     const portfolioValue = dealPortfolioValue + syndicatePortfolioValue;
 
                     // Calculate estimated performance for the dashboard
@@ -149,7 +149,7 @@ router.get('/stats', authorize('dashboard.read'), async (req: AuthenticatedReque
                     ]);
 
                     const recentInvestments = [
-                        ...recentDealInvestments.map(inv => ({
+                        ...recentDealInvestments.map((inv: any) => ({
                             id: inv.id,
                             name: inv.deal?.sme?.name || 'Unknown SME',
                             amount: inv.amount,
@@ -157,7 +157,7 @@ router.get('/stats', authorize('dashboard.read'), async (req: AuthenticatedReque
                             date: inv.createdAt,
                             status: inv.status
                         })),
-                        ...recentSyndicateInvestments.map(inv => ({
+                        ...recentSyndicateInvestments.map((inv: any) => ({
                             id: inv.id,
                             name: inv.syndicate?.name || 'Syndicate',
                             amount: inv.amount,
@@ -176,7 +176,7 @@ router.get('/stats', authorize('dashboard.read'), async (req: AuthenticatedReque
                         syndicateMemberships: syndicateMembershipCount,
                         avgMatchScore: 85,
                         recentInvestments,
-                        marketOpportunities: openDeals.map(d => ({
+                        marketOpportunities: openDeals.map((d: any) => ({
                             id: d.id,
                             name: d.sme?.name || 'SME',
                             title: d.title,
@@ -196,14 +196,14 @@ router.get('/stats', authorize('dashboard.read'), async (req: AuthenticatedReque
                         prisma.booking.groupBy({
                             by: ['userId'],
                             where: { advisorId: advisor.id, tenantId }
-                        }).then(groups => groups.length),
+                        }).then((groups: any[]) => groups.length),
                         prisma.certification.count({ where: { advisorId: advisor.id, status: 'PENDING', sme: { tenantId } } })
                     ]);
 
                     const completedPaidBookings = await prisma.booking.findMany({
                         where: { advisorId: advisor.id, status: 'COMPLETED', amount: { not: null }, tenantId }
                     });
-                    const totalEarnings = completedPaidBookings.reduce((acc, b) => acc + (b.amount || 0), 0);
+                    const totalEarnings = completedPaidBookings.reduce((acc: number, b: any) => acc + (b.amount || 0), 0);
 
                     stats = {
                         bookings: totalBookings,
@@ -420,7 +420,7 @@ router.get('/analytics', authorize('dashboard.read'), async (req: AuthenticatedR
         const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
         // Add deal data
-        deals.forEach(deal => {
+        deals.forEach((deal: any) => {
             const date = new Date(deal.createdAt);
             const monthKey = monthNames[date.getMonth()];
 
@@ -432,7 +432,7 @@ router.get('/analytics', authorize('dashboard.read'), async (req: AuthenticatedR
         });
 
         // Add syndicate investment data
-        syndicateMembers.forEach(member => {
+        syndicateMembers.forEach((member: any) => {
             const date = new Date(member.joinedAt);
             const monthKey = monthNames[date.getMonth()];
 
@@ -457,7 +457,7 @@ router.get('/analytics', authorize('dashboard.read'), async (req: AuthenticatedR
         });
 
         const sectorDistribution: { [key: string]: number } = {};
-        sectors.forEach(s => {
+        sectors.forEach((s: any) => {
             sectorDistribution[s.sector] = s._count.id;
         });
 
@@ -469,7 +469,7 @@ router.get('/analytics', authorize('dashboard.read'), async (req: AuthenticatedR
         });
 
         const stageDistribution: { [key: string]: number } = {};
-        stages.forEach(s => {
+        stages.forEach((s: any) => {
             stageDistribution[s.status] = s._count.id;
         });
 
@@ -481,7 +481,7 @@ router.get('/analytics', authorize('dashboard.read'), async (req: AuthenticatedR
             include: { sme: { select: { name: true } } }
         });
 
-        const recentActivity = recentDeals.map(deal => ({
+        const recentActivity = recentDeals.map((deal: any) => ({
             type: 'DEAL_CREATED',
             description: `New deal posted by ${deal.sme.name}: ${deal.title}`,
             timestamp: deal.createdAt.toISOString()
