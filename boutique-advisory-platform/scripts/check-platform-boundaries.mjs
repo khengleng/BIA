@@ -1,8 +1,12 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const repoRoot = process.cwd();
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const defaultRepoRoot = path.resolve(scriptDir, '..');
+const inputRoot = process.argv[2] ? path.resolve(process.argv[2]) : defaultRepoRoot;
+const repoRoot = inputRoot;
 
 const checks = [
   {
@@ -66,6 +70,24 @@ function findLineNumber(content, index) {
   return content.slice(0, index).split('\n').length;
 }
 
+if (!fs.existsSync(repoRoot)) {
+  console.error(`❌ Repository root does not exist: ${repoRoot}`);
+  process.exit(2);
+}
+
+const missingScopes = checks
+  .map((check) => check.scope)
+  .filter((scope) => !fs.existsSync(path.join(repoRoot, scope)));
+
+if (missingScopes.length > 0) {
+  console.error('❌ Boundary check misconfigured or run from wrong root. Missing scope directories:');
+  for (const scope of missingScopes) {
+    console.error(`- ${scope}`);
+  }
+  console.error(`Resolved repository root: ${repoRoot}`);
+  process.exit(2);
+}
+
 const violations = [];
 
 for (const check of checks) {
@@ -103,4 +125,4 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
-console.log('✅ Platform boundary checks passed (no cross-platform source coupling found).');
+console.log(`✅ Platform boundary checks passed (no cross-platform source coupling found). Root: ${repoRoot}`);

@@ -22,6 +22,7 @@ Create an incremental path to microservices and canary deployment without destab
      - optional local-only deploy mode via `SKIP_GIT_SYNC=true` (useful when your working tree has unrelated local edits).
 3. **Boundary guardrail for non-monolithic evolution**
    - Added `scripts/check-platform-boundaries.mjs` to fail on cross-platform source coupling (direct imports, alias imports, and relative path traversals).
+   - Script now resolves repo root from its own path and fails fast if it is run from the wrong root/missing scopes.
    - Added npm shortcut: `npm run check:boundaries`.
 
 4. **NPM script shortcuts**
