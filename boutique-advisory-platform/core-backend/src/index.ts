@@ -1047,7 +1047,7 @@ async function startServer() {
 
       // Run background maintenance tasks (Logs/Token cleanup)
       const triggerMaintenance = () => {
-        runMaintenanceTasks().catch(e => console.error('⚠️ Maintenance failed:', e.message));
+        runMaintenanceTasks().catch((e: any) => console.error('⚠️ Maintenance failed:', e.message));
       };
 
       // Initial run
