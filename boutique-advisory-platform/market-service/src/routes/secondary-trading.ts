@@ -67,7 +67,10 @@ router.get('/listings', authorize('secondary_trading.list'), async (req: Authent
             return;
         }
 
-        const { status, dealId, sellerId, minPrice, maxPrice } = req.query;
+        const { status, dealId, sellerId, minPrice, maxPrice, page, limit, includeTrades } = req.query;
+        const parsedLimit = Math.min(Math.max(parseInt(String(limit || '20'), 10) || 20, 1), 100);
+        const parsedPage = Math.max(parseInt(String(page || '1'), 10) || 1, 1);
+        const includeTradesFlag = String(includeTrades || '').toLowerCase() === 'true';
 
         const where: any = {
             tenantId,
@@ -104,9 +107,11 @@ router.get('/listings', authorize('secondary_trading.list'), async (req: Authent
                         }
                     }
                 },
-                trades: true
+                trades: includeTradesFlag
             },
-            orderBy: { listedAt: 'desc' }
+            orderBy: { listedAt: 'desc' },
+            skip: (parsedPage - 1) * parsedLimit,
+            take: parsedLimit
         });
 
         // Current user's investor ID

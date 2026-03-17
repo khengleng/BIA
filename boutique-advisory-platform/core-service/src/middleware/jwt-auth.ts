@@ -193,12 +193,6 @@ async function handleRefresh(req: AuthenticatedRequest, res: Response, next: Nex
             return;
         }
 
-        const requestTenantId = getTenantId(req);
-        if (requestTenantId !== 'default' && requestTenantId !== storedToken.user.tenantId) {
-            res.status(403).json({ error: 'Tenant access denied' });
-            return;
-        }
-
         // Rotate token
         await prisma.refreshToken.delete({ where: { id: storedToken.id } });
         await issueTokensAndSetCookies(res, storedToken.user, req);

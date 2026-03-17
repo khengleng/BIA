@@ -339,7 +339,17 @@ export function createApp(config: TWalletBffConfig) {
   }))
 
   app.get('/api/mobile/secondary-trading/listings', asyncRoute(async (req, res) => {
-    const upstream = await forwardJson(config.marketServiceUrl, '/api/secondary-trading/listings', {
+    const params = new URLSearchParams()
+    for (const [key, value] of Object.entries(req.query || {})) {
+      if (Array.isArray(value)) {
+        value.forEach((entry) => params.append(key, String(entry)))
+      } else if (value !== undefined) {
+        params.append(key, String(value))
+      }
+    }
+    const query = params.toString()
+    const path = query ? `/api/secondary-trading/listings?${query}` : '/api/secondary-trading/listings'
+    const upstream = await forwardJson(config.marketServiceUrl, path, {
       method: 'GET',
       headers: jsonHeaders(getForwardHeaders(req)),
     })
