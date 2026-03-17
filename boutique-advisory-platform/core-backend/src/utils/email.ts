@@ -5,6 +5,18 @@ const resend = new Resend(process.env.RESEND_API_KEY || 're_mock_key_for_startup
 
 const FROM_EMAIL = process.env.EMAIL_FROM || 'contact@cambobia.com';
 const FRONTEND_URL = (process.env.FRONTEND_URL || 'https://www.cambobia.com').replace(/\/$/, '');
+const TRADING_FRONTEND_URL = (process.env.TRADING_FRONTEND_URL || 'https://trade.cambobia.com').replace(/\/$/, '');
+
+function normalizeFrontendUrl(frontendUrl?: string): string {
+  const trimmed = String(frontendUrl || '').trim();
+  if (!trimmed) return FRONTEND_URL;
+  return trimmed.replace(/\/+$/, '');
+}
+
+export function getPlatformFrontendUrl(isTradingPlatform: boolean, overrideUrl?: string): string {
+  if (overrideUrl) return normalizeFrontendUrl(overrideUrl);
+  return isTradingPlatform ? TRADING_FRONTEND_URL : FRONTEND_URL;
+}
 
 /**
  * Email Templates
@@ -269,8 +281,9 @@ export async function sendBookingConfirmation(
 }
 
 // Email Verification
-export async function sendVerificationEmail(to: string, verificationToken: string) {
-  const verificationUrl = `${FRONTEND_URL}/auth/verify-email?token=${encodeURIComponent(verificationToken)}`;
+export async function sendVerificationEmail(to: string, verificationToken: string, frontendUrl?: string) {
+  const resolvedFrontendUrl = normalizeFrontendUrl(frontendUrl);
+  const verificationUrl = `${resolvedFrontendUrl}/auth/verify-email?token=${encodeURIComponent(verificationToken)}`;
 
   if (!process.env.RESEND_API_KEY) {
     console.error('❌ RESEND_API_KEY is missing. Email will NOT be sent.');
@@ -334,8 +347,9 @@ export async function sendVerificationEmail(to: string, verificationToken: strin
 }
 
 // Password reset email
-export async function sendPasswordResetEmail(to: string, resetToken: string) {
-  const resetUrl = `${FRONTEND_URL}/auth/reset-password?token=${encodeURIComponent(resetToken)}`;
+export async function sendPasswordResetEmail(to: string, resetToken: string, frontendUrl?: string) {
+  const resolvedFrontendUrl = normalizeFrontendUrl(frontendUrl);
+  const resetUrl = `${resolvedFrontendUrl}/auth/reset-password?token=${encodeURIComponent(resetToken)}`;
 
   try {
     const { data, error } = await resend.emails.send({
