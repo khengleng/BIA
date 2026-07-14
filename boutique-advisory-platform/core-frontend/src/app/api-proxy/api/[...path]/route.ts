@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const TRANSIENT_STATUSES = new Set([502, 503, 504]);
 const HOP_BY_HOP_HEADERS = new Set([
   'connection',
   'content-encoding',
@@ -43,93 +42,40 @@ function inferServiceUrl(hostOrUrl: string | undefined, fallback: string): strin
   return `https://${candidate}`;
 }
 
-function isTradingHost(hostname: string): boolean {
-  const host = String(hostname || '').trim().toLowerCase();
-  return host === 'trade.cambobia.com'
-    || host.endsWith('.trade.cambobia.com')
-    || host.includes('trade.cambobia.com')
-    || host.includes('trading.railway')
-    || host.includes('trade-');
-}
-
-function looksLikeTradingServiceTarget(candidate: string): boolean {
-  const value = String(candidate || '').trim().toLowerCase();
-  if (!value) return false;
-  // Match known trading backend/service patterns so core runtime never proxies there.
-  return value.includes('trade.cambobia.com')
-    || value.includes('trading.railway')
-    || value.includes('trade-')
-    || value.includes('trading-backend')
-    || value.includes('/trading');
-}
-
-function isTradingRuntime(req: NextRequest): boolean {
-  if (process.env.NEXT_PUBLIC_PLATFORM_MODE === 'trading') return true;
-  return isTradingHost(req.nextUrl.hostname);
-}
-
-function getBackendTargets(req: NextRequest): string[] {
-  const targets: string[] = [];
-  const tradingRuntime = isTradingRuntime(req);
+// The platform now runs against a SINGLE consolidated backend (core-backend).
+// Resolve one backend base URL from the existing backend env vars, in order of
+// preference. These all point at the same backend; the list is only a
+// deployment-config fallback chain, NOT a multi-service fan-out.
+function getBackendTarget(req: NextRequest): string | null {
   const currentHost = req.headers.get('host')?.toLowerCase() || req.nextUrl.host.toLowerCase();
 
-  const addTarget = (candidate?: string) => {
-    const sanitized = sanitizeBaseUrl(candidate);
-    if (!sanitized) return;
+  const candidates: (string | undefined)[] = [
+    process.env.CORE_API_URL,
+    process.env.CORE_BACKEND_INTERNAL_URL,
+    process.env.CORE_BACKEND_URL,
+    process.env.API_URL,
+    process.env.BACKEND_INTERNAL_URL,
+    process.env.BACKEND_URL,
+    process.env.NEXT_PUBLIC_API_URL,
+    inferServiceUrl(process.env.RAILWAY_SERVICE_BACKEND_URL, 'http://backend.railway.internal:8080')
+  ];
 
-    // Guardrail: do not proxy to ourselves (prevents infinite loops and 404s from misconfigured env vars)
+  for (const candidate of candidates) {
+    const sanitized = sanitizeBaseUrl(candidate);
+    if (!sanitized) continue;
+
+    // Guardrail: do not proxy to ourselves (prevents infinite loops and 404s
+    // from misconfigured env vars).
     try {
-      const targetHost = new URL(sanitized).host.toLowerCase();
-      if (targetHost === currentHost) return;
+      if (new URL(sanitized).host.toLowerCase() === currentHost) continue;
     } catch {
-      return;
+      continue;
     }
 
-    if (targets.includes(sanitized)) return;
-    targets.push(sanitized);
-  };
-
-  const coreInternalBackend = inferServiceUrl(
-    process.env.RAILWAY_SERVICE_BACKEND_URL,
-    'http://backend.railway.internal:8080'
-  );
-  const tradingInternalBackend = inferServiceUrl(
-    process.env.RAILWAY_SERVICE_TRADING_URL || process.env.RAILWAY_SERVICE_TRADING_BACKEND_URL,
-    'http://trading.railway.internal:8080'
-  );
-
-  // Strategy: Prioritize based on runtime, but always include fallbacks
-  if (tradingRuntime) {
-    // Priority: Trading -> Core -> Others
-    addTarget(process.env.TRADING_API_URL);
-    addTarget(process.env.TRADING_BACKEND_INTERNAL_URL);
-    addTarget(process.env.TRADING_BACKEND_URL);
-    addTarget(tradingInternalBackend);
-
-    addTarget(process.env.CORE_API_URL);
-    addTarget(process.env.CORE_BACKEND_INTERNAL_URL);
-    addTarget(process.env.CORE_BACKEND_URL);
-    addTarget(coreInternalBackend);
-  } else {
-    // Priority: Core -> Trading -> Others
-    addTarget(process.env.CORE_API_URL);
-    addTarget(process.env.CORE_BACKEND_INTERNAL_URL);
-    addTarget(process.env.CORE_BACKEND_URL);
-    addTarget(coreInternalBackend);
-
-    addTarget(process.env.TRADING_API_URL);
-    addTarget(process.env.TRADING_BACKEND_INTERNAL_URL);
-    addTarget(process.env.TRADING_BACKEND_URL);
-    addTarget(tradingInternalBackend);
+    return sanitized;
   }
 
-  // Common fallbacks
-  addTarget(process.env.API_URL);
-  addTarget(process.env.BACKEND_INTERNAL_URL);
-  addTarget(process.env.BACKEND_URL);
-  addTarget(process.env.NEXT_PUBLIC_API_URL);
-
-  return targets;
+  return null;
 }
 
 function buildUpstreamHeaders(req: NextRequest): Headers {
@@ -146,26 +92,6 @@ function buildUpstreamHeaders(req: NextRequest): Headers {
   return headers;
 }
 
-
-async function shouldRetryForPlatformNotFound(upstream: Response): Promise<boolean> {
-  if (upstream.status !== 404) return false;
-  const contentType = upstream.headers.get('content-type') || '';
-  if (!contentType.includes('text/html') && !contentType.includes('application/json')) {
-    return false;
-  }
-
-  const bodyText = await upstream.clone().text();
-  const normalized = bodyText.toLowerCase();
-  const hasNotFoundMarker = normalized.includes('application not found');
-  const hasProviderMarker =
-    normalized.includes('railway')
-    || normalized.includes('cloudflare')
-    || normalized.includes('deployment');
-
-  // Retry only when the 404 body clearly looks like provider/platform routing
-  // rather than a legitimate application-level 404 from our backend.
-  return hasNotFoundMarker && hasProviderMarker;
-}
 
 function copyUpstreamHeaders(upstream: Response, response: NextResponse): void {
   upstream.headers.forEach((value, key) => {
@@ -191,9 +117,9 @@ function copyUpstreamHeaders(upstream: Response, response: NextResponse): void {
 }
 
 async function proxy(req: NextRequest, pathParts: string[]): Promise<NextResponse> {
-  const targets = getBackendTargets(req);
-  if (targets.length === 0) {
-    console.error(`❌ [Proxy] No backend targets found for request to /api/${pathParts.join('/')}`);
+  const targetBase = getBackendTarget(req);
+  if (!targetBase) {
+    console.error(`❌ [Proxy] No backend target configured for request to /api/${pathParts.join('/')}`);
     return NextResponse.json(
       { error: 'Backend proxy is not configured.' },
       { status: 503 }
@@ -206,54 +132,37 @@ async function proxy(req: NextRequest, pathParts: string[]): Promise<NextRespons
   const requestBody =
     method === 'GET' || method === 'HEAD' ? undefined : Buffer.from(await req.arrayBuffer());
 
-  for (let i = 0; i < targets.length; i += 1) {
-    const targetBase = targets[i];
-    const upstreamUrl = `${targetBase}${upstreamPath}`;
-    const isLastTarget = i === targets.length - 1;
+  try {
+    console.log(`📡 [Proxy] ${method} -> ${targetBase}/api/${pathParts.join('/')}`);
+    const upstream = await fetch(`${targetBase}${upstreamPath}`, {
+      method,
+      headers,
+      body: requestBody,
+      cache: 'no-store',
+      redirect: 'manual'
+    });
 
-    try {
+    // Read full body buffer to avoid streaming/decoding issues during content forwarding
+    const bodyBuffer = await upstream.arrayBuffer();
+    const response = new NextResponse(bodyBuffer, { status: upstream.status });
 
-      console.log(`📡 [Proxy] ${method} -> ${targetBase}/api/${pathParts.join('/')}`);
-      const upstream = await fetch(upstreamUrl, {
-        method,
-        headers,
-        body: requestBody,
-        cache: 'no-store',
-        redirect: 'manual'
-      });
+    copyUpstreamHeaders(upstream, response);
 
-      const shouldRetry = TRANSIENT_STATUSES.has(upstream.status)
-        || (await shouldRetryForPlatformNotFound(upstream));
+    // SECURITY: Strip encoding and length from copied headers as the new body
+    // buffer is already decompressed and Next will set its own length.
+    response.headers.delete('content-encoding');
+    response.headers.delete('content-length');
+    response.headers.delete('transfer-encoding');
 
-      if (!shouldRetry || isLastTarget) {
-        // Read full body buffer to avoid streaming/decoding issues during content forwarding
-        const bodyBuffer = await upstream.arrayBuffer();
-        const response = new NextResponse(bodyBuffer, { status: upstream.status });
-
-        copyUpstreamHeaders(upstream, response);
-
-        // SECURITY: Strip encoding and length from copied headers as the new body 
-        // buffer is already decompressed and Next will set its own length.
-        response.headers.delete('content-encoding');
-        response.headers.delete('content-length');
-        response.headers.delete('transfer-encoding');
-
-        return response;
-      }
-    } catch (error: any) {
-      const errMessage = error?.message || 'Proxy connection failed';
-      console.warn(`⚠️ [Proxy Error] Attempt ${i + 1} failed: ${errMessage}`);
-      if (isLastTarget) break;
-    }
+    return response;
+  } catch (error: any) {
+    const errMessage = error?.message || 'Proxy connection failed';
+    console.warn(`⚠️ [Proxy Error] ${method} ${upstreamPath} failed: ${errMessage}`);
+    return NextResponse.json(
+      { error: 'Service temporarily unavailable. Please try again in a few seconds.' },
+      { status: 503 }
+    );
   }
-
-  console.error(`❌ [Proxy Failed] Exhausted all ${targets.length} targets for ${upstreamPath}`);
-  return NextResponse.json(
-    {
-      error: 'Service temporarily unavailable. Please try again in a few seconds.'
-    },
-    { status: 503 }
-  );
 }
 
 type RouteParams = { params: Promise<{ path: string[] }> };

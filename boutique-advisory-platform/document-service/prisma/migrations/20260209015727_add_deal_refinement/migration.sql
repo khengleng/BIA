@@ -1,2 +1,0 @@
--- AlterEnum
-ALTER TYPE "KYCStatus" ADD VALUE 'UNDER_REVIEW';
