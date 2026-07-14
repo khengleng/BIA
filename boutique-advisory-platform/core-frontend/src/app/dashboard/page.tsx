@@ -20,6 +20,7 @@ import {
   ArrowUpRight
 } from 'lucide-react'
 import { useTranslations } from '../../hooks/useTranslations'
+import { useFormat } from '@/hooks/useFormat'
 import { authorizedRequest } from '../../lib/api'
 import { TRADING_OPERATOR_HOME } from '@/lib/tradingOperatorRoutes'
 import { hasPermission } from '@/lib/permissions'
@@ -36,6 +37,7 @@ interface User {
 
 export default function DashboardPage() {
   const { t } = useTranslations()
+  const { formatCurrencyCompact } = useFormat()
   const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
   const [stats, setStats] = useState<any>(null)
@@ -128,7 +130,7 @@ export default function DashboardPage() {
 function SMEDashboard({ user, t, stats }: { user: User; t: any; stats: any }) {
   const dashboardStats = [
     { label: t('navigation.profile'), value: stats?.profileCompleteness ? `${stats.profileCompleteness}%` : '75%', icon: Target, color: 'text-blue-500' },
-    { label: t('advisory.fundingRequired'), value: stats?.fundingGoal ? `$${(stats.fundingGoal / 1000).toFixed(0)}K` : '$0K', icon: DollarSign, color: 'text-green-500' },
+    { label: t('advisory.fundingRequired'), value: formatCurrencyCompact(stats?.fundingGoal || 0, 'USD'), icon: DollarSign, color: 'text-green-500' },
     { label: t('advisory.certified'), value: stats?.smeStatus || (stats?.activeBookings > 0 ? 'IN_REVIEW' : 'PENDING'), icon: CheckCircle, color: 'text-yellow-500' },
     { label: t('navigation.deals'), value: stats?.totalDeals || '0', icon: TrendingUp, color: 'text-purple-500' },
     { label: 'Active Disputes', value: stats?.activeDisputes || '0', icon: AlertCircle, color: 'text-red-500' }
@@ -226,7 +228,7 @@ function SMEDashboard({ user, t, stats }: { user: User; t: any; stats: any }) {
 // Investor Dashboard Component
 function InvestorDashboard({ t, stats }: { t: any; stats: any }) {
   const dashboardStats = [
-    { label: t('dashboard.portfolioValue') || 'Portfolio Value', value: stats?.portfolioValue ? `$${(stats.portfolioValue / 1000).toFixed(0)}K` : '$0', icon: DollarSign, color: 'text-green-500', link: '/investor/portfolio' },
+    { label: t('dashboard.portfolioValue') || 'Portfolio Value', value: formatCurrencyCompact(stats?.portfolioValue || 0, 'USD'), icon: DollarSign, color: 'text-green-500', link: '/investor/portfolio' },
     { label: t('dashboard.activeInvestments') || 'Active Investments', value: stats?.activeInvestments || '0', icon: TrendingUp, color: 'text-blue-500', link: '/investor/portfolio' },
     { label: 'Match Score', value: stats?.avgMatchScore ? `${stats.avgMatchScore}%` : '0%', icon: BarChart3, color: 'text-purple-500', link: '/matchmaking' },
     { label: 'Pending Offers', value: stats?.pendingOffers || '0', icon: Clock, color: 'text-yellow-500', link: '/deals' }

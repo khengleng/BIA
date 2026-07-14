@@ -1,5 +1,11 @@
 'use client'
 
+// Initialize i18next once, at the client root. Nothing imported this module
+// before, so i18n was never initialized with the translation resources and
+// every t() call fell back to the raw key — the app was English regardless of
+// the Khmer/Chinese dictionaries. This side-effect import fixes that and
+// registers the language detection + persistence wired in the module.
+import '@/i18n'
 import { useEffect, useState } from 'react'
 import ErrorBoundary from './ErrorBoundary'
 import { ToastProvider } from '../contexts/ToastContext'

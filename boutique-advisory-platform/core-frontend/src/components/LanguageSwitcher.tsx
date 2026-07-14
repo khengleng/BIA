@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Globe } from 'lucide-react'
+import i18n from '@/i18n'
 
 const languages = [
   { code: 'en', name: 'English', flag: '🇺🇸' },
@@ -14,17 +15,23 @@ export default function LanguageSwitcher() {
   const [currentLanguage, setCurrentLanguage] = useState('en')
 
   useEffect(() => {
-    // Get language from localStorage or default to 'en'
-    const savedLanguage = localStorage.getItem('selectedLanguage') || 'en'
-    setCurrentLanguage(savedLanguage)
+    // Reflect the language i18n actually resolved (saved choice or browser),
+    // and keep the button in sync if the language changes elsewhere.
+    setCurrentLanguage(i18n.language || 'en')
+    const onChange = (lng: string) => setCurrentLanguage(lng)
+    i18n.on('languageChanged', onChange)
+    return () => { i18n.off('languageChanged', onChange) }
   }, [])
 
   const handleLanguageChange = (languageCode: string) => {
     setCurrentLanguage(languageCode)
-    localStorage.setItem('selectedLanguage', languageCode)
     setIsOpen(false)
 
-    // Dispatch a custom event to notify other components
+    // Apply immediately so the whole app re-renders (i18n persists the choice
+    // to localStorage via its languageChanged handler).
+    i18n.changeLanguage(languageCode)
+
+    // Keep broadcasting for any other listeners.
     window.dispatchEvent(new CustomEvent('languageChanged', {
       detail: { language: languageCode }
     }))
