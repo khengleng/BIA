@@ -26,11 +26,11 @@ services:
     networks:
       - bia-network
 
-  # Backend API Service
+  # Backend API Service (consolidated modular monolith)
   backend:
     image: bia-backend:latest
     build:
-      context: ./backend
+      context: ./core-backend
       dockerfile: Dockerfile
     container_name: bia-backend
     restart: unless-stopped
@@ -60,11 +60,11 @@ services:
       retries: 3
       start_period: 30s
 
-  # Frontend Web Application
+  # Frontend Web Application (single canonical Next.js app)
   frontend:
     image: bia-frontend:latest
     build:
-      context: ./frontend
+      context: ./core-frontend
       dockerfile: Dockerfile
       args:
         - NEXT_PUBLIC_API_URL=http://localhost:3003
