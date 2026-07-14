@@ -32,8 +32,10 @@ router.get('/posts', authorize('community.post_list'), async (req: Authenticated
         }
 
         const { category, isPinned, authorId, search, page = '1', limit = '20' } = req.query;
-        const pageNum = parseInt(page as string);
-        const limitNum = parseInt(limit as string);
+        // Clamp to valid bounds so non-numeric input (?page=abc) can't send
+        // NaN into Prisma skip/take (which throws) or NaN into totalPages.
+        const pageNum = Math.max(parseInt(String(page), 10) || 1, 1);
+        const limitNum = Math.min(Math.max(parseInt(String(limit), 10) || 20, 1), 100);
         const skip = (pageNum - 1) * limitNum;
 
         const where: any = { status: 'PUBLISHED', tenantId };

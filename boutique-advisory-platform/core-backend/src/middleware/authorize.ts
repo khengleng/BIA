@@ -135,7 +135,16 @@ export function authorize(
         let resourceOwnerId: string | undefined;
 
         if (options.getOwnerId) {
-            resourceOwnerId = await options.getOwnerId(req);
+            // Fail closed if the owner resolver rejects (e.g. a transient DB
+            // error or a malformed :id that Prisma rejects). Without this,
+            // the async middleware promise rejects, Express 4 does not forward
+            // it to error middleware, and the request hangs until socket timeout.
+            try {
+                resourceOwnerId = await options.getOwnerId(req);
+            } catch (err) {
+                console.error('authorize: getOwnerId resolver failed:', err);
+                return res.status(500).json({ error: 'Authorization check failed' });
+            }
         } else if (options.ownerIdParam && req.params[options.ownerIdParam]) {
             resourceOwnerId = req.params[options.ownerIdParam];
         } else if (options.ownerIdBody && req.body?.[options.ownerIdBody]) {

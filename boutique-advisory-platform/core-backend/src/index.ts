@@ -891,8 +891,11 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
     });
   }
 
-  // Handle CORS errors specifically
-  if (err.message === 'Not allowed by CORS' || err.message.includes('CORS')) {
+  // Handle CORS errors specifically. Guard err.message: a thrown non-Error
+  // (or an Error without a string message) would make .includes() throw a
+  // TypeError inside the last-resort handler, defeating error handling itself.
+  const errMessage = typeof err?.message === 'string' ? err.message : '';
+  if (errMessage === 'Not allowed by CORS' || errMessage.includes('CORS')) {
     console.error(`❌ CORS Blocking: ${req.headers.origin} is not allowed. Host: ${req.headers.host}`);
     return res.status(403).json({
       error: `DIAGNOSTIC: Access Denied (CORS). Host ${req.headers.host} or Origin ${req.headers.origin} blocked.`,

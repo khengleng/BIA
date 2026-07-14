@@ -551,13 +551,18 @@ router.post('/listings', authorize('secondary_trading.create_listing'), async (r
             expiresAt
         } = req.body;
 
-        if (!sharesAvailable || sharesAvailable <= 0) {
+        // Coerce and validate numerics: NaN and numeric strings slip past a
+        // bare `x <= 0` / `x < 0` check (NaN < 0 is false) and would be stored
+        // in Float columns. Fail closed with a 400 and persist the parsed number.
+        const sharesNum = Number(sharesAvailable);
+        if (!Number.isFinite(sharesNum) || sharesNum <= 0) {
             res.status(400).json({ error: 'Shares available must be greater than 0' });
             return;
         }
 
-        if (pricePerShare === undefined || pricePerShare < 0) {
-            res.status(400).json({ error: 'Price per share must be non-negative' });
+        const priceNum = Number(pricePerShare);
+        if (!Number.isFinite(priceNum) || priceNum < 0) {
+            res.status(400).json({ error: 'Price per share must be a non-negative number' });
             return;
         }
 
@@ -628,8 +633,8 @@ router.post('/listings', authorize('secondary_trading.create_listing'), async (r
                 tenantId,
                 sellerId: investor.id,
                 dealInvestorId,
-                sharesAvailable,
-                pricePerShare,
+                sharesAvailable: sharesNum,
+                pricePerShare: priceNum,
                 minPurchase: minPurchase || 1,
                 status: 'ACTIVE',
                 expiresAt: expiresAt ? new Date(expiresAt) : null

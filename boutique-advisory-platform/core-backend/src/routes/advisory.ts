@@ -241,7 +241,7 @@ router.post('/book', async (req: AuthenticatedRequest, res: Response) => {
                 advisorId: actualAdvisorId,
                 preferredDate: new Date(preferredDate),
                 notes: enhancedNotes,
-                amount: amount ? parseFloat(amount) : null,
+                amount: Number.isFinite(parseFloat(amount)) ? parseFloat(amount) : null,
                 status: amount ? 'CONFIRMED' : 'PENDING'
             },
             include: {
@@ -364,6 +364,11 @@ router.post('/services', authorize('advisory_service.create'), async (req: Authe
 
         const advisorId = advisor.id;
 
+        const priceNum = parseFloat(price);
+        if (!Number.isFinite(priceNum) || priceNum < 0) {
+            return res.status(400).json({ error: 'price must be a valid non-negative number' });
+        }
+
         const service = await prisma.advisoryService.create({
             data: {
                 tenantId,
@@ -371,7 +376,7 @@ router.post('/services', authorize('advisory_service.create'), async (req: Authe
                 name,
                 category,
                 description,
-                price: parseFloat(price),
+                price: priceNum,
                 duration,
                 features: Array.isArray(features) ? features : [features],
                 status: 'ACTIVE'
@@ -455,7 +460,7 @@ router.put('/services/:id', authorize('advisory_service.manage'), async (req: Au
                 ...(name && { name }),
                 ...(category && { category }),
                 ...(description && { description }),
-                ...(price && { price: parseFloat(price) }),
+                ...(Number.isFinite(parseFloat(price)) && { price: parseFloat(price) }),
                 ...(duration && { duration }),
                 ...(features && { features: Array.isArray(features) ? features : [features] }),
                 ...(normalizedStatus && { status: normalizedStatus })
@@ -655,7 +660,7 @@ router.patch('/certifications/:id', authorize('certification.approve'), async (r
             data: {
                 status: normalizedStatus as any,
                 ...(comments && { comments }),
-                ...(score && { score: parseFloat(score) })
+                ...(Number.isFinite(parseFloat(score)) && { score: parseFloat(score) })
             },
             include: { sme: true }
         });
