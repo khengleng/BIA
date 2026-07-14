@@ -49,13 +49,19 @@ export function generateTotpCode(secret: string, time: number = Date.now()): str
  */
 export function verifyTotpCode(secret: string, code: string, window: number = 1): boolean {
     const now = Date.now();
+    const codeBuf = Buffer.from(String(code ?? ''));
 
     for (let i = -window; i <= window; i++) {
         const time = now + (i * TOTP_PERIOD * 1000);
         const expectedCode = generateTotpCode(secret, time);
+        const expectedBuf = Buffer.from(expectedCode);
 
-        // Constant-time comparison to prevent timing attacks
-        if (crypto.timingSafeEqual(Buffer.from(code), Buffer.from(expectedCode))) {
+        // Fail closed on any length mismatch: crypto.timingSafeEqual throws a
+        // RangeError when buffer lengths differ (e.g. a 5-digit submission), so
+        // guard the length before the constant-time comparison rather than
+        // letting a wrong-length code throw instead of being rejected.
+        if (codeBuf.length === expectedBuf.length &&
+            crypto.timingSafeEqual(codeBuf, expectedBuf)) {
             return true;
         }
     }

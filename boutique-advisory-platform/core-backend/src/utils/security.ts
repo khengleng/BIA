@@ -105,10 +105,12 @@ export function validateCsrfToken(sessionId: string, token: string): boolean {
         csrfTokens.delete(sessionId);
         return false;
     }
-    return crypto.timingSafeEqual(
-        Buffer.from(stored.token),
-        Buffer.from(token)
-    );
+    const storedBuf = Buffer.from(stored.token);
+    const tokenBuf = Buffer.from(String(token ?? ''));
+    // Fail closed on length mismatch: timingSafeEqual throws a RangeError when
+    // buffer lengths differ, so a wrong-length token must be rejected, not throw.
+    if (storedBuf.length !== tokenBuf.length) return false;
+    return crypto.timingSafeEqual(storedBuf, tokenBuf);
 }
 
 function cleanupExpiredCsrfTokens(): void {

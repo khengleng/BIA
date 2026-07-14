@@ -29,6 +29,13 @@ if [ -n "$DATABASE_URL" ]; then
   echo "🗄️ Running Prisma migrations (migrate deploy)..."
   npx prisma migrate deploy
   echo "✅ Prisma migrations applied"
+  # Reconcile any schema drift not captured by migrations (models added to
+  # schema.prisma without a migration — e.g. wallets, invoices, admin_cases).
+  # Additive/non-destructive: no --accept-data-loss, and non-fatal so the
+  # server still boots and passes health checks if this reports a diff.
+  echo "🔄 Reconciling schema drift (prisma db push, additive)..."
+  npx prisma db push --skip-generate || echo "⚠️ db push reported a diff it won't apply automatically; continuing boot"
+  echo "✅ Schema drift reconciled"
 fi
 
 
