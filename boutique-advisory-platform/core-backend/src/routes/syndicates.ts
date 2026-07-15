@@ -78,6 +78,62 @@ router.get('/', authorize('syndicate.list'), async (req: AuthenticatedRequest, r
     }
 });
 
+// Syndicate leads directory — ranks lead investors by track record so
+// followers can find and vet credible leads before backing them. Defined
+// before /:id so "leads" isn't captured as a syndicate id.
+router.get('/leads', authorize('syndicate.list'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+        const tenantId = req.user?.tenantId || 'default';
+        const syndicates = await prisma.syndicate.findMany({
+            where: { tenantId },
+            include: {
+                leadInvestor: { select: { id: true, name: true, type: true } },
+                members: { select: { amount: true, status: true } }
+            }
+        });
+
+        const map = new Map<string, {
+            investorId: string; name: string; type: string;
+            syndicatesLed: number; totalTarget: number; totalRaised: number;
+            followers: number; carrySum: number;
+        }>();
+
+        for (const s of syndicates) {
+            const lead = s.leadInvestor;
+            if (!lead) continue;
+            const e = map.get(lead.id) || {
+                investorId: lead.id, name: lead.name, type: String(lead.type),
+                syndicatesLed: 0, totalTarget: 0, totalRaised: 0, followers: 0, carrySum: 0
+            };
+            const approved = s.members.filter(m => m.status === 'APPROVED');
+            e.syndicatesLed += 1;
+            e.totalTarget += s.targetAmount || 0;
+            e.totalRaised += approved.reduce((sum, m) => sum + (m.amount || 0), 0);
+            e.followers += approved.length;
+            e.carrySum += s.carryFee || 0;
+            map.set(lead.id, e);
+        }
+
+        const leads = Array.from(map.values())
+            .map(e => ({
+                investorId: e.investorId,
+                name: e.name,
+                type: e.type,
+                syndicatesLed: e.syndicatesLed,
+                totalTarget: e.totalTarget,
+                totalRaised: e.totalRaised,
+                followers: e.followers,
+                avgCarryFee: e.syndicatesLed > 0 ? parseFloat((e.carrySum / e.syndicatesLed).toFixed(1)) : 0
+            }))
+            .sort((a, b) => b.totalRaised - a.totalRaised || b.syndicatesLed - a.syndicatesLed);
+
+        res.json({ leads, total: leads.length });
+    } catch (error) {
+        console.error('Error fetching syndicate leads:', error);
+        res.status(500).json({ error: 'Failed to fetch syndicate leads' });
+    }
+});
+
 // Get syndicate by ID
 router.get('/:id', authorize('syndicate.read'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
