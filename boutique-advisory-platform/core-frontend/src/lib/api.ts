@@ -140,6 +140,19 @@ export async function apiRequest(
     let response: Response;
 
     if (shouldShareAuthMe) {
+        // No client-side session hint means the user is logged out. Skip the
+        // network call entirely and synthesize a 401 — callers already treat a
+        // 401 as "not authenticated". This prevents a benign but noisy console
+        // 401 from /auth/me for logged-out visitors on the login screen, public
+        // pages, or anywhere else. The hint ('user') is set on login before we
+        // navigate and cleared on logout, so authenticated flows are unaffected.
+        if (typeof window !== 'undefined' && !window.localStorage.getItem('user')) {
+            return new Response(JSON.stringify({ error: 'Not authenticated' }), {
+                status: 401,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
+
         const now = Date.now();
         if (authMeLastResponse && authMeLastResponse.expiresAt > now) {
             response = authMeLastResponse.response.clone();
