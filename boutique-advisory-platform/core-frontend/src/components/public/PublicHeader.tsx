@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import i18n from '@/i18n'
 import { Menu, X, Globe, ArrowRight } from 'lucide-react'
@@ -35,7 +35,16 @@ function CamboBiaLogo() {
 }
 
 function LangToggle() {
-  const [lang, setLang] = useState(typeof window !== 'undefined' ? i18n.language || 'en' : 'en')
+  // Start with a deterministic 'en' so server and client render identically
+  // (avoids a hydration text mismatch), then reflect the real language after
+  // mount and stay in sync with subsequent changes.
+  const [lang, setLang] = useState('en')
+  useEffect(() => {
+    setLang(i18n.language || 'en')
+    const onChange = (lng: string) => setLang(lng)
+    i18n.on('languageChanged', onChange)
+    return () => { i18n.off('languageChanged', onChange) }
+  }, [])
   const next = lang.startsWith('km') ? 'en' : 'km'
   const set = (code: string) => { i18n.changeLanguage(code); setLang(code) }
   return (
