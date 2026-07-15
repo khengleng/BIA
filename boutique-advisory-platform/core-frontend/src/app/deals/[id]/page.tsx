@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Coins, RefreshCw, Save } from 'lucide-react'
 import DashboardLayout from '../../../components/layout/DashboardLayout'
+import DealQA from '@/components/DealQA'
 import { authorizedRequest } from '@/lib/api'
 
 interface CurrentUser {
@@ -361,6 +362,8 @@ export default function DealDetailPage() {
             <p className="text-gray-400 text-sm">No documents uploaded yet.</p>
           )}
         </div>
+
+        <DealQA dealId={dealId} canAnswer={canManage || user?.role === 'SME'} />
       </div>
 
       {showTokenize && (

@@ -294,8 +294,34 @@ model Deal {
   agreements        Agreement[]
   advisorConflicts  AdvisorConflictDeclaration[]
   launchpadOffering LaunchpadOffering?
+  dealQuestions     DealQuestion[]
 
   @@map("deals")
+}
+
+// Deal-room Q&A: investors ask questions on a deal; the SME/advisor answers.
+// Asker/answerer identity is denormalized for display; referential integrity
+// to the deal is enforced via the relation.
+model DealQuestion {
+  id             String    @id @default(cuid())
+  tenantId       String
+  dealId         String
+  askedById      String
+  askedByName    String
+  askedByRole    String
+  question       String
+  answer         String?
+  answeredById   String?
+  answeredByName String?
+  isPublic       Boolean   @default(true)
+  status         String    @default("OPEN") // OPEN | ANSWERED
+  createdAt      DateTime  @default(now())
+  answeredAt     DateTime?
+
+  deal Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@index([dealId])
+  @@map("deal_questions")
 }
 
 // Many-to-many relationship between Deal and Investor
