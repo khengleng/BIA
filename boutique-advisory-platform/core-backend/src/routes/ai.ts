@@ -11,7 +11,7 @@ const router = Router();
 // Note: ANTHROPIC_API_KEY should be set in .env
 const apiKey = process.env.ANTHROPIC_API_KEY;
 const anthropic = apiKey ? new Anthropic({ apiKey }) : null;
-const MODEL_NAME = "claude-3-haiku-20240307";
+const MODEL_NAME = "claude-haiku-4-5-20251001";
 const PLATFORM_UPDATE_DATE = "2026-02-17";
 
 const PLATFORM_FEATURE_CONTEXT = `
@@ -120,7 +120,7 @@ Instructions:
         `;
 
         const msg = await anthropic.messages.create({
-            model: "claude-3-haiku-20240307",
+            model: MODEL_NAME,
             max_tokens: 1024,
             system: systemPrompt,
             messages: [
