@@ -124,6 +124,7 @@ import cashflowRoutes from './routes/cashflow';
 import webhookRoutes from './routes/webhooks';
 import referralRoutes from './routes/referrals';
 import dealQaRoutes from './routes/deal-qa';
+import capTableRoutes from './routes/cap-table';
 
 // Security Validation
 import { validateSecurityConfiguration } from './utils/securityValidator';
@@ -787,6 +788,7 @@ app.use('/api/deal-due-diligence', authenticateToken, dealDueDiligenceRoutes);
 app.use('/api/community', authenticateToken, communityRoutes);
 app.use('/api/referrals', authenticateToken, referralRoutes);
 app.use('/api/deal-qa', authenticateToken, dealQaRoutes);
+app.use('/api/cap-table', authenticateToken, capTableRoutes);
 
 // Advisory & Financials
 app.use('/api/advisory', authenticateToken, advisoryRoutes);
