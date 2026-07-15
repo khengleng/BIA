@@ -24,6 +24,21 @@ export const useSocketContext = () => {
     return context
 }
 
+const PUBLIC_PREFIXES = [
+    '/how-it-works', '/for-businesses', '/for-investors', '/for-advisors',
+    '/opportunities', '/about', '/contact', '/faq', '/trust',
+    '/terms', '/privacy', '/risk-disclosure',
+]
+
+// Public marketing/legal routes (and the marketing homepage) have no session and
+// don't need identity or a socket. Skipping the /api/auth/me check here avoids a
+// benign-but-noisy 401 in the console for logged-out visitors.
+function isPublicPath(pathname: string): boolean {
+    if (pathname === '/') return true
+    if (pathname.startsWith('/auth/')) return true
+    return PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))
+}
+
 export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     const socketRef = useRef<Socket | null>(null)
     const intentionalDisconnectRef = useRef(false)
@@ -33,6 +48,11 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
 
     useEffect(() => {
         const syncUserFromSession = async () => {
+            // Don't probe identity on public routes — no session exists there.
+            if (typeof window !== 'undefined' && isPublicPath(window.location.pathname)) {
+                setUser(null)
+                return
+            }
             try {
                 const response = await authorizedRequest('/api/auth/me')
                 if (!response.ok) {
