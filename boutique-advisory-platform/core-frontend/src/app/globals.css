@@ -143,12 +143,16 @@ body {
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
 }
-.cb-public h1, .cb-public h2, .cb-public h3, .cb-public h4 {
+:where(.cb-public h1, .cb-public h2, .cb-public h3, .cb-public h4) {
   color: var(--cb-ink);
   letter-spacing: -0.01em;
   text-wrap: balance;
 }
-.cb-public a { color: var(--cb-primary); }
+/* Zero-specificity default link color (via :where) so a link's own utility
+   class (e.g. text-white on a filled button) or inline color always wins.
+   Without :where, `.cb-public a` outranked `.text-white`, making white-on-teal
+   CTA buttons render teal-on-teal — an invisible label. */
+:where(.cb-public a) { color: var(--cb-primary); }
 .cb-public ::selection { background: var(--cb-primary-soft); }
 .cb-wrap { max-width: var(--cb-maxw); margin: 0 auto; padding-left: 24px; padding-right: 24px; }
 .cb-public :focus-visible { outline: 2px solid var(--cb-primary); outline-offset: 2px; }
