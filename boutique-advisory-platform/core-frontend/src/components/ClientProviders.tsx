@@ -43,7 +43,7 @@ export default function ClientProviders({ children }: Props) {
         // One-time SW reset on production domains to clear stale cached bundles after deploys.
         if (typeof window !== 'undefined') {
             const host = window.location.hostname;
-            const shouldResetSw = host === 'trade.cambobia.com' || host === 'www.cambobia.com' || host === 'cambobia.com';
+            const shouldResetSw = host === 'trade.cambobia.com' || host === 'www.cambobia.com' || host === 'cambobia.com' || host === 'bia.cambobia.com';
 
             if (shouldResetSw) {
                 const resetKey = `${host}-sw-reset-v6`;
