@@ -4,6 +4,7 @@ import { API_URL, authorizedRequest } from '@/lib/api'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
+import SMEVerification from '@/components/SMEVerification'
 import {
   Handshake,
   DollarSign,
@@ -607,6 +608,8 @@ export default function SMEPage() {
               {sme.status}
             </span>
           </div>
+
+          <SMEVerification smeId={params.id as string} />
 
           {/* Tabs */}
           <div className="bg-gray-800 rounded-lg mb-8">

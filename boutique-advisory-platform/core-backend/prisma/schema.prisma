@@ -184,6 +184,12 @@ model SME {
   location          String?
   score             Float?    @default(0)
   certified         Boolean   @default(false)
+  registryVerified   Boolean   @default(false) // Ministry of Commerce registration confirmed
+  taxVerified        Boolean   @default(false) // GDT tax status confirmed
+  financialsVerified Boolean   @default(false) // Financials reviewed (bank statement / audit)
+  verificationNotes  String?
+  verifiedAt         DateTime?
+  verifiedById       String?
   certificationDate DateTime?
   status            SMEStatus @default(DRAFT)
   createdAt         DateTime  @default(now())

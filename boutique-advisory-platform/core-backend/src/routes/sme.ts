@@ -402,4 +402,40 @@ router.delete('/:id', authorize('sme.delete'), async (req: AuthenticatedRequest,
   }
 });
 
+// Advisor/admin verification of an SME's registry, tax and financials.
+// This is the software half of "verified SME data": trusted third-party API
+// checks (Credit Bureau, MoC, GDT) can later flip these flags automatically;
+// until then advisors set them after manual review. SMEs cannot self-verify.
+router.patch('/:id/verification', authorize('sme.certify'), validateParams(idParamSchema), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.user?.tenantId || 'default';
+    const sme = await prisma.sME.findFirst({ where: { id, tenantId } });
+    if (!sme) return res.status(404).json({ error: 'SME not found' });
+
+    const b = req.body || {};
+    const data: any = { verifiedAt: new Date(), verifiedById: req.user?.id };
+    if (typeof b.registryVerified === 'boolean') data.registryVerified = b.registryVerified;
+    if (typeof b.taxVerified === 'boolean') data.taxVerified = b.taxVerified;
+    if (typeof b.financialsVerified === 'boolean') data.financialsVerified = b.financialsVerified;
+    if (typeof b.verificationNotes === 'string') data.verificationNotes = b.verificationNotes.slice(0, 2000);
+
+    const updated = await prisma.sME.update({ where: { id }, data });
+    const verificationLevel = [updated.registryVerified, updated.taxVerified, updated.financialsVerified].filter(Boolean).length;
+
+    return res.json({
+      id: updated.id,
+      registryVerified: updated.registryVerified,
+      taxVerified: updated.taxVerified,
+      financialsVerified: updated.financialsVerified,
+      verificationNotes: updated.verificationNotes,
+      verifiedAt: updated.verifiedAt,
+      verificationLevel // 0-3
+    });
+  } catch (error) {
+    console.error('SME verification error:', error);
+    return res.status(500).json({ error: 'Failed to update verification' });
+  }
+});
+
 export default router;
