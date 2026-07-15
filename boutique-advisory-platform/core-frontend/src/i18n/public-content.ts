@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 /**
@@ -155,6 +156,11 @@ export type PublicContent = (typeof PUBLIC_CONTENT)['en']
 
 export function usePublicContent(): PublicContent {
   const { i18n } = useTranslation()
-  const lang = (i18n.language || 'en').startsWith('km') ? 'km' : 'en'
-  return PUBLIC_CONTENT[lang]
+  // The server can't know the visitor's saved language, so it always renders
+  // English. Match that on the first client paint (mounted=false) to avoid a
+  // hydration text mismatch (React #418), then switch to the real language.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+  const isKm = mounted && (i18n.language || 'en').startsWith('km')
+  return PUBLIC_CONTENT[isKm ? 'km' : 'en']
 }
