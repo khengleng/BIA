@@ -1,9 +1,13 @@
 import type { Metadata, Viewport } from 'next'
+import { Inter, Noto_Sans_Khmer } from 'next/font/google'
 import './globals.css'
 import ClientProviders from '../components/ClientProviders'
 import OneSignalLoader from '../components/OneSignalLoader'
 
-const inter = { className: 'sans-serif' }
+// Self-hosted at build time (no external font CDN → CSP-safe). The Khmer face
+// ensures Khmer text renders instead of appearing blank on systems without it.
+const inter = Inter({ subsets: ['latin'], weight: ['400', '500', '600', '700', '800'], variable: '--font-inter', display: 'swap' })
+const khmer = Noto_Sans_Khmer({ subsets: ['khmer'], weight: ['400', '500', '600', '700'], variable: '--font-khmer', display: 'swap' })
 
 const APP_NAME = 'CamboBia Platform'
 const APP_DEFAULT_TITLE = 'CamboBia Platform'
@@ -104,7 +108,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <script dangerouslySetInnerHTML={{ __html: swCleanupScript }} />
       </head>
-      <body className={inter.className}>
+      <body className={`${inter.variable} ${khmer.variable}`}>
         <OneSignalLoader />
         <ClientProviders>{children}</ClientProviders>
       </body>
