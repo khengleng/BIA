@@ -1,3 +1,6 @@
+// sw-version: 2026-07-15b — bump this string on deploys to force browsers to
+// re-fetch this script, install the self-destruct worker, and clear any stale
+// caches from a previously-registered service worker.
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(Promise.resolve());
