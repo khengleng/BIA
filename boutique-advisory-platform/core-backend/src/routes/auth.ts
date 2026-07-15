@@ -21,6 +21,7 @@ import {
 } from '../utils/security';
 import { isBreachedPassword } from '../utils/breached-passwords';
 import { getPlatformFrontendUrl, sendWelcomeEmail, sendPasswordResetEmail, sendVerificationEmail } from '../utils/email';
+import { recordReferralSignup } from './referrals';
 import { generateMfaSecret, generateQrCode, verifyMfaToken, generateBackupCodes } from '../utils/mfa';
 import {
   authenticateToken,
@@ -291,6 +292,12 @@ router.post('/register', async (req: Request, res: Response) => {
         language: 'EN'
       }
     });
+
+    // Attribute a referral if this signup used an invite code (non-fatal).
+    const referralCode = typeof req.body?.referralCode === 'string' ? req.body.referralCode : '';
+    if (referralCode) {
+      await recordReferralSignup({ code: referralCode, refereeEmail: user.email, refereeUserId: user.id, tenantId });
+    }
 
     // Create role-specific profile
     if (role === 'SME') {

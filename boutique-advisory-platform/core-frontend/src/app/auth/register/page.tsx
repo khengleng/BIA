@@ -99,6 +99,10 @@ export default function RegisterPage() {
           email: formData.email,
           password: formData.password,
           role: formData.role,
+          // Attribute the signup to an inviter if arriving via a ?ref= link.
+          referralCode: typeof window !== 'undefined'
+            ? (new URLSearchParams(window.location.search).get('ref') || undefined)
+            : undefined,
         }),
       })
 

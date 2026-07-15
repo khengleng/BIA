@@ -83,6 +83,7 @@ model User {
   verificationToken       String?
   verificationTokenExpiry DateTime?
   preferences             Json      @default("{}")
+  referralCode            String?   @unique
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -126,9 +127,29 @@ model User {
 
   wallet        Wallet?
   refreshTokens RefreshToken[]
+  referralsMade Referral[]    @relation("Referrer")
 
   @@unique([tenantId, email])
   @@map("users")
+}
+
+// Partner & referral program: tracks who invited whom and where that
+// invitation is in its lifecycle (signed up -> converted).
+model Referral {
+  id            String   @id @default(cuid())
+  tenantId      String
+  code          String
+  referrerId    String
+  refereeEmail  String
+  refereeUserId String?
+  status        String   @default("SIGNED_UP") // SIGNED_UP | CONVERTED
+  createdAt     DateTime @default(now())
+
+  referrer User @relation("Referrer", fields: [referrerId], references: [id], onDelete: Cascade)
+
+  @@index([referrerId])
+  @@index([code])
+  @@map("referrals")
 }
 
 model RefreshToken {
