@@ -5,7 +5,13 @@ import { prisma } from '../database';
 import axios from 'axios';
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-bia';
+// Never fall back to a hardcoded signing secret — a committed default would let
+// anyone forge mobile tokens. Require the real JWT_SECRET (the main auth path
+// already does), failing fast at startup if it is missing.
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+    throw new Error('JWT_SECRET is not set — refusing to start with an insecure fallback secret.');
+}
 
 /**
  * Generate a temporary linking token for Telegram Bot
