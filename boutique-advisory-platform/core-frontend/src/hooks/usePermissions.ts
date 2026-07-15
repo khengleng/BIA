@@ -48,6 +48,19 @@ export function usePermissions(): PermissionHelpers & {
         let isMounted = true;
 
         const loadUser = async (strictFreshIdentity: boolean = false) => {
+            // Skip the identity probe on public marketing/legal routes — there is
+            // no session there, so calling /auth/me only yields a benign 401 that
+            // clutters the console for logged-out visitors.
+            if (typeof window !== 'undefined') {
+                const p = window.location.pathname;
+                const isPublic = p === '/' || p.startsWith('/auth/') ||
+                    /^\/(how-it-works|for-businesses|for-investors|for-advisors|opportunities|about|contact|faq|trust|terms|privacy|risk-disclosure)(\/|$)/.test(p);
+                if (isPublic) {
+                    if (isMounted) { setUser(null); setIsLoading(false); }
+                    return;
+                }
+            }
+
             const cachedUser = getCurrentUser();
             if (cachedUser && isMounted) {
                 setUser(cachedUser);
