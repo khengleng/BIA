@@ -150,17 +150,104 @@ export const PUBLIC_CONTENT = {
       badgeCredentials: 'លិខិតបញ្ជាក់បានផ្ទៀងផ្ទាត់',
     },
   },
+  zh: {
+    nav: {
+      howItWorks: '运作方式',
+      forBusinesses: '面向企业',
+      forInvestors: '面向投资者',
+      forAdvisors: '面向顾问',
+      opportunities: '商机',
+      login: '登录',
+      createAccount: '创建账户',
+    },
+    footer: {
+      tagline: '柬埔寨企业与资本、专业知识相遇的地方。可信的资料、值得信赖的连接、专业的建议。',
+      colPlatform: '平台',
+      colAudience: '适合谁',
+      colCompany: '公司',
+      colLegal: '法律',
+      trustSecurity: '信任与安全',
+      faq: '常见问题',
+      about: '关于 CamboBia',
+      contact: '联系我们',
+      terms: '服务条款',
+      privacy: '隐私政策',
+      risk: '风险披露',
+      rights: '版权所有。',
+      disclaimer: 'CamboBia 是一个连接与信息平台。它不提供投资、法律、税务或财务建议，也不保证融资、回报或任何结果。',
+    },
+    home: {
+      badge: '值得信赖的柬埔寨成长市场',
+      headline: '柬埔寨企业与资本、专业知识相遇的地方',
+      sub: 'CamboBia 帮助成长中的企业建立可信的资料、与潜在投资者建立联系，并获得值得信赖的专业顾问。',
+      ctaPrimary: '创建您的资料',
+      ctaSecondary: '了解运作方式',
+      free: '免费创建资料 · 不保证任何投资或融资',
+      audiencesTitle: '一个平台，三种成长方式',
+      audiencesSub: '无论您是融资、投资还是提供咨询——CamboBia 都为您提供一个可信、值得信赖的连接之地。',
+      aBizTitle: '面向企业',
+      aBizBody: '建立可信的企业资料，与顾问建立联系，展示您的融资需求，并提升在潜在投资者中的曝光度。',
+      aBizCta: '发展您的业务',
+      aInvTitle: '面向投资者',
+      aInvBody: '发现并筛选企业、保存商机、跟踪您的兴趣，并在建立联系前查看验证信息。',
+      aInvCta: '发现企业',
+      aAdvTitle: '面向顾问',
+      aAdvBody: '创建专业资料、展示您的资质、提供服务，并接收成长中企业的咨询请求。',
+      aAdvCta: '提供您的专业知识',
+      howTitle: 'CamboBia 如何运作',
+      howSub: '从资料到连接，清晰而可信的路径。',
+      step1Title: '建立可信的资料',
+      step1Body: '企业、投资者和顾问建立经过验证的资料，展示他们是谁以及他们在寻找什么。',
+      step2Title: '发现并建立联系',
+      step2Body: '投资者筛选并保存商机；顾问和企业通过一个值得信赖、结构化的目录相互找到对方。',
+      step3Title: '充满信心地互动',
+      step3Body: '在整个过程中，通过可见的验证和信任信号发送消息、提出问题并推进对话。',
+      howMore: '查看完整介绍',
+      trustBadge: '建立在信任之上',
+      trustTitle: '每一步都看得见的信任',
+      trustSub: '我们使用清晰、有说明的独立验证信号——绝不使用单一含糊的"已验证"标签——让每个人都确切知道已核实了什么。',
+      trustP1: '独立的电子邮件、身份、企业和资质验证',
+      trustP2: '经顾问审核的企业信息',
+      trustP3: '对可疑活动的清晰举报机制',
+      trustP4: '诚实的局限性——我们负责连接，不保证结果',
+      trustCta: '访问信任中心',
+      finalTitle: '准备好建立您可信的资料了吗？',
+      finalSub: '加入正在 CamboBia 上建立值得信赖连接的柬埔寨企业、投资者和顾问。',
+      finalCtaSecondary: '联系我们的团队',
+      badgeEmail: '电子邮件已验证',
+      badgeIdentity: '身份已验证',
+      badgeBusiness: '企业已验证',
+      badgeCredentials: '资质已验证',
+    },
+  },
 } as const
 
+export type Lang = 'en' | 'km' | 'zh'
 export type PublicContent = (typeof PUBLIC_CONTENT)['en']
 
-export function usePublicContent(): PublicContent {
+export const LANGUAGES: { code: Lang; label: string }[] = [
+  { code: 'en', label: 'English' },
+  { code: 'km', label: 'ខ្មែរ' },
+  { code: 'zh', label: '中文' },
+]
+
+/**
+ * The active public language, hydration-safe. The server can't know the
+ * visitor's saved language, so it always renders English; we match that on the
+ * first client paint (mounted=false) to avoid a hydration mismatch (React
+ * #418), then reflect the real language (en/km/zh) after mount.
+ */
+export function useLang(): Lang {
   const { i18n } = useTranslation()
-  // The server can't know the visitor's saved language, so it always renders
-  // English. Match that on the first client paint (mounted=false) to avoid a
-  // hydration text mismatch (React #418), then switch to the real language.
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
-  const isKm = mounted && (i18n.language || 'en').startsWith('km')
-  return PUBLIC_CONTENT[isKm ? 'km' : 'en']
+  if (!mounted) return 'en'
+  const l = (i18n.language || 'en').toLowerCase()
+  if (l.startsWith('km')) return 'km'
+  if (l.startsWith('zh')) return 'zh'
+  return 'en'
+}
+
+export function usePublicContent(): PublicContent {
+  return PUBLIC_CONTENT[useLang()]
 }

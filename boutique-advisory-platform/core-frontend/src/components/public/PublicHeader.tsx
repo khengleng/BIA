@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import i18n from '@/i18n'
-import { usePublicContent } from '@/i18n/public-content'
-import { Menu, X, Globe, ArrowRight } from 'lucide-react'
+import { usePublicContent, LANGUAGES } from '@/i18n/public-content'
+import { Menu, X, Globe, ArrowRight, Check, ChevronDown } from 'lucide-react'
 
 const NAV = [
   { href: '/how-it-works', key: 'howItWorks' },
@@ -23,29 +23,52 @@ function CamboBiaLogo() {
   )
 }
 
-function LangToggle() {
+function LangSelect() {
   // Deterministic 'en' initial render (avoids hydration mismatch); reflect the
   // real language after mount and stay in sync with changes.
   const [lang, setLang] = useState('en')
+  const [open, setOpen] = useState(false)
   useEffect(() => {
     setLang(i18n.language || 'en')
     const onChange = (lng: string) => setLang(lng)
     i18n.on('languageChanged', onChange)
     return () => { i18n.off('languageChanged', onChange) }
   }, [])
-  const isKm = lang.startsWith('km')
-  const next = isKm ? 'en' : 'km'
+  const current = LANGUAGES.find(l => lang.toLowerCase().startsWith(l.code)) || LANGUAGES[0]
+  const choose = (code: string) => { i18n.changeLanguage(code); setOpen(false) }
   return (
-    <button
-      onClick={() => i18n.changeLanguage(next)}
-      className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors hover:bg-[var(--cb-surface-2)]"
-      style={{ color: 'var(--cb-body)', borderColor: 'var(--cb-line)' }}
-      aria-label={isKm ? 'ប្តូរទៅភាសាអង់គ្លេស' : 'Switch to Khmer'}
-      title={isKm ? 'Switch to English' : 'ប្តូរទៅភាសាខ្មែរ'}
-    >
-      <Globe className="h-4 w-4" />
-      {isKm ? 'English' : 'ខ្មែរ'}
-    </button>
+    <div className="relative">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors hover:bg-[var(--cb-surface-2)]"
+        style={{ color: 'var(--cb-body)', borderColor: 'var(--cb-line)' }}
+        aria-haspopup="listbox" aria-expanded={open} aria-label="Select language"
+      >
+        <Globe className="h-4 w-4" /> {current.label} <ChevronDown className="h-3.5 w-3.5" />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} aria-hidden="true" />
+          <ul className="absolute right-0 z-20 mt-2 w-36 overflow-hidden rounded-lg border py-1 shadow-lg" role="listbox" style={{ borderColor: 'var(--cb-line)', background: '#fff', boxShadow: 'var(--cb-shadow)' }}>
+            {LANGUAGES.map(l => {
+              const active = lang.toLowerCase().startsWith(l.code)
+              return (
+                <li key={l.code}>
+                  <button
+                    onClick={() => choose(l.code)}
+                    className="flex w-full items-center justify-between px-3 py-2 text-sm hover:bg-[var(--cb-surface-2)]"
+                    style={{ color: 'var(--cb-ink)' }}
+                    role="option" aria-selected={active}
+                  >
+                    {l.label} {active && <Check className="h-4 w-4" style={{ color: 'var(--cb-primary)' }} />}
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </>
+      )}
+    </div>
   )
 }
 
@@ -68,7 +91,7 @@ export default function PublicHeader() {
         </div>
 
         <div className="hidden items-center gap-2 lg:flex">
-          <LangToggle />
+          <LangSelect />
           <Link href="/auth/login" className="rounded-lg px-3.5 py-2 text-sm font-semibold" style={{ color: 'var(--cb-ink)' }}>{c.nav.login}</Link>
           <Link href="/auth/register" className="inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors" style={{ background: 'var(--cb-primary)' }}>
             {c.nav.createAccount} <ArrowRight className="h-4 w-4" />
@@ -89,7 +112,7 @@ export default function PublicHeader() {
               </Link>
             ))}
             <div className="mt-3 flex items-center gap-3 border-t pt-4" style={{ borderColor: 'var(--cb-line)' }}>
-              <LangToggle />
+              <LangSelect />
               <Link href="/auth/login" onClick={() => setOpen(false)} className="flex-1 rounded-lg border px-4 py-2.5 text-center text-sm font-semibold" style={{ borderColor: 'var(--cb-line)', color: 'var(--cb-ink)' }}>{c.nav.login}</Link>
               <Link href="/auth/register" onClick={() => setOpen(false)} className="flex-1 rounded-lg px-4 py-2.5 text-center text-sm font-semibold text-white" style={{ background: 'var(--cb-primary)' }}>{c.nav.createAccount}</Link>
             </div>
