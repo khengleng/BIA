@@ -440,6 +440,105 @@ router.get('/portfolio/stats', authorize('investor.read', { getOwnerId: (req) =>
   }
 });
 
+// Quarterly portfolio performance report for the authenticated investor.
+// Buckets deployed capital by quarter for a given year, with cumulative AUM,
+// sector allocation and the holdings list — the periodic investor update the
+// roadmap calls for. Amounts are in USD; the client formats per locale.
+router.get('/portfolio/report', authorize('investor.read', { getOwnerId: (req) => req.user?.id }), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const tenantId = req.user?.tenantId || 'default';
+
+    const investor = await prisma.investor.findUnique({ where: { userId } });
+    if (!investor) {
+      return res.status(404).json({ error: 'Investor profile not found' });
+    }
+
+    const requestedYear = parseInt(String(req.query.year ?? ''), 10);
+    const year = Number.isFinite(requestedYear) ? requestedYear : new Date().getFullYear();
+
+    const [dealInvestments, syndicateInvestments, launchpadCommitments] = await Promise.all([
+      prisma.dealInvestor.findMany({
+        where: { investorId: investor.id, status: { in: ['COMPLETED', 'APPROVED'] } },
+        include: { deal: { include: { sme: true } } }
+      }),
+      prisma.syndicateMember.findMany({
+        where: { investorId: investor.id, status: 'APPROVED' },
+        include: { syndicate: { include: { deal: { include: { sme: true } } } } }
+      }),
+      prisma.launchpadCommitment.findMany({
+        where: { tenantId, investorId: investor.id },
+        include: { offering: { include: { deal: { include: { sme: true } } } } }
+      })
+    ]);
+
+    // Normalize every position into a common shape.
+    type Position = { date: Date; amount: number; sector: string; name: string; type: 'DEAL' | 'SYNDICATE' | 'LAUNCHPAD' };
+    const positions: Position[] = [
+      ...dealInvestments.map((i): Position => ({
+        date: i.createdAt, amount: i.amount || 0,
+        sector: i.deal?.sme?.sector || 'General',
+        name: i.deal?.sme?.name || i.deal?.title || 'Deal', type: 'DEAL'
+      })),
+      ...syndicateInvestments.map((i): Position => ({
+        date: (i as any).joinedAt || new Date(), amount: i.amount || 0,
+        sector: i.syndicate?.deal?.sme?.sector || 'Syndicate',
+        name: i.syndicate?.deal?.sme?.name || 'Syndicate', type: 'SYNDICATE'
+      })),
+      ...launchpadCommitments.map((i): Position => ({
+        date: i.createdAt, amount: (i as any).committedAmount || 0,
+        sector: i.offering?.deal?.sme?.sector || 'Launchpad',
+        name: i.offering?.deal?.sme?.name || 'Launchpad', type: 'LAUNCHPAD'
+      }))
+    ];
+
+    const totalInvested = positions.reduce((sum, p) => sum + p.amount, 0);
+
+    // Quarterly buckets for the requested year, with a running cumulative AUM
+    // that carries balances deployed in prior years.
+    const priorYearsAum = positions
+      .filter(p => p.date.getFullYear() < year)
+      .reduce((sum, p) => sum + p.amount, 0);
+
+    let cumulative = priorYearsAum;
+    const quarters = [0, 1, 2, 3].map((q) => {
+      const inQuarter = positions.filter(p => p.date.getFullYear() === year && Math.floor(p.date.getMonth() / 3) === q);
+      const deployed = inQuarter.reduce((sum, p) => sum + p.amount, 0);
+      cumulative += deployed;
+      return { quarter: `Q${q + 1}`, label: `Q${q + 1} ${year}`, deployed, positions: inQuarter.length, cumulativeAum: cumulative };
+    });
+
+    // Sector allocation across all holdings.
+    const bySector = new Map<string, number>();
+    for (const p of positions) bySector.set(p.sector, (bySector.get(p.sector) || 0) + p.amount);
+    const sectorAllocation = Array.from(bySector.entries())
+      .map(([sector, value]) => ({ sector, value, allocation: totalInvested > 0 ? parseFloat(((value / totalInvested) * 100).toFixed(1)) : 0 }))
+      .sort((a, b) => b.value - a.value);
+
+    const holdings = positions
+      .map(p => ({ name: p.name, sector: p.sector, type: p.type, value: p.amount, date: p.date }))
+      .sort((a, b) => b.value - a.value);
+
+    return res.json({
+      year,
+      currency: 'USD',
+      generatedAt: new Date().toISOString(),
+      summary: {
+        totalInvested,
+        totalPositions: positions.length,
+        deployedThisYear: quarters.reduce((sum, q) => sum + q.deployed, 0),
+        endOfYearAum: quarters[3]?.cumulativeAum ?? totalInvested
+      },
+      quarters,
+      sectorAllocation,
+      holdings
+    });
+  } catch (error: any) {
+    console.error('Get portfolio report error:', error);
+    return res.status(500).json({ error: 'Failed to generate portfolio report' });
+  }
+});
+
 // Get investor by ID
 router.get('/:id', authorize('investor.read', {
   getOwnerId: async (req) => {

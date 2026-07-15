@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import { PieChart, TrendingUp, TrendingDown, DollarSign, Briefcase, ChevronRight, ArrowUpRight, ShieldCheck, AlertCircle } from 'lucide-react'
 import { authorizedRequest } from '../lib/api'
+import { useFormat } from '@/hooks/useFormat'
+import Link from 'next/link'
 import SumsubKyc from './SumsubKyc'
 import { useToast } from '../contexts/ToastContext'
 import FileDisputeModal from './FileDisputeModal'
@@ -41,6 +43,7 @@ interface PortfolioItem {
 
 export default function PortfolioOverview() {
     const { addToast } = useToast()
+    const { formatCurrency } = useFormat()
     const [showSumsub, setShowSumsub] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
     const [summary, setSummary] = useState<PortfolioSummary>({
@@ -122,12 +125,12 @@ export default function PortfolioOverview() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="bg-gray-800 border border-gray-700 rounded-2xl p-6">
                     <p className="text-gray-400 text-sm mb-1">Total AUM</p>
-                    <p className="text-3xl font-bold text-white tracking-tight">
-                        ${summary.totalAum.toLocaleString()}
+                    <p className="text-3xl font-bold text-white tracking-tight tabular-nums">
+                        {formatCurrency(summary.totalAum, 'USD')}
                     </p>
-                    <div className="mt-2 text-gray-500 text-xs">
-                        Current portfolio valuation
-                    </div>
+                    <Link href="/investor/portfolio/report" className="mt-2 inline-flex items-center gap-1 text-teal-400 hover:text-teal-300 text-xs font-medium">
+                        View quarterly report <ChevronRight className="w-3 h-3" />
+                    </Link>
                 </div>
 
                 <div className="bg-gray-800 border border-gray-700 rounded-2xl p-6">
