@@ -1,90 +1,40 @@
-'use client'
+import LegalPage from '@/components/public/LegalPage'
+
+export const metadata = { title: 'Terms of Service — CamboBia' }
 
 export default function TermsPage() {
-    return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-gray-900">
-            <div className="max-w-4xl mx-auto px-6 py-16">
-                <h1 className="text-4xl font-bold text-white mb-8">Terms of Service</h1>
-
-                <div className="prose prose-invert max-w-none">
-                    <p className="text-gray-300 text-lg mb-6">
-                        Last updated: December 2024
-                    </p>
-
-                    <section className="mb-8">
-                        <h2 className="text-2xl font-semibold text-white mb-4">1. Acceptance of Terms</h2>
-                        <p className="text-gray-300 mb-4">
-                            By accessing or using the Boutique Investment Advisory Platform, you agree to be bound
-                            by these Terms of Service and all applicable laws and regulations.
-                        </p>
-                    </section>
-
-                    <section className="mb-8">
-                        <h2 className="text-2xl font-semibold text-white mb-4">2. Platform Services</h2>
-                        <p className="text-gray-300 mb-4">
-                            Our platform provides:
-                        </p>
-                        <ul className="list-disc list-inside text-gray-300 space-y-2 ml-4">
-                            <li>Investment matchmaking between SMEs and investors</li>
-                            <li>Due diligence assessment and scoring services</li>
-                            <li>Investor syndicate formation and management</li>
-                            <li>Secondary trading marketplace</li>
-                            <li>Community features and networking</li>
-                        </ul>
-                    </section>
-
-                    <section className="mb-8">
-                        <h2 className="text-2xl font-semibold text-white mb-4">3. User Responsibilities</h2>
-                        <p className="text-gray-300 mb-4">
-                            Users agree to:
-                        </p>
-                        <ul className="list-disc list-inside text-gray-300 space-y-2 ml-4">
-                            <li>Provide accurate and complete information</li>
-                            <li>Maintain the security of account credentials</li>
-                            <li>Comply with all applicable laws and regulations</li>
-                            <li>Not engage in fraudulent or misleading activities</li>
-                            <li>Respect intellectual property rights</li>
-                        </ul>
-                    </section>
-
-                    <section className="mb-8">
-                        <h2 className="text-2xl font-semibold text-white mb-4">4. Investment Disclaimer</h2>
-                        <p className="text-gray-300 mb-4">
-                            Investment in SMEs involves significant risks. Past performance does not guarantee
-                            future results. Users should conduct their own due diligence and consult with
-                            financial advisors before making investment decisions.
-                        </p>
-                    </section>
-
-                    <section className="mb-8">
-                        <h2 className="text-2xl font-semibold text-white mb-4">5. Limitation of Liability</h2>
-                        <p className="text-gray-300 mb-4">
-                            Boutique Investment Advisory Platform shall not be liable for any indirect,
-                            incidental, special, consequential, or punitive damages arising from the use
-                            of our services.
-                        </p>
-                    </section>
-
-                    <section className="mb-8">
-                        <h2 className="text-2xl font-semibold text-white mb-4">6. Contact Information</h2>
-                        <p className="text-gray-300">
-                            For questions about these Terms of Service, please contact:
-                        </p>
-                        <p className="text-blue-400 mt-2">
-                            contact@cambobia.com
-                        </p>
-                    </section>
-                </div>
-
-                <div className="mt-12 pt-8 border-t border-gray-700">
-                    <a
-                        href="/"
-                        className="text-blue-400 hover:text-blue-300 transition-colors"
-                    >
-                        ← Back to Home
-                    </a>
-                </div>
-            </div>
-        </div>
-    )
+  return (
+    <LegalPage
+      title="Terms of Service"
+      version="1.0"
+      effectiveDate="15 July 2026"
+      intro="These Terms govern your use of the CamboBia platform. By creating an account or using the platform, you agree to these Terms. Please also read our Privacy Policy and Risk Disclosure."
+      sections={[
+        { heading: 'About CamboBia', paragraphs: [
+          'CamboBia is a connection and information platform that helps Cambodian businesses, investors, and professional advisors create profiles and connect with one another.',
+          'CamboBia is not a bank, broker, investment adviser, or financial institution. We do not provide investment, legal, tax, or financial advice, and we do not participate in or guarantee any transaction between users.' ] },
+        { heading: 'Eligibility and accounts', paragraphs: [
+          'You must be at least 18 years old and able to enter into a binding agreement to use CamboBia. You are responsible for the accuracy of the information you provide and for keeping your account credentials secure.',
+          'You agree to provide truthful information and to keep your profile up to date. We may suspend or close accounts that provide false, misleading, or fraudulent information.' ] },
+        { heading: 'Acceptable use', paragraphs: [
+          'You agree not to misuse the platform, including by impersonating others, posting misleading information, attempting fraud, harvesting data, or interfering with the platform’s operation.',
+          'You are responsible for your own communications and decisions. Any agreement you reach with another user is between you and that user.' ] },
+        { heading: 'Verification and content', paragraphs: [
+          'Verification signals (such as email, identity, business, or credential verification) indicate that certain checks were performed. They are not a guarantee of a user’s quality, solvency, legality, or future performance.',
+          'You retain rights to the content you submit but grant CamboBia a licence to display it on the platform as needed to provide the service.' ] },
+        { heading: 'No guarantees', paragraphs: [
+          'CamboBia does not guarantee funding, investment, returns, advisor performance, business success, or any particular outcome. Use of the platform is at your own risk. See our Risk Disclosure.' ] },
+        { heading: 'Fees', paragraphs: [
+          'Certain features may carry fees, which will be disclosed before you incur them. Where payments are processed, they are handled by third-party providers subject to their own terms.' ] },
+        { heading: 'Limitation of liability', paragraphs: [
+          'To the maximum extent permitted by law, CamboBia is not liable for indirect, incidental, or consequential losses, or for losses arising from decisions you make based on information found on the platform.' ] },
+        { heading: 'Suspension and termination', paragraphs: [
+          'We may suspend or terminate access for breach of these Terms, suspected fraud, or legal reasons. You may close your account at any time.' ] },
+        { heading: 'Changes to these Terms', paragraphs: [
+          'We may update these Terms. We will post the updated version with a new version number and effective date. Continued use after changes take effect constitutes acceptance.' ] },
+        { heading: 'Governing law and contact', paragraphs: [
+          'These Terms are governed by the laws of the Kingdom of Cambodia. For questions, contact contact@cambobia.com.' ] },
+      ]}
+    />
+  )
 }

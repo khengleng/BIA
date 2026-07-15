@@ -1,76 +1,40 @@
-'use client'
+import LegalPage from '@/components/public/LegalPage'
+
+export const metadata = { title: 'Privacy Policy — CamboBia' }
 
 export default function PrivacyPage() {
-    return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-gray-900">
-            <div className="max-w-4xl mx-auto px-6 py-16">
-                <h1 className="text-4xl font-bold text-white mb-8">Privacy Policy</h1>
-
-                <div className="prose prose-invert max-w-none">
-                    <p className="text-gray-300 text-lg mb-6">
-                        Last updated: December 2024
-                    </p>
-
-                    <section className="mb-8">
-                        <h2 className="text-2xl font-semibold text-white mb-4">1. Information We Collect</h2>
-                        <p className="text-gray-300 mb-4">
-                            Boutique Investment Advisory Platform collects information you provide directly to us, including:
-                        </p>
-                        <ul className="list-disc list-inside text-gray-300 space-y-2 ml-4">
-                            <li>Personal identification information (name, email address, phone number)</li>
-                            <li>Business information for SMEs</li>
-                            <li>Investment preferences and portfolio information for investors</li>
-                            <li>Financial documents for due diligence purposes</li>
-                        </ul>
-                    </section>
-
-                    <section className="mb-8">
-                        <h2 className="text-2xl font-semibold text-white mb-4">2. How We Use Your Information</h2>
-                        <p className="text-gray-300 mb-4">
-                            We use the information we collect to:
-                        </p>
-                        <ul className="list-disc list-inside text-gray-300 space-y-2 ml-4">
-                            <li>Facilitate connections between SMEs and investors</li>
-                            <li>Conduct due diligence assessments</li>
-                            <li>Provide platform services and support</li>
-                            <li>Send important notifications and updates</li>
-                            <li>Improve our services and user experience</li>
-                        </ul>
-                    </section>
-
-                    <section className="mb-8">
-                        <h2 className="text-2xl font-semibold text-white mb-4">3. Data Security</h2>
-                        <p className="text-gray-300 mb-4">
-                            We implement appropriate security measures to protect your personal information, including:
-                        </p>
-                        <ul className="list-disc list-inside text-gray-300 space-y-2 ml-4">
-                            <li>Encryption of sensitive data in transit and at rest</li>
-                            <li>Access controls and authentication requirements</li>
-                            <li>Regular security audits and updates</li>
-                            <li>Secure data storage practices</li>
-                        </ul>
-                    </section>
-
-                    <section className="mb-8">
-                        <h2 className="text-2xl font-semibold text-white mb-4">4. Contact Us</h2>
-                        <p className="text-gray-300">
-                            If you have any questions about this Privacy Policy, please contact us at:
-                        </p>
-                        <p className="text-blue-400 mt-2">
-                            contact@cambobia.com
-                        </p>
-                    </section>
-                </div>
-
-                <div className="mt-12 pt-8 border-t border-gray-700">
-                    <a
-                        href="/"
-                        className="text-blue-400 hover:text-blue-300 transition-colors"
-                    >
-                        ← Back to Home
-                    </a>
-                </div>
-            </div>
-        </div>
-    )
+  return (
+    <LegalPage
+      title="Privacy Policy"
+      version="1.0"
+      effectiveDate="15 July 2026"
+      intro="This Privacy Policy explains what information CamboBia collects, how we use it, and the choices you have. We aim to collect only what we need to run the platform and to keep your information secure."
+      sections={[
+        { heading: 'Information we collect', paragraphs: [
+          'Account information you provide, such as your name, email, role, and password (stored securely, never in plain text).',
+          'Profile information you choose to add, such as business details, investor preferences, or advisor credentials — some of which you decide to make public.',
+          'Verification information used to confirm identity, business registration, or credentials where applicable.',
+          'Usage information, such as pages viewed and actions taken, used to operate and improve the platform.' ] },
+        { heading: 'How we use your information', paragraphs: [
+          'To create and manage your account, display your profile as you choose, enable connections between users, verify information, prevent fraud, and improve the service.',
+          'We use privacy-safe analytics to understand how the platform is used. We do not send passwords, identity numbers, uploaded documents, financial documents, or private messages to analytics tools.' ] },
+        { heading: 'What is public vs private', paragraphs: [
+          'You control which profile information is public. Sensitive personal information (such as identity numbers) is encrypted and never shown publicly. Private messages are visible only to the participants.' ] },
+        { heading: 'Sharing', paragraphs: [
+          'We share information with service providers who help us operate the platform (such as hosting, email, and verification providers) under appropriate confidentiality obligations. We do not sell your personal information.',
+          'We may disclose information where required by law or to protect the platform and its users.' ] },
+        { heading: 'Data security', paragraphs: [
+          'We use encryption for sensitive data at rest and in transit, access controls, and audit logging. No system is perfectly secure, but we work to protect your information and to respond promptly to issues.' ] },
+        { heading: 'Your choices', paragraphs: [
+          'You can view and update your profile, control what is public, manage marketing preferences separately from required legal acceptances, and request account closure.',
+          'Marketing communications are optional and separate from essential service messages. You can opt out at any time.' ] },
+        { heading: 'Data retention', paragraphs: [
+          'We keep information for as long as your account is active and as needed to provide the service, comply with legal obligations, and resolve disputes.' ] },
+        { heading: 'Children', paragraphs: [
+          'CamboBia is intended for users aged 18 and over and is not directed at children.' ] },
+        { heading: 'Changes and contact', paragraphs: [
+          'We may update this Policy and will post a new version number and effective date. For privacy questions or requests, contact contact@cambobia.com.' ] },
+      ]}
+    />
+  )
 }

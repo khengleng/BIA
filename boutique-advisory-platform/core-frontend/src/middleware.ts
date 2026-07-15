@@ -40,6 +40,24 @@ const staticCorePrefixes = [
   '/api/health',
 ];
 
+// Public marketing, informational and legal routes — accessible without a
+// session so prospective users, partners and institutions can evaluate the
+// platform and read legal documents before signing up.
+const publicPrefixes = [
+  '/how-it-works',
+  '/for-businesses',
+  '/for-investors',
+  '/for-advisors',
+  '/opportunities',
+  '/about',
+  '/contact',
+  '/faq',
+  '/trust',
+  '/terms',
+  '/privacy',
+  '/risk-disclosure',
+];
+
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
@@ -50,11 +68,20 @@ export function middleware(req: NextRequest) {
 
   const isAuthenticated = hasCoreSessionCookie(req);
 
-  // Root redirect logic
+  // Root: authenticated users go to their dashboard; everyone else sees the
+  // public marketing homepage (never force logged-out visitors to login).
   if (pathname === '/') {
-    const url = req.nextUrl.clone();
-    url.pathname = isAuthenticated ? '/dashboard' : '/auth/login';
-    return NextResponse.redirect(url);
+    if (isAuthenticated) {
+      const url = req.nextUrl.clone();
+      url.pathname = '/dashboard';
+      return NextResponse.redirect(url);
+    }
+    return NextResponse.next();
+  }
+
+  // Public routes are always accessible.
+  if (publicPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(prefix + '/'))) {
+    return NextResponse.next();
   }
 
   if (redirectToTradingPrefixes.some((prefix) => pathname.startsWith(prefix))) {
